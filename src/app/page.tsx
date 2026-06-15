@@ -9,19 +9,33 @@ type Row = {
   thumbnail: string | null;
   views: number;
   created_at: string;
-  profiles: { username: string | null } | null;
+  owner: string;
 };
 
 export default async function Feed() {
   const supabase = await createClient();
-  const { data } = await supabase
+
+  const { data, error } = await supabase
     .from("videos")
-    .select("id, title, thumbnail, views, created_at, profiles(username)")
+    .select("id, title, thumbnail, views, created_at, owner")
     .eq("status", "ready")
     .order("created_at", { ascending: false })
     .limit(48);
 
-  const videos = (data ?? []) as unknown as Row[];
+  if (error) console.error("feed query error:", error);
+
+  const videos = (data ?? []) as Row[];
+
+  // Look up uploader usernames in one batched query, then map id -> username.
+  const ownerIds = [...new Set(videos.map((v) => v.owner))];
+  const names = new Map<string, string>();
+  if (ownerIds.length > 0) {
+    const { data: profs } = await supabase
+      .from("profiles")
+      .select("id, username")
+      .in("id", ownerIds);
+    for (const p of profs ?? []) names.set(p.id, p.username ?? "someone");
+  }
 
   if (videos.length === 0) {
     return (
@@ -56,7 +70,7 @@ export default async function Feed() {
               {v.title}
             </h3>
             <p className="mt-1 text-xs text-gray-400">
-              {v.profiles?.username ?? "someone"} · {v.views} views
+              {names.get(v.owner) ?? "someone"} · {v.views} views
             </p>
           </div>
         </Link>
