@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import * as tus from "tus-js-client";
 import { createClient } from "@/lib/supabase/client";
 
 export default function UploadPage() {
@@ -29,13 +30,14 @@ export default function UploadPage() {
       return;
     }
     setBusy(true);
+    setProgress(0);
     setStatus("Requesting upload slot…");
 
-    // 1. Get a one-time direct-upload URL + the video id.
+    // 1. Server creates a TUS upload and returns a credential-free upload URL + video id.
     const res = await fetch("/api/upload-url", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, description }),
+      body: JSON.stringify({ title, description, size: file.size }),
     });
     const json = await res.json();
     if (!res.ok) {
@@ -43,30 +45,28 @@ export default function UploadPage() {
       setStatus(json.error ?? "Failed to init upload.");
       return;
     }
-    const { uploadURL, videoId } = json;
+    const { uploadUrl, videoId } = json;
 
-    // 2. Upload the file straight to Cloudflare (XHR for a progress bar).
+    // 2. Resumable, chunked upload straight to Cloudflare. No token in the browser,
+    //    no size ceiling, and it auto-retries dropped connections.
     setStatus("Uploading…");
-    const form = new FormData();
-    form.append("file", file);
-
-    await new Promise<void>((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      xhr.open("POST", uploadURL);
-      xhr.upload.onprogress = (e) => {
-        if (e.lengthComputable) setProgress(Math.round((e.loaded / e.total) * 100));
-      };
-      xhr.onload = () => (xhr.status < 300 ? resolve() : reject(new Error("upload failed")));
-      xhr.onerror = () => reject(new Error("network error"));
-      xhr.send(form);
-    }).catch((err) => {
-      setBusy(false);
-      setStatus(err.message);
+    const upload = new tus.Upload(file, {
+      uploadUrl, // pre-created URL from our server (skips tus client-side creation)
+      chunkSize: 50 * 1024 * 1024, // 50MB — Cloudflare requires a multiple of 256KiB
+      retryDelays: [0, 3000, 5000, 10000, 20000],
+      onError: (err) => {
+        setBusy(false);
+        setStatus(`Upload failed: ${err.message}`);
+      },
+      onProgress: (sent, total) => {
+        setProgress(Math.round((sent / total) * 100));
+      },
+      onSuccess: () => {
+        setStatus("Uploaded. Processing on Cloudflare…");
+        router.push(`/watch/${videoId}`);
+      },
     });
-
-    // 3. Cloudflare now transcodes; the webhook flips status to "ready".
-    setStatus("Uploaded. Processing on Cloudflare…");
-    router.push(`/watch/${videoId}`);
+    upload.start();
   }
 
   if (!ready) return <p className="py-16 text-center text-gray-400">…</p>;

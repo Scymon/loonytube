@@ -10,37 +10,45 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Not signed in" }, { status: 401 });
   }
 
-  const { title, description } = await req.json();
+  const { title, description, size } = await req.json();
   if (!title || typeof title !== "string") {
     return NextResponse.json({ error: "Title required" }, { status: 400 });
   }
+  if (!size || typeof size !== "number" || size <= 0) {
+    return NextResponse.json({ error: "File size required" }, { status: 400 });
+  }
 
-  // 1. Ask Cloudflare for a one-time direct-upload URL.
+  // Initiate a resumable TUS upload, server-side. `direct_user=true` makes Cloudflare
+  // return an upload URL the browser can use WITHOUT our API token.
+  const meta = `name ${Buffer.from(title, "utf8").toString("base64")}`;
   const cfRes = await fetch(
-    `https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/stream/direct_upload`,
+    `https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/stream?direct_user=true`,
     {
       method: "POST",
       headers: {
         Authorization: `Bearer ${process.env.CLOUDFLARE_STREAM_API_TOKEN}`,
-        "Content-Type": "application/json",
+        "Tus-Resumable": "1.0.0",
+        "Upload-Length": String(size),
+        "Upload-Metadata": meta,
       },
-      body: JSON.stringify({
-        maxDurationSeconds: 3600,
-        requireSignedURLs: false,
-        meta: { name: title },
-      }),
     }
   );
 
-  const cf = await cfRes.json();
-  if (!cf.success) {
-    console.error("Cloudflare direct_upload error", cf.errors);
+  if (cfRes.status !== 201) {
+    const text = await cfRes.text().catch(() => "");
+    console.error("Cloudflare TUS create failed", cfRes.status, text);
     return NextResponse.json({ error: "Stream upload init failed" }, { status: 502 });
   }
 
-  const { uploadURL, uid } = cf.result as { uploadURL: string; uid: string };
+  // Cloudflare hands back the resumable upload URL + the video id via headers.
+  const uploadUrl = cfRes.headers.get("Location");
+  const uid = cfRes.headers.get("stream-media-id");
+  if (!uploadUrl || !uid) {
+    console.error("Missing Location / stream-media-id", { uploadUrl, uid });
+    return NextResponse.json({ error: "Stream did not return an upload URL" }, { status: 502 });
+  }
 
-  // 2. Create the DB row immediately (status: uploading). id == Stream uid.
+  // Create the DB row immediately (status: uploading). id == Stream uid.
   const { error } = await supabase.from("videos").insert({
     id: uid,
     owner: user.id,
@@ -48,12 +56,10 @@ export async function POST(req: Request) {
     description: description ?? null,
     status: "uploading",
   });
-
   if (error) {
     console.error("Insert video row failed", error);
     return NextResponse.json({ error: "DB insert failed" }, { status: 500 });
   }
 
-  // 3. Hand the client the upload URL + the video id (for redirect after upload).
-  return NextResponse.json({ uploadURL, videoId: uid });
+  return NextResponse.json({ uploadUrl, videoId: uid });
 }
