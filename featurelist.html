@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>LoonyTube — Feature Dive</title>
+<style>
+  :root{
+    --abyss:#06101a;      /* lake-night base */
+    --deep:#0c1a28;       /* panel */
+    --deeper:#0a1521;     /* row */
+    --edge:#1a3243;       /* hairline */
+    --ice:#74d4ec;        /* light-blue accent */
+    --teal:#2dd4b4;       /* teal accent */
+    --mist:#8ca6b8;       /* muted text */
+    --foam:#e8f3f8;       /* primary text */
+    --eye:#e05570;        /* loon-eye red — skip only */
+    --mono:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+    --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    background:
+      radial-gradient(1200px 600px at 70% -10%, rgba(45,212,180,.07), transparent 60%),
+      radial-gradient(900px 500px at 10% 110%, rgba(116,212,236,.06), transparent 60%),
+      var(--abyss);
+    color:var(--foam);
+    font-family:var(--sans);
+    line-height:1.5;
+    min-height:100vh;
+    padding:0 0 80px;
+  }
+  .wrap{max-width:920px;margin:0 auto;padding:0 20px}
+
+  /* ---- header ---- */
+  header{padding:48px 0 28px;border-bottom:1px solid var(--edge)}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.28em;text-transform:uppercase;color:var(--ice);margin-bottom:14px}
+  h1{font-size:clamp(34px,6vw,56px);font-weight:800;letter-spacing:-.03em;line-height:1}
+  h1 .y{color:var(--ice)}
+  h1 .t{color:var(--teal)}
+  .sub{color:var(--mist);margin-top:14px;max-width:60ch;font-size:15px}
+
+  /* ---- depth gauge ---- */
+  .gauge{margin-top:30px;display:flex;align-items:center;gap:18px}
+  .gauge-track{flex:1;height:10px;border-radius:2px;background:var(--deeper);border:1px solid var(--edge);overflow:hidden}
+  .gauge-fill{height:100%;width:0;background:linear-gradient(90deg,var(--ice),var(--teal));transition:width .5s ease}
+  @media (prefers-reduced-motion:reduce){.gauge-fill{transition:none}}
+  .gauge-read{font-family:var(--mono);font-size:13px;color:var(--foam);white-space:nowrap}
+  .gauge-read b{color:var(--teal)}
+
+  /* ---- filters ---- */
+  .controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:26px 0 6px;position:sticky;top:0;background:linear-gradient(var(--abyss),var(--abyss) 70%,transparent);padding:12px 0;z-index:5}
+  .chip{font-family:var(--mono);font-size:12px;letter-spacing:.04em;color:var(--mist);background:var(--deep);border:1px solid var(--edge);border-radius:2px;padding:7px 13px;cursor:pointer;transition:.15s}
+  .chip:hover{color:var(--foam);border-color:var(--ice)}
+  .chip[aria-pressed="true"]{color:var(--abyss);background:var(--ice);border-color:var(--ice);font-weight:700}
+  .spacer{flex:1}
+  .reset{font-family:var(--mono);font-size:12px;color:var(--mist);background:none;border:1px solid var(--edge);border-radius:2px;padding:7px 13px;cursor:pointer}
+  .reset:hover{color:var(--eye);border-color:var(--eye)}
+
+  /* ---- sections ---- */
+  section{margin-top:34px}
+  .sec-head{display:flex;align-items:baseline;gap:14px;padding-bottom:10px;border-bottom:1px solid var(--edge);margin-bottom:4px}
+  .depth{font-family:var(--mono);font-size:11px;letter-spacing:.16em;color:var(--teal);white-space:nowrap}
+  .sec-title{font-size:19px;font-weight:700;letter-spacing:-.01em}
+  .sec-note{font-size:13px;color:var(--mist);margin:6px 0 8px}
+  .gate{color:var(--eye);font-family:var(--mono);font-size:11px;letter-spacing:.1em;border:1px solid var(--eye);border-radius:2px;padding:2px 7px}
+
+  /* ---- items ---- */
+  .item{display:flex;gap:14px;align-items:flex-start;padding:13px 14px;border:1px solid var(--edge);border-top:none;background:var(--deeper)}
+  .item:first-of-type{border-top:1px solid var(--edge)}
+  .item:hover{background:var(--deep)}
+  .item.is-done{opacity:.55}
+  .item.is-done .it-title{text-decoration:line-through;text-decoration-color:var(--teal)}
+  .box{appearance:none;flex:none;width:20px;height:20px;margin-top:2px;border:1.5px solid var(--edge);border-radius:3px;background:var(--abyss);cursor:pointer;position:relative;transition:.15s}
+  .box:hover{border-color:var(--ice)}
+  .box:checked{background:var(--teal);border-color:var(--teal)}
+  .box:checked::after{content:"";position:absolute;left:6px;top:2px;width:5px;height:10px;border:solid var(--abyss);border-width:0 2.5px 2.5px 0;transform:rotate(43deg)}
+  .box:focus-visible{outline:2px solid var(--ice);outline-offset:2px}
+  .it-body{flex:1;min-width:0}
+  .it-title{font-size:15px;font-weight:600}
+  .it-note{font-size:13px;color:var(--mist);margin-top:2px}
+  .tag{flex:none;font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;border-radius:2px;border:1px solid;align-self:flex-start;margin-top:2px}
+  .tag.done{color:var(--teal);border-color:var(--teal)}
+  .tag.quick{color:var(--ice);border-color:var(--ice)}
+  .tag.build{color:var(--mist);border-color:var(--edge)}
+
+  /* ---- skip zone ---- */
+  .skip section{opacity:1}
+  .skip .sec-title{color:var(--eye)}
+  .skip .depth{color:var(--eye)}
+  .skip-item{display:flex;gap:12px;padding:11px 14px;border:1px solid var(--edge);border-top:none;background:var(--deeper)}
+  .skip-item:first-of-type{border-top:1px solid var(--edge)}
+  .skip-x{color:var(--eye);font-family:var(--mono);flex:none;font-weight:700}
+  .skip-item .it-title{color:var(--mist);text-decoration:line-through;text-decoration-color:var(--eye);font-weight:600;font-size:15px}
+  .skip-item .it-note{color:#5f7585;font-size:13px;margin-top:2px}
+
+  footer{margin-top:48px;padding-top:18px;border-top:1px solid var(--edge);font-family:var(--mono);font-size:11px;color:var(--mist);letter-spacing:.04em}
+  .hidden{display:none !important}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Loon Suite · Roadmap</div>
+    <h1>Loony<span class="y">Tube</span> <span class="t">Feature Dive</span></h1>
+    <p class="sub">A loon dives from the surface down to the deep. So does this roadmap — shipped work at the top, the moonshots and the things-to-never-build at the bottom. Tick what's done; your progress saves in this browser.</p>
+    <div class="gauge">
+      <div class="gauge-track"><div class="gauge-fill" id="fill"></div></div>
+      <div class="gauge-read"><b id="pct">0%</b> · <span id="count">0/0</span> buildable done</div>
+    </div>
+  </header>
+
+  <div class="controls">
+    <button class="chip" data-filter="all" aria-pressed="true">All</button>
+    <button class="chip" data-filter="todo" aria-pressed="false">To do</button>
+    <button class="chip" data-filter="done" aria-pressed="false">Done</button>
+    <span class="spacer"></span>
+    <button class="reset" id="reset">Reset progress</button>
+  </div>
+
+  <div id="board"></div>
+
+  <div class="skip" id="skipZone"></div>
+
+  <footer>LoonyTube · Loon Suite (LoonyTube · Loon Browser · LoonCMS · LoonOS) · Loonatic theme preview · built on Next.js + Supabase + Cloudflare Stream</footer>
+</div>
+
+<script>
+// status: done | quick | build
+const DATA = [
+  { depth:"0 ft — Surface", title:"Shipped — the core loop", note:"Already live and committed.", items:[
+    {id:"s-auth", t:"Email / password auth", n:"Supabase Auth + profile auto-create trigger.", s:"done", done:true},
+    {id:"s-tus", t:"Resumable TUS uploads", n:"tus-js-client, 50MB chunks, no size ceiling, server-side token.", s:"done", done:true},
+    {id:"s-pipe", t:"Transcode → webhook → auto-ready", n:"Cloudflare encodes; webhook flips status to ready.", s:"done", done:true},
+    {id:"s-play", t:"Adaptive-bitrate playback", n:"HLS via Cloudflare Stream player.", s:"done", done:true},
+    {id:"s-feed", t:"Feed (newest-first)", n:"Decoupled query; creator names + thumbnails.", s:"done", done:true},
+    {id:"s-like", t:"Likes", n:"Composite-key table, optimistic toggle.", s:"done", done:true},
+    {id:"s-cmt", t:"Comments", n:"Post + list per video.", s:"done", done:true},
+    {id:"s-views", t:"View counting", n:"SECURITY DEFINER RPC, callable by anyone.", s:"done", done:true},
+    {id:"s-rls", t:"RLS security model", n:"Per-table row-level policies across all data.", s:"done", done:true},
+  ]},
+  { depth:"15 ft — Shallows", title:"Phase 1 — Polish & Identity", note:"Make it yours and make it solid. Do these next.", items:[
+    {id:"p1-theme", t:"Loonatic theme system", n:"Shared dark + light-blue/teal tokens across the whole Loon Suite. Apply to LoonyTube first.", s:"build"},
+    {id:"p1-player", t:"Loonatic custom player", n:"Replace Cloudflare <Stream> with hls.js on the manifest; skinned controls. The whole point of the project.", s:"build"},
+    {id:"p1-hmac", t:"Webhook HMAC verification", n:"Validate Webhook-Signature with the stored secret. Currently a TODO.", s:"quick"},
+    {id:"p1-backfill", t:"Backfill NULL duration / thumbnail", n:"Two early manual-flip videos. Re-upload, or fetch details + patch rows.", s:"quick"},
+    {id:"p1-favicon", t:"Favicon + loon mark", n:"Kills the console 404; first brand touch.", s:"quick"},
+    {id:"p1-deploy", t:"Deploy to Vercel", n:"Fixed production URL ends the ephemeral-tunnel webhook pain entirely.", s:"build"},
+    {id:"p1-meta", t:"Full upload metadata", n:"Tags, category, visibility (Public / Unlisted / Private / Scheduled), custom thumbnail.", s:"build"},
+  ]},
+  { depth:"40 ft — Mid-water", title:"Phase 2 — Core Platform", note:"The features that make it a real product people return to.", items:[
+    {id:"p2-chan", t:"Channels + channel pages", n:"Per-creator page with tabs (Videos / Shorts / Posts / Playlists).", s:"build"},
+    {id:"p2-sub", t:"Subscribe + notification levels", n:"Follow/unfollow with All / Personalized / None.", s:"build"},
+    {id:"p2-following", t:"Following feed", n:"Reverse-chron feed of subscribed channels.", s:"build"},
+    {id:"p2-search", t:"Search", n:"Title / description / creator. Postgres full-text to start.", s:"build"},
+    {id:"p2-manage", t:"Video management", n:"Edit + delete own videos (sync the Cloudflare delete).", s:"build"},
+    {id:"p2-history", t:"Watch history + resume", n:"Track position, resume playback.", s:"build"},
+    {id:"p2-playlists", t:"Playlists", n:"Create / add / reorder; public, unlisted, private.", s:"build"},
+    {id:"p2-page", t:"Feed pagination / infinite scroll", n:"Currently capped at 48 rows.", s:"quick"},
+    {id:"p2-dedup", t:"View-count dedup", n:"One view per session/user, not per page load.", s:"quick"},
+  ]},
+  { depth:"90 ft — The Current", title:"Phase 2.5 — Hybrid Social (the differentiator)", note:"Long video + short vertical video + text posts in one feed. This is what makes LoonyTube unlike YouTube. Reshapes the data model — design it deliberately.", items:[
+    {id:"h-model", t:"Generic content model", n:"Posts parallel to videos so the timeline can rank + interleave types. Decide first.", s:"build"},
+    {id:"h-posts", t:"Loon Posts (X-style)", n:"Short text + media attachments. New posts concept.", s:"build"},
+    {id:"h-repost", t:"Repost vs Quote-post", n:"Distinct actions, distinct visibility — like X.", s:"build"},
+    {id:"h-threads", t:"Threaded replies", n:"Conversation trees; weight replies in ranking.", s:"build"},
+    {id:"h-bookmark", t:"Bookmarks + folders", n:"Save-for-later across all content types.", s:"build"},
+    {id:"h-poll", t:"Polls", n:"Create / vote / live results.", s:"quick"},
+    {id:"h-shorts-up", t:"Loon Shorts upload (9:16)", n:"Aspect-aware upload. Cloudflare serves any ratio — infra reused.", s:"build"},
+    {id:"h-shorts-feed", t:"Shorts feed", n:"Full-screen vertical autoplay, swipe-to-next, infinite scroll.", s:"build"},
+    {id:"h-shorts-player", t:"Vertical Shorts player", n:"Separate from the landscape player; tap/swipe controls.", s:"build"},
+    {id:"h-timeline", t:"Unified timeline", n:"Interleave long video, shorts, posts; For-You vs Following tabs.", s:"build"},
+    {id:"h-sound", t:"\u201cUse this sound\u201d", n:"Reuse audio from a short. Use creator-supplied/royalty-free only (no licensed catalog).", s:"build"},
+  ]},
+  { depth:"150 ft — Depths", title:"Phase 3 — Scale & Infra", note:"Don't over-engineer early — but leave room.", items:[
+    {id:"p3-cache", t:"Feed / ranking cache", n:"Upstash/Redis once reads get heavy.", s:"build"},
+    {id:"p3-rank", t:"Isolate ranking logic", n:"One swappable function so reverse-chron \u2192 real ranking is easy later.", s:"quick"},
+    {id:"p3-pwa", t:"PWA support", n:"Installable, offline shell — before any native app.", s:"build"},
+    {id:"p3-captions", t:"Captions / subtitles", n:"Cloudflare can auto-generate; allow manual upload/edit.", s:"build"},
+  ]},
+  { depth:"200 ft — Pressure Zone", title:"Phase 4 — Trust & Safety", note:"Hard gate before opening uploads to strangers. UGC video attracts abuse fast and Cloudflare won't moderate for you.", gate:true, items:[
+    {id:"p4-report", t:"Report flows", n:"Video / comment / channel / post.", s:"build"},
+    {id:"p4-takedown", t:"Takedown / removal path", n:"Admin removal from both Supabase and Cloudflare.", s:"build"},
+    {id:"p4-modtools", t:"Comment moderation", n:"Blocked words, hold-for-review, auto-mod.", s:"build"},
+    {id:"p4-blockmute", t:"Block / mute users", n:"Per-user and per-channel.", s:"build"},
+    {id:"p4-tos", t:"Terms of Service / AUP", n:"Legal baseline before public uploads.", s:"quick"},
+    {id:"p4-signed", t:"Signed playback URLs", n:"requireSignedURLs for private/unlisted videos.", s:"build"},
+    {id:"p4-restricted", t:"Restricted / safe mode", n:"Filter mature content for those who opt in.", s:"build"},
+  ]},
+  { depth:"300 ft — Deep", title:"Phase 5 — Engagement & Growth", note:"Once the platform is trusted and sticky.", items:[
+    {id:"p5-recs", t:"Recommendations / related", n:"Related videos, end-of-video suggestions.", s:"build"},
+    {id:"p5-notif", t:"Notifications", n:"New uploads from follows, replies to you.", s:"build"},
+    {id:"p5-tips", t:"Super Thanks / tipping", n:"One-off creator support.", s:"build"},
+    {id:"p5-members", t:"Memberships + perks", n:"Recurring creator subscriptions, badges.", s:"build"},
+    {id:"p5-live", t:"Live streaming", n:"Cloudflare Stream Live + live chat + moderation.", s:"build"},
+    {id:"p5-cmtlike", t:"Comment likes / hearts", n:"Creator heart + comment voting.", s:"quick"},
+  ]},
+  { depth:"500 ft — Abyssal", title:"Later — Premium & Monetization", note:"Business-model layer; only meaningful at scale.", items:[
+    {id:"l-studio", t:"Creator analytics (Loon Studio)", n:"Views, watch time, retention, traffic sources, revenue.", s:"build"},
+    {id:"l-ads", t:"Ad revenue sharing / partner program", n:"Eligibility + payouts.", s:"build"},
+    {id:"l-premium", t:"Premium tier", n:"Ad-free, offline downloads, perks.", s:"build"},
+    {id:"l-shop", t:"Shop / product tags", n:"In-feed commerce, affiliate.", s:"build"},
+    {id:"l-api", t:"Public API", n:"Data + analytics access for developers.", s:"build"},
+  ]},
+];
+
+const SKIP = [
+  { depth:"The Trench", title:"Won't Build — indie reality", note:"Consciously skipped. These are traps: enormous cost, legal exposure, or zero leverage for an indie. Differentiate on brand, community, and the hybrid feed instead.", items:[
+    {t:"Licensed music catalog", n:"Licensing is legal + financial quicksand. Creator-supplied / royalty-free audio only."},
+    {t:"AR effects house (Effect House)", n:"Years of dedicated graphics work. Not a wedge."},
+    {t:"Content ID / auto copyright matching", n:"Enterprise-scale ML + legal apparatus."},
+    {t:"8K / HDR / 360\u00b0 / VR", n:"Delivery's already handled by Cloudflare; chasing premium formats buys nothing now."},
+    {t:"Native iOS / Android apps (initially)", n:"Ship a PWA first. Native only if it ever truly matters."},
+    {t:"Embedded conversational AI (Grok-equivalent)", n:"Out of scope for a video/social platform."},
+    {t:"Family Pairing / Kids app", n:"Heavy COPPA-style compliance. Not for v1."},
+    {t:"Dubbing / multi-audio tracks", n:"Niche and expensive; revisit only on real demand."},
+  ]},
+];
+
+const KEY = "loonytube-checklist-v1";
+let state = {};
+try { state = JSON.parse(localStorage.getItem(KEY)) || {}; } catch(e){ state = {}; }
+// seed shipped items as done on first run
+DATA.forEach(sec => sec.items.forEach(it => {
+  if (it.done && !(it.id in state)) state[it.id] = true;
+}));
+
+let filter = "all";
+const board = document.getElementById("board");
+const skipZone = document.getElementById("skipZone");
+
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){} }
+
+function tagHTML(s){
+  const label = s==="done" ? "Done" : s==="quick" ? "Quick win" : "Build";
+  return `<span class="tag ${s}">${label}</span>`;
+}
+
+function render(){
+  board.innerHTML = "";
+  DATA.forEach(sec=>{
+    const el = document.createElement("section");
+    el.innerHTML = `
+      <div class="sec-head">
+        <span class="depth">${sec.depth}</span>
+        <span class="sec-title">${sec.title}</span>
+        ${sec.gate ? '<span class="gate">GATE</span>' : ''}
+      </div>
+      <div class="sec-note">${sec.note}</div>`;
+    sec.items.forEach(it=>{
+      const done = !!state[it.id];
+      if (filter==="todo" && done) return;
+      if (filter==="done" && !done) return;
+      const row = document.createElement("label");
+      row.className = "item" + (done ? " is-done" : "");
+      row.innerHTML = `
+        <input type="checkbox" class="box" ${done?"checked":""} data-id="${it.id}" />
+        <div class="it-body">
+          <div class="it-title">${it.t}</div>
+          <div class="it-note">${it.n}</div>
+        </div>
+        ${tagHTML(it.s)}`;
+      el.appendChild(row);
+    });
+    board.appendChild(el);
+  });
+  // skip zone only under "all"
+  skipZone.classList.toggle("hidden", filter!=="all");
+  if (filter==="all"){
+    skipZone.innerHTML = "";
+    SKIP.forEach(sec=>{
+      const el = document.createElement("section");
+      el.innerHTML = `
+        <div class="sec-head">
+          <span class="depth">${sec.depth}</span>
+          <span class="sec-title">${sec.title}</span>
+        </div>
+        <div class="sec-note">${sec.note}</div>`;
+      sec.items.forEach(it=>{
+        const row = document.createElement("div");
+        row.className = "skip-item";
+        row.innerHTML = `<span class="skip-x">\u2715</span>
+          <div class="it-body"><div class="it-title">${it.t}</div><div class="it-note">${it.n}</div></div>`;
+        el.appendChild(row);
+      });
+      skipZone.appendChild(el);
+    });
+  }
+  updateGauge();
+}
+
+function updateGauge(){
+  let total=0, done=0;
+  DATA.forEach(sec=>sec.items.forEach(it=>{ total++; if(state[it.id]) done++; }));
+  const pct = total ? Math.round(done/total*100) : 0;
+  document.getElementById("fill").style.width = pct+"%";
+  document.getElementById("pct").textContent = pct+"%";
+  document.getElementById("count").textContent = done+"/"+total;
+}
+
+board.addEventListener("change", e=>{
+  if(!e.target.classList.contains("box")) return;
+  state[e.target.dataset.id] = e.target.checked;
+  save();
+  e.target.closest(".item").classList.toggle("is-done", e.target.checked);
+  updateGauge();
+  if(filter!=="all") render();
+});
+
+document.querySelectorAll(".chip").forEach(c=>{
+  c.addEventListener("click", ()=>{
+    filter = c.dataset.filter;
+    document.querySelectorAll(".chip").forEach(x=>x.setAttribute("aria-pressed", x===c));
+    render();
+  });
+});
+
+document.getElementById("reset").addEventListener("click", ()=>{
+  if(!confirm("Reset all progress? Shipped items will stay checked.")) return;
+  state = {};
+  DATA.forEach(sec=>sec.items.forEach(it=>{ if(it.done) state[it.id]=true; }));
+  save(); render();
+});
+
+render();
+</script>
+</body>
+</html>
