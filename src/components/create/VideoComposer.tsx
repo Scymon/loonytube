@@ -80,11 +80,19 @@ export default function VideoComposer() {
     setStatus("Uploading…");
     const upload = new tus.Upload(file, {
       uploadUrl: json.uploadUrl,
-      chunkSize: 50 * 1024 * 1024,
+      chunkSize: 8 * 1024 * 1024, // 8 MiB (multiple of 256 KiB, ≥5 MiB CF minimum) — resilient on mobile
       retryDelays: [0, 3000, 5000, 10000, 20000],
       onError: (err) => {
         setBusy(false);
-        setStatus(`Upload failed: ${err.message}`);
+        // tus DetailedError exposes the HTTP response on originalResponse.
+        // No response at all => the request never reached Cloudflare (network / CORS / ad-blocker / VPN).
+        const resp = (err as { originalResponse?: { getStatus?: () => number } | null }).originalResponse;
+        const httpStatus = resp?.getStatus?.();
+        if (!httpStatus) {
+          setStatus("Upload was blocked before reaching our servers. This is almost always an ad-blocker, VPN, or privacy browser (e.g. Brave Shields). Turn off blocking for this site, or try a different browser or network.");
+        } else {
+          setStatus(`Upload failed (HTTP ${httpStatus}). ${err.message}`);
+        }
       },
       onProgress: (sent, total) => setProgress(Math.round((sent / total) * 100)),
       onSuccess: () => {
