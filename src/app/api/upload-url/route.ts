@@ -10,13 +10,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Not signed in" }, { status: 401 });
   }
 
-  const { title, description, size } = await req.json();
+  const { title, description, size, category, visibility, madeForKids } = await req.json();
   if (!title || typeof title !== "string") {
     return NextResponse.json({ error: "Title required" }, { status: 400 });
   }
   if (!size || typeof size !== "number" || size <= 0) {
     return NextResponse.json({ error: "File size required" }, { status: 400 });
   }
+
+  const vis = ["public", "unlisted", "private"].includes(visibility) ? visibility : "public";
 
   // Initiate a resumable TUS upload, server-side. `direct_user=true` makes Cloudflare
   // return an upload URL the browser can use WITHOUT our API token.
@@ -40,7 +42,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Stream upload init failed" }, { status: 502 });
   }
 
-  // Cloudflare hands back the resumable upload URL + the video id via headers.
   const uploadUrl = cfRes.headers.get("Location");
   const uid = cfRes.headers.get("stream-media-id");
   if (!uploadUrl || !uid) {
@@ -48,13 +49,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Stream did not return an upload URL" }, { status: 502 });
   }
 
-  // Create the DB row immediately (status: uploading). id == Stream uid.
   const { error } = await supabase.from("videos").insert({
     id: uid,
     owner: user.id,
     title,
     description: description ?? null,
     status: "uploading",
+    category: category ?? null,
+    visibility: vis,
+    made_for_kids: !!madeForKids,
   });
   if (error) {
     console.error("Insert video row failed", error);
