@@ -2,9 +2,66 @@
 @tailwind components;
 @tailwind utilities;
 
-html, body {
-  background: #0a0e14;
-  color: #e5e7eb;
+:root {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
+html, body {
+  background: #0a0e14;
+  color: #eef5fb;
+}
 * { box-sizing: border-box; }
+
+@layer components {
+  /* ---- Primary CTA: light-blue gradient, dark text, soft glow ---- */
+  .lt-btn-primary {
+    @apply w-full rounded-[10px] py-3 text-center text-[15px] font-bold text-ink transition
+           disabled:opacity-50 disabled:cursor-not-allowed;
+    background-image: linear-gradient(180deg, #7dd0f2 0%, #4fa6e4 100%);
+    box-shadow: 0 0 0 1px rgba(125, 208, 242, 0.35),
+                0 10px 26px -10px rgba(79, 166, 228, 0.7);
+  }
+  .lt-btn-primary:hover:not(:disabled) { filter: brightness(1.05); }
+  .lt-btn-primary:active:not(:disabled) { filter: brightness(0.97); transform: translateY(1px); }
+
+  /* ---- Secondary / outline button ---- */
+  .lt-btn-outline {
+    @apply w-full rounded-[10px] border border-teal/60 py-3 text-center text-[15px]
+           font-semibold text-teal transition hover:bg-teal/10;
+  }
+
+  /* ---- Text input ---- */
+  .lt-input {
+    @apply w-full rounded-[10px] border border-edge bg-surface px-4 py-3 text-[15px]
+           text-foam placeholder:text-mist/70 outline-none transition;
+  }
+  .lt-input:focus {
+    border-color: #2dd4b4;
+    box-shadow: 0 0 0 3px rgba(45, 212, 180, 0.15);
+  }
+
+  /* ---- Field label (small caps) ---- */
+  .lt-label {
+    @apply mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.12em] text-mist;
+  }
+
+  /* ---- Interest pill ---- */
+  .lt-pill {
+    @apply flex w-full items-center justify-between rounded-full border border-teal/50
+           px-5 py-2.5 text-[14px] font-semibold text-foam transition;
+  }
+  .lt-pill[data-on="true"] {
+    @apply border-transparent text-ink;
+    background-image: linear-gradient(180deg, #3ad6bd 0%, #2dbfa6 100%);
+  }
+  .lt-pill:hover { border-color: #2dd4b4; }
+
+  /* ---- Social auth button ---- */
+  .lt-social {
+    @apply flex flex-1 items-center justify-center gap-2 rounded-[10px] border border-edge
+           bg-surface py-2.5 text-[14px] font-medium text-foam transition hover:border-hair hover:bg-edge/60;
+  }
+
+  /* ---- Inline bright link ---- */
+  .lt-link { @apply font-semibold text-link hover:underline; }
+}

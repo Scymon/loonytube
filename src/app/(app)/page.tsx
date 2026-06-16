@@ -50,19 +50,27 @@ export default async function Feed() {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+    // Masonry via CSS columns: cards keep their thumbnail's natural aspect ratio,
+    // so landscape (16:9) and vertical (9:16) shorts pack together cleanly.
+    <div className="columns-1 gap-5 sm:columns-2 lg:columns-3 xl:columns-4">
       {videos.map((v) => (
-        <Link key={v.id} href={`/watch/${v.id}`} className="group">
-          <div className="aspect-video overflow-hidden rounded-lg border border-edge bg-black">
+        <Link
+          key={v.id}
+          href={`/watch/${v.id}`}
+          className="group mb-5 block break-inside-avoid"
+        >
+          <div className="overflow-hidden rounded-lg border border-edge bg-black">
             {v.thumbnail ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={v.thumbnail}
                 alt={v.title}
-                className="h-full w-full object-cover transition group-hover:scale-[1.02]"
+                className="block w-full transition group-hover:opacity-90"
               />
             ) : (
-              <div className="flex h-full items-center justify-center text-gray-600">no thumbnail</div>
+              <div className="flex aspect-video items-center justify-center text-gray-600">
+                no thumbnail
+              </div>
             )}
           </div>
           <div className="mt-2">

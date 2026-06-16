@@ -14,13 +14,11 @@ export default async function Watch({
   const { id } = await params;
   const supabase = await createClient();
 
-const { data: video, error } = await supabase
+  const { data: video } = await supabase
     .from("videos")
-    .select("id, title, description, status, views, created_at, owner")
+    .select("id, title, description, status, views, created_at, profiles(username)")
     .eq("id", id)
     .maybeSingle();
-
-  if (error) console.error("watch query error:", error);
 
   if (!video) {
     return (
@@ -40,11 +38,9 @@ const { data: video, error } = await supabase
     );
   }
 
-const { data: profiles } = await supabase
-    .from("profiles")
-    .select("username")
-    .eq("id", video.owner)
-    .maybeSingle();
+  const profiles = (Array.isArray(video.profiles)
+    ? video.profiles[0]
+    : video.profiles) as { username: string | null } | undefined;
 
   return (
     <div className="mx-auto max-w-4xl">
