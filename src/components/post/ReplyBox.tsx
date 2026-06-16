@@ -21,17 +21,17 @@ export default function ReplyBox({ parentId, signedIn }: { parentId: string; sig
   }
 
   return (
-    <div id="reply-box" className="mt-6 flex gap-2">
+    <div id="comment-box" className="mt-6 flex gap-2">
       <input
         value={body}
         onChange={(e) => setBody(e.target.value)}
         onKeyDown={(e) => e.key === "Enter" && send()}
-        placeholder={signedIn ? "Post your reply…" : "Sign in to reply"}
+        placeholder={signedIn ? "Add a comment…" : "Sign in to comment"}
         className="lt-input flex-1"
       />
       <button onClick={send} disabled={busy} className="rounded-[10px] px-5 text-sm font-bold text-ink disabled:opacity-50"
         style={{ backgroundImage: "linear-gradient(180deg,#3ad6bd,#3e9fe6)" }}>
-        Reply
+        Comment
       </button>
     </div>
   );

@@ -64,7 +64,7 @@ export default function PostActions({
       <div className="flex items-center gap-1.5 text-sm text-mist">
         <b className="text-foam">{nfmt(likes)}</b> Likes
         <span className="mx-2">·</span>
-        <b className="text-foam">{nfmt(replies)}</b> Replies
+        <b className="text-foam">{nfmt(replies)}</b> Comments
         <span className="mx-2">·</span>
         <b className="text-foam">{nfmt(bm)}</b> Bookmarks
       </div>
@@ -75,7 +75,7 @@ export default function PostActions({
         <Btn title="Repost — coming soon">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M17 2l4 4-4 4M3 11V9a4 4 0 014-4h14M7 22l-4-4 4-4M21 13v2a4 4 0 01-4 4H3" /></svg>
         </Btn>
-        <Btn onClick={() => document.getElementById("reply-box")?.scrollIntoView({ behavior: "smooth" })} title="Reply">
+        <Btn onClick={() => document.getElementById("comment-box")?.scrollIntoView({ behavior: "smooth" })} title="Comment">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M21 12a8 8 0 01-11.5 7.2L3 21l1.8-6.5A8 8 0 1121 12z" /></svg>
         </Btn>
         <Btn on={bmOn} onClick={bookmark} color="text-teal" title="Bookmark">

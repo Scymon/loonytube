@@ -10,7 +10,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Not signed in" }, { status: 401 });
   }
 
-  const { title, description, size, category, visibility, madeForKids } = await req.json();
+  const { title, description, size, category, visibility, madeForKids, thumbnail } = await req.json();
   if (!title || typeof title !== "string") {
     return NextResponse.json({ error: "Title required" }, { status: 400 });
   }
@@ -55,6 +55,7 @@ export async function POST(req: Request) {
     title,
     description: description ?? null,
     status: "uploading",
+    thumbnail: typeof thumbnail === "string" && thumbnail ? thumbnail : null,
   };
 
   // Try to store the new content metadata. If those columns don't exist yet

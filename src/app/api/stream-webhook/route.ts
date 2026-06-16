@@ -69,14 +69,24 @@ export async function POST(req: Request) {
   const state = body?.status?.state as string | undefined;
   const status = ready ? "ready" : state === "error" ? "failed" : "processing";
 
+  // Always advance status + duration.
   const { error } = await supabaseAdmin
     .from("videos")
     .update({
       status,
       duration: typeof body?.duration === "number" ? body.duration : null,
-      thumbnail: body?.thumbnail ?? null,
     })
     .eq("id", uid);
+
+  // Fill the Cloudflare-generated thumbnail ONLY if one isn't set yet, so a
+  // creator's custom uploaded thumbnail is never overwritten.
+  if (body?.thumbnail) {
+    await supabaseAdmin
+      .from("videos")
+      .update({ thumbnail: body.thumbnail })
+      .eq("id", uid)
+      .is("thumbnail", null);
+  }
 
   if (error) {
     console.error("Webhook DB update failed", error);

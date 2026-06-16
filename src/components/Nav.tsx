@@ -63,6 +63,7 @@ export default function Nav({ onLogoClick }: { onLogoClick?: () => void }) {
   const pathname = usePathname();
   const [email, setEmail] = useState<string | null>(null);
   const [name, setName] = useState<string | null>(null);
+  const [avatar, setAvatar] = useState<string | null>(null);
   const [menu, setMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -72,10 +73,11 @@ export default function Nav({ onLogoClick }: { onLogoClick?: () => void }) {
       if (data.user) {
         const { data: p } = await supabase
           .from("profiles")
-          .select("username, full_name")
+          .select("username, full_name, avatar_url")
           .eq("id", data.user.id)
           .maybeSingle();
         setName(p?.full_name || p?.username || data.user.email || null);
+        setAvatar(p?.avatar_url ?? null);
       }
     });
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) =>
@@ -100,17 +102,26 @@ export default function Nav({ onLogoClick }: { onLogoClick?: () => void }) {
   }
 
   const is = (p: string) => pathname === p;
+  const isStudio = pathname.startsWith("/studio");
 
   return (
     <header className="sticky top-0 z-50 border-b border-edge bg-panel/90 backdrop-blur">
       <div className="flex w-full items-center justify-between px-4 py-2.5 sm:px-6">
         {/* left: logo + icon rail */}
         <div className="flex items-center gap-1 sm:gap-2">
-          <button onClick={onLogoClick} aria-label="Open menu ribbon" className="mr-2 transition hover:brightness-110 active:scale-95">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/LoonyLogo-Dark480.png" alt="LoonyTube" className="h-9 w-9 rounded-[10px] object-cover" />
-          </button>
-          <nav className="hidden items-center gap-1 md:flex">
+          {onLogoClick ? (
+            <button onClick={onLogoClick} aria-label="Open menu ribbon" className="transition hover:brightness-110 active:scale-95">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/loony-logo.png" alt="LoonyTube" className="h-9 w-9 rounded-[10px] object-cover" />
+            </button>
+          ) : (
+            <Link href="/" aria-label="LoonyTube home" className="transition hover:brightness-110">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/loony-logo.png" alt="LoonyTube" className="h-9 w-9 rounded-[10px] object-cover" />
+            </Link>
+          )}
+          {isStudio && <span className="ml-1 mr-1 text-lg font-bold tracking-tight text-foam">Studio</span>}
+          <nav className="ml-1 hidden items-center gap-1 md:flex">
             <NavIcon k="home" href="/" label="Home" active={is("/")} />
             <NavIcon k="explore" label="Explore" soon />
             <NavIcon k="create" href="/create" label="Create" active={is("/create")} />
@@ -142,7 +153,7 @@ export default function Nav({ onLogoClick }: { onLogoClick?: () => void }) {
           {email ? (
             <div className="relative ml-1" ref={menuRef}>
               <button onClick={() => setMenu((v) => !v)} aria-label="Account">
-                <Avatar name={name} size={36} ring />
+                <Avatar name={name} src={avatar} size={36} ring />
               </button>
               {menu && (
                 <div className="absolute right-0 mt-2 w-56 overflow-hidden rounded-xl border border-edge bg-panel shadow-xl">
@@ -152,6 +163,12 @@ export default function Nav({ onLogoClick }: { onLogoClick?: () => void }) {
                   </div>
                   <Link href="/create" onClick={() => setMenu(false)} className="block px-4 py-2.5 text-sm text-foam hover:bg-edge/60">
                     Upload a video
+                  </Link>
+                  <Link href="/studio" onClick={() => setMenu(false)} className="block px-4 py-2.5 text-sm text-foam hover:bg-edge/60">
+                    Creator Studio
+                  </Link>
+                  <Link href="/studio/profile" onClick={() => setMenu(false)} className="block px-4 py-2.5 text-sm text-foam hover:bg-edge/60">
+                    Edit Profile
                   </Link>
                   <button onClick={signOut} className="block w-full px-4 py-2.5 text-left text-sm text-mist hover:bg-edge/60 hover:text-foam">
                     Sign out

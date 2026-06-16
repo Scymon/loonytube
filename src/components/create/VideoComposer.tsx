@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import * as tus from "tus-js-client";
 
 const CATEGORIES = [
@@ -12,22 +13,39 @@ type Visibility = "public" | "unlisted" | "private";
 
 export default function VideoComposer() {
   const router = useRouter();
+  const supabase = createClient();
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState(CATEGORIES[0]);
   const [visibility, setVisibility] = useState<Visibility>("public");
   const [kids, setKids] = useState(true); // checkbox label is "Not made for kids"
+  const [thumbUrl, setThumbUrl] = useState<string | null>(null);
+  const [thumbBusy, setThumbBusy] = useState(false);
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [drag, setDrag] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const thumbInput = useRef<HTMLInputElement>(null);
 
   function pick(f: File | null | undefined) {
     if (!f) return;
     setFile(f);
     if (!title) setTitle(f.name.replace(/\.[^.]+$/, ""));
+  }
+
+  async function uploadThumb(f: File) {
+    setThumbBusy(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setThumbBusy(false); setStatus("Sign in to upload a thumbnail."); return; }
+    const ext = (f.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "");
+    const path = `${user.id}/thumb-${Date.now()}.${ext}`;
+    const { error } = await supabase.storage.from("media").upload(path, f, { upsert: true, cacheControl: "3600" });
+    if (error) { setThumbBusy(false); setStatus(`Thumbnail upload failed: ${error.message}`); return; }
+    const { data } = supabase.storage.from("media").getPublicUrl(path);
+    setThumbUrl(data.publicUrl);
+    setThumbBusy(false);
   }
 
   async function publish() {
@@ -49,6 +67,7 @@ export default function VideoComposer() {
         category,
         visibility,
         madeForKids: !kids, // "Not made for kids" checked => made_for_kids = false
+        thumbnail: thumbUrl,
       }),
     });
     const json = await res.json();
@@ -124,9 +143,19 @@ export default function VideoComposer() {
         <div className="space-y-5">
           <div>
             <label className="lt-label">Thumbnail</label>
-            <button type="button" title="Custom thumbnails — coming soon" className="flex w-full items-center justify-center gap-2 rounded-[10px] border border-dashed border-edge py-3 text-sm text-teal hover:border-hair">
-              <span className="text-lg leading-none">＋</span> Upload Custom
+            <input ref={thumbInput} type="file" accept="image/*" hidden onChange={(e) => e.target.files?.[0] && uploadThumb(e.target.files[0])} />
+            <button type="button" onClick={() => thumbInput.current?.click()} disabled={thumbBusy}
+              className="relative flex aspect-video w-full items-center justify-center gap-2 overflow-hidden rounded-[10px] border border-dashed border-edge text-sm text-teal transition hover:border-hair disabled:opacity-60">
+              {thumbUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={thumbUrl} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <><span className="text-lg leading-none">＋</span> {thumbBusy ? "Uploading…" : "Upload Custom"}</>
+              )}
             </button>
+            {thumbUrl && (
+              <button type="button" onClick={() => setThumbUrl(null)} className="mt-1 text-xs text-mist hover:text-foam">Remove thumbnail</button>
+            )}
           </div>
           <div>
             <label className="lt-label">Visibility</label>

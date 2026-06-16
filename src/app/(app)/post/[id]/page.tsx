@@ -27,7 +27,7 @@ export default async function PostDetail({ params }: { params: Promise<{ id: str
 
   const { data: post } = await supabase
     .from("posts")
-    .select("id, owner, body, video_id, created_at")
+    .select("id, owner, parent_id, body, video_id, created_at")
     .eq("id", id)
     .maybeSingle();
 
@@ -99,6 +99,11 @@ export default async function PostDetail({ params }: { params: Promise<{ id: str
     <div className="mx-auto grid max-w-[1180px] gap-10 lg:grid-cols-[1.5fr,1fr]">
       {/* main */}
       <div>
+        {post.parent_id && (
+          <Link href={`/post/${post.parent_id}`} className="mb-3 inline-flex items-center gap-1.5 text-sm font-semibold text-mist hover:text-foam">
+            ↑ View parent thread
+          </Link>
+        )}
         <div className="flex items-center gap-3">
           <Avatar name={aName} src={author?.avatar_url} size={44} />
           <div>
@@ -139,22 +144,30 @@ export default async function PostDetail({ params }: { params: Promise<{ id: str
 
         <ReplyBox parentId={id} signedIn={!!user} />
 
-        <div className="mt-6 space-y-5">
-          {replies.map((r) => {
-            const a = rWho.get(r.owner);
-            const an = a?.full_name || a?.username || "someone";
-            return (
-              <div key={r.id} className="flex gap-3">
-                <Avatar name={an} src={a?.avatar_url} size={36} />
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-foam">{an} <span className="font-normal text-mist">· {ago(r.created_at)}</span></p>
-                  <p className="mt-0.5 whitespace-pre-wrap text-[15px] text-foam/90">{r.body}</p>
-                  <p className="mt-1 text-xs text-mist">{nfmt(likeTally.get(r.id) ?? 0)} Likes</p>
+        <div className="mt-6">
+          <h2 className="mb-4 text-sm font-bold uppercase tracking-wide text-mist">
+            Comments{(replyCount ?? 0) > 0 ? ` · ${nfmt(replyCount ?? 0)}` : ""}
+          </h2>
+          <div className="space-y-5">
+            {replies.map((r) => {
+              const a = rWho.get(r.owner);
+              const an = a?.full_name || a?.username || "someone";
+              return (
+                <div key={r.id} className="flex gap-3">
+                  <Avatar name={an} src={a?.avatar_url} size={36} />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-foam">{an} <span className="font-normal text-mist">· {ago(r.created_at)}</span></p>
+                    <p className="mt-0.5 whitespace-pre-wrap text-[15px] text-foam/90">{r.body}</p>
+                    <div className="mt-1 flex items-center gap-3 text-xs text-mist">
+                      <span>{nfmt(likeTally.get(r.id) ?? 0)} Likes</span>
+                      <Link href={`/post/${r.id}`} className="font-semibold text-teal hover:underline">View thread →</Link>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-          {replies.length === 0 && <p className="text-sm text-mist">No replies yet — start the conversation.</p>}
+              );
+            })}
+            {replies.length === 0 && <p className="text-sm text-mist">No comments yet — start the conversation.</p>}
+          </div>
         </div>
       </div>
 

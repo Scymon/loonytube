@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import VideoComposer from "@/components/create/VideoComposer";
 import PostComposer from "@/components/create/PostComposer";
 
-type Tab = "video" | "post" | "thread";
+type Tab = "video" | "post";
 
 export default function CreatePage() {
   const supabase = createClient();
@@ -26,7 +26,7 @@ export default function CreatePage() {
   return (
     <div className="mx-auto max-w-3xl">
       <div className="mb-8 flex gap-8 border-b border-edge">
-        {(["video", "post", "thread"] as Tab[]).map((t) => (
+        {(["video", "post"] as Tab[]).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -40,8 +40,7 @@ export default function CreatePage() {
       </div>
 
       {tab === "video" && <VideoComposer />}
-      {tab === "post" && <PostComposer mode="post" />}
-      {tab === "thread" && <PostComposer mode="thread" />}
+      {tab === "post" && <PostComposer />}
     </div>
   );
 }
