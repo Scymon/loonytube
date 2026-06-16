@@ -107,12 +107,8 @@ export default function Nav({ onLogoClick }: { onLogoClick?: () => void }) {
         {/* left: logo + icon rail */}
         <div className="flex items-center gap-1 sm:gap-2">
           <button onClick={onLogoClick} aria-label="Open menu ribbon" className="mr-2 transition hover:brightness-110 active:scale-95">
-            <span
-              className="grid h-9 w-9 place-items-center rounded-[10px] text-xl font-black text-ink"
-              style={{ backgroundImage: "linear-gradient(135deg, #3ad6bd, #2dbfa6)" }}
-            >
-              L
-            </span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/LoonyLogo-Dark480.png" alt="LoonyTube" className="h-9 w-9 rounded-[10px] object-cover" />
           </button>
           <nav className="hidden items-center gap-1 md:flex">
             <NavIcon k="home" href="/" label="Home" active={is("/")} />

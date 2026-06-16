@@ -16,7 +16,7 @@ export default async function Watch({
 
   const { data: video } = await supabase
     .from("videos")
-    .select("id, title, description, status, views, created_at, profiles(username)")
+    .select("id, title, description, status, views, created_at, owner")
     .eq("id", id)
     .maybeSingle();
 
@@ -38,9 +38,11 @@ export default async function Watch({
     );
   }
 
-  const profiles = (Array.isArray(video.profiles)
-    ? video.profiles[0]
-    : video.profiles) as { username: string | null } | undefined;
+  const { data: prof } = await supabase
+    .from("profiles")
+    .select("username")
+    .eq("id", video.owner)
+    .maybeSingle();
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -49,7 +51,7 @@ export default async function Watch({
         <div>
           <h1 className="text-xl font-bold">{video.title}</h1>
           <p className="mt-1 text-sm text-gray-400">
-            {profiles?.username ?? "someone"} · {video.views} views
+            {prof?.username ?? "someone"} · {video.views} views
           </p>
         </div>
         <LikeButton videoId={id} />

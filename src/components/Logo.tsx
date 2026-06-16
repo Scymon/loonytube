@@ -9,17 +9,14 @@ export default function Logo({
   href?: string | null;
   wordmark?: boolean;
 }) {
-  const box =
-    size === "lg" ? "h-11 w-11 text-2xl" : size === "sm" ? "h-7 w-7 text-base" : "h-9 w-9 text-xl";
+  const box = size === "lg" ? "h-11 w-11" : size === "sm" ? "h-7 w-7" : "h-9 w-9";
   const text = size === "lg" ? "text-2xl" : size === "sm" ? "text-base" : "text-lg";
 
   const mark = (
     <span className="flex items-center gap-2.5">
-      <span
-        className={`grid place-items-center rounded-[10px] font-black text-ink ${box}`}
-        style={{ backgroundImage: "linear-gradient(135deg, #3ad6bd, #2dbfa6)" }}
-      >
-        L
+      <span className={`overflow-hidden rounded-[10px] ${box}`}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/LoonyLogo-Dark480.png" alt="LoonyTube" className="h-full w-full object-cover" />
       </span>
       {wordmark && (
         <span className={`font-extrabold tracking-tight text-foam ${text}`}>
@@ -29,11 +26,5 @@ export default function Logo({
     </span>
   );
 
-  return href ? (
-    <Link href={href} className="inline-flex">
-      {mark}
-    </Link>
-  ) : (
-    mark
-  );
+  return href ? <Link href={href} className="inline-flex">{mark}</Link> : mark;
 }
