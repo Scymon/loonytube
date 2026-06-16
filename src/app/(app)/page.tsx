@@ -3,10 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import HeroFeature, { type HeroVideo } from "@/components/home/HeroFeature";
 import VideoRow, { type FeedVideo } from "@/components/home/VideoRow";
 import PostCard, { type CardPost } from "@/components/home/PostCard";
-import LiveNowRail from "@/components/home/LiveNowRail";
-import ScheduleToday from "@/components/home/ScheduleToday";
-import CategoryShelf from "@/components/home/CategoryShelf";
-import { samplePost, liveNow, schedule, shelves } from "@/components/home/placeholders";
+import ComingSoon from "@/components/home/ComingSoon";
+import RealShelf, { type ShelfVideo } from "@/components/home/RealShelf";
 
 export const dynamic = "force-dynamic";
 
@@ -63,7 +61,7 @@ export default async function Home() {
     avatar: chan(v.owner).avatar,
   }));
 
-  // Latest top-level Loon Post (real). Falls back to the labeled sample if none exist.
+  // Latest top-level Loon Post (real). No fake fallback — empty shows "coming soon".
   const { data: latestPost } = await supabase
     .from("posts")
     .select("id, owner, body, created_at")
@@ -72,7 +70,7 @@ export default async function Home() {
     .limit(1)
     .maybeSingle();
 
-  let postCard: CardPost = samplePost;
+  let postCard: CardPost | null = null;
   if (latestPost) {
     const [{ data: pa }, { count: plikes }, { count: preplies }] = await Promise.all([
       supabase.from("profiles").select("username, full_name, avatar_url").eq("id", latestPost.owner).maybeSingle(),
@@ -94,6 +92,22 @@ export default async function Home() {
     };
   }
 
+  // Real category shelves (from videos.category). Empty -> "coming soon".
+  const { data: catRows } = await supabase
+    .from("videos")
+    .select("id, title, thumbnail, duration, category, created_at")
+    .eq("status", "ready")
+    .not("category", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(48);
+  const byCat = new Map<string, ShelfVideo[]>();
+  for (const v of catRows ?? []) {
+    const arr = byCat.get(v.category as string) ?? [];
+    if (arr.length < 4) arr.push({ id: v.id, title: v.title, thumbnail: v.thumbnail, duration: v.duration });
+    byCat.set(v.category as string, arr);
+  }
+  const realShelves = [...byCat.entries()].slice(0, 3).map(([title, videos]) => ({ title, videos }));
+
   return (
     <div className="mx-auto max-w-[1440px]">
       {hero ? (
@@ -111,19 +125,30 @@ export default async function Home() {
         {/* main hybrid feed (videos real; post is a labeled placeholder) */}
         <div className="space-y-6">
           {feedVideos[0] && <VideoRow video={feedVideos[0]} />}
-          <PostCard post={postCard} />
+          {postCard ? <PostCard post={postCard} /> : <ComingSoon label="No posts yet — start the conversation" />}
           {feedVideos.slice(1).map((v) => (
             <VideoRow key={v.id} video={v} />
           ))}
         </div>
 
-        {/* sidebar (placeholder sections until their backends ship) */}
+        {/* sidebar — real where it exists, "coming soon" where the backend doesn't */}
         <aside className="space-y-8">
-          <LiveNowRail channels={liveNow} />
-          <ScheduleToday items={schedule} />
-          {shelves.map((s) => (
-            <CategoryShelf key={s.title} shelf={s} />
-          ))}
+          <section>
+            <h2 className="mb-3 text-lg font-bold text-foam">Live Now</h2>
+            <ComingSoon label="No live streams right now" />
+          </section>
+          <section>
+            <h2 className="mb-3 text-lg font-bold text-foam">Your Schedule Today</h2>
+            <ComingSoon label="Nothing scheduled yet" />
+          </section>
+          {realShelves.length > 0 ? (
+            realShelves.map((s) => <RealShelf key={s.title} title={s.title} videos={s.videos} />)
+          ) : (
+            <section>
+              <h2 className="mb-3 text-lg font-bold text-foam">Browse by category</h2>
+              <ComingSoon label="No categorized videos yet" />
+            </section>
+          )}
         </aside>
       </div>
     </div>

@@ -49,16 +49,25 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Stream did not return an upload URL" }, { status: 502 });
   }
 
-  const { error } = await supabase.from("videos").insert({
+  const baseRow = {
     id: uid,
     owner: user.id,
     title,
     description: description ?? null,
     status: "uploading",
+  };
+
+  // Try to store the new content metadata. If those columns don't exist yet
+  // (posts.sql not applied), fall back to the base row so uploads still work.
+  let { error } = await supabase.from("videos").insert({
+    ...baseRow,
     category: category ?? null,
     visibility: vis,
     made_for_kids: !!madeForKids,
   });
+  if (error) {
+    ({ error } = await supabase.from("videos").insert(baseRow));
+  }
   if (error) {
     console.error("Insert video row failed", error);
     return NextResponse.json({ error: "DB insert failed" }, { status: 500 });

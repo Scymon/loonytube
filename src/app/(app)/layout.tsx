@@ -1,11 +1,7 @@
-import Nav from "@/components/Nav";
+import AppShell from "@/components/AppShell";
 
-// Chrome for the main, signed-in app surface (home, watch, upload).
+// Chrome for the main, signed-in app surface. The full-width top bar lives in
+// Nav; the Loon logo opens the customizable left ribbon (AppShell wires them).
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <>
-      <Nav />
-      <main className="px-4 py-6 sm:px-6">{children}</main>
-    </>
-  );
+  return <AppShell>{children}</AppShell>;
 }

@@ -57,7 +57,7 @@ function NavIcon({
   );
 }
 
-export default function Nav() {
+export default function Nav({ onLogoClick }: { onLogoClick?: () => void }) {
   const supabase = createClient();
   const router = useRouter();
   const pathname = usePathname();
@@ -103,23 +103,22 @@ export default function Nav() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-edge bg-panel/90 backdrop-blur">
-      <div className="mx-auto flex max-w-[1440px] items-center justify-between px-4 py-2.5 sm:px-6">
+      <div className="flex w-full items-center justify-between px-4 py-2.5 sm:px-6">
         {/* left: logo + icon rail */}
         <div className="flex items-center gap-1 sm:gap-2">
-          <Link href="/" aria-label="Home" className="mr-2">
+          <button onClick={onLogoClick} aria-label="Open menu ribbon" className="mr-2 transition hover:brightness-110 active:scale-95">
             <span
               className="grid h-9 w-9 place-items-center rounded-[10px] text-xl font-black text-ink"
               style={{ backgroundImage: "linear-gradient(135deg, #3ad6bd, #2dbfa6)" }}
             >
               L
             </span>
-          </Link>
+          </button>
           <nav className="hidden items-center gap-1 md:flex">
             <NavIcon k="home" href="/" label="Home" active={is("/")} />
             <NavIcon k="explore" label="Explore" soon />
             <NavIcon k="create" href="/create" label="Create" active={is("/create")} />
             <NavIcon k="chat" label="Messages" soon />
-            <NavIcon k="schedule" label="Schedule" soon />
             <NavIcon k="profile" label="Profile" soon />
           </nav>
         </div>
