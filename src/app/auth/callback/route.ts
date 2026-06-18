@@ -33,7 +33,10 @@ export async function GET(req: Request) {
       .select("onboarded_at")
       .eq("id", user.id)
       .maybeSingle();
-    if (!prof?.onboarded_at) dest = "/onboarding/interests";
+    if (!prof?.onboarded_at) {
+      const { data: access } = await supabase.rpc("has_onboarding_access");
+      dest = access === true ? "/onboarding/interests" : "/onboarding/invite";
+    }
   }
 
   return NextResponse.redirect(new URL(dest, url.origin));

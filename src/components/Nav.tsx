@@ -64,6 +64,7 @@ export default function Nav({ onLogoClick }: { onLogoClick?: () => void }) {
   const [email, setEmail] = useState<string | null>(null);
   const [name, setName] = useState<string | null>(null);
   const [avatar, setAvatar] = useState<string | null>(null);
+  const [role, setRole] = useState<string | null>(null);
   const [menu, setMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -73,11 +74,12 @@ export default function Nav({ onLogoClick }: { onLogoClick?: () => void }) {
       if (data.user) {
         const { data: p } = await supabase
           .from("profiles")
-          .select("username, full_name, avatar_url")
+          .select("username, full_name, avatar_url, role")
           .eq("id", data.user.id)
           .maybeSingle();
         setName(p?.full_name || p?.username || data.user.email || null);
         setAvatar(p?.avatar_url ?? null);
+        setRole(p?.role ?? null);
       }
     });
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) =>
@@ -170,6 +172,14 @@ export default function Nav({ onLogoClick }: { onLogoClick?: () => void }) {
                   <Link href="/studio/profile" onClick={() => setMenu(false)} className="block px-4 py-2.5 text-sm text-foam hover:bg-edge/60">
                     Edit Profile
                   </Link>
+                  <Link href="/settings" onClick={() => setMenu(false)} className="block px-4 py-2.5 text-sm text-foam hover:bg-edge/60">
+                    Settings
+                  </Link>
+                  {(role === "admin" || role === "superadmin") && (
+                    <Link href="/admin" onClick={() => setMenu(false)} className="block px-4 py-2.5 text-sm font-semibold text-sky hover:bg-edge/60">
+                      Admin console
+                    </Link>
+                  )}
                   <button onClick={signOut} className="block w-full px-4 py-2.5 text-left text-sm text-mist hover:bg-edge/60 hover:text-foam">
                     Sign out
                   </button>

@@ -14,6 +14,11 @@ export default async function InterestsPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  // Invite-only funnel: if the switch is on and this user hasn't redeemed an
+  // invite, send them to the gate first. (No-op when invite-only is off.)
+  const { data: access } = await supabase.rpc("has_onboarding_access");
+  if (access !== true) redirect("/onboarding/invite");
+
   const { data: options } = await supabase
     .from("interests")
     .select("slug, label")
