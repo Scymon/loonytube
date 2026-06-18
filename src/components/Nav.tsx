@@ -127,7 +127,7 @@ export default function Nav({ onLogoClick }: { onLogoClick?: () => void }) {
             <NavIcon k="home" href="/" label="Home" active={is("/")} />
             <NavIcon k="explore" label="Explore" soon />
             <NavIcon k="create" href="/create" label="Create" active={is("/create")} />
-            <NavIcon k="chat" label="Messages" soon />
+            <NavIcon k="chat" href="/messages" label="Messages" active={pathname.startsWith("/messages")} />
             <NavIcon k="profile" label="Profile" soon />
           </nav>
         </div>
