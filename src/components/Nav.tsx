@@ -65,6 +65,8 @@ export default function Nav({ onLogoClick }: { onLogoClick?: () => void }) {
   const [name, setName] = useState<string | null>(null);
   const [avatar, setAvatar] = useState<string | null>(null);
   const [role, setRole] = useState<string | null>(null);
+  const [uid, setUid] = useState<string | null>(null);
+  const [notif, setNotif] = useState(0);
   const [menu, setMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -80,6 +82,7 @@ export default function Nav({ onLogoClick }: { onLogoClick?: () => void }) {
         setName(p?.full_name || p?.username || data.user.email || null);
         setAvatar(p?.avatar_url ?? null);
         setRole(p?.role ?? null);
+        setUid(data.user.id);
       }
     });
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) =>
@@ -87,6 +90,20 @@ export default function Nav({ onLogoClick }: { onLogoClick?: () => void }) {
     );
     return () => sub.subscription.unsubscribe();
   }, [supabase]);
+
+  // unread notification count + live updates
+  useEffect(() => {
+    if (!uid) return;
+    const refetch = async () => {
+      const { count } = await supabase.from("notifications").select("id", { count: "exact", head: true }).eq("read", false);
+      setNotif(count ?? 0);
+    };
+    refetch();
+    const ch = supabase.channel(`notif-bell-${uid}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${uid}` }, refetch)
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [uid, supabase]);
 
   useEffect(() => {
     function onClick(e: MouseEvent) {
@@ -146,11 +163,16 @@ export default function Nav({ onLogoClick }: { onLogoClick?: () => void }) {
               <circle cx="11" cy="11" r="7" /><path d="M21 21l-4-4" />
             </svg>
           </button>
-          <button title="Notifications — coming soon" aria-label="Notifications" className="grid h-10 w-10 place-items-center rounded-full text-mist hover:bg-edge/60 hover:text-foam">
+          <Link href="/notifications" title="Notifications" aria-label="Notifications" className="relative grid h-10 w-10 place-items-center rounded-full text-mist hover:bg-edge/60 hover:text-foam">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
               <path d="M6 9a6 6 0 1112 0c0 5 2 6 2 6H4s2-1 2-6M10 21h4" />
             </svg>
-          </button>
+            {notif > 0 && (
+              <span className="absolute right-0.5 top-0.5 grid h-4 min-w-[16px] place-items-center rounded-full bg-loonred px-1 text-[10px] font-bold text-white">
+                {notif > 9 ? "9+" : notif}
+              </span>
+            )}
+          </Link>
 
           {email ? (
             <div className="relative ml-1" ref={menuRef}>
