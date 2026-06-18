@@ -74,7 +74,7 @@ export default async function PostDetail({ params }: { params: Promise<{ id: str
 
   // sidebar: author's videos, who-to-follow, trending tags
   const { data: moreVideos } = await supabase
-    .from("videos").select("id, title, thumbnail, views, created_at").eq("owner", post.owner).eq("status", "ready")
+    .from("videos").select("id, title, thumbnail, views, created_at").eq("owner", post.owner).eq("status", "ready").eq("visibility", "public")
     .order("created_at", { ascending: false }).limit(3);
 
   const { data: suggest } = await supabase

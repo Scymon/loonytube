@@ -48,17 +48,32 @@ export default function ContentTable({ initial }: { initial: Row[] }) {
   async function save() {
     if (!edit) return;
     setBusy(true); setErr(null);
+
+    // Visibility changes must sync Cloudflare's requireSignedURLs, so they go
+    // through a server route (which updates CF first, then the DB row).
+    const orig = rows.find((r) => r.id === edit.id);
+    if (orig && orig.visibility !== edit.visibility) {
+      const res = await fetch("/api/video/visibility", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: edit.id, visibility: edit.visibility }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        setBusy(false); setErr(j.error || "Could not update visibility"); return;
+      }
+    }
+
     const patch = {
       title: edit.title.trim(),
       description: edit.description,
-      visibility: edit.visibility,
       scheduled_at: edit.scheduled_at,
       thumbnail: edit.thumbnail,
     };
     const { error } = await supabase.from("videos").update(patch).eq("id", edit.id);
     setBusy(false);
     if (error) { setErr(error.message); return; }
-    setRows((rs) => rs.map((r) => (r.id === edit.id ? { ...r, ...patch } : r)));
+    setRows((rs) => rs.map((r) => (r.id === edit.id ? { ...r, ...patch, visibility: edit.visibility } : r)));
     setEdit(null);
   }
 

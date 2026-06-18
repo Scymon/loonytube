@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { cfStreamToken } from "@/lib/cloudflare";
 import StreamPlayer from "@/components/StreamPlayer";
 import LikeButton from "@/components/LikeButton";
 import Comments from "@/components/Comments";
@@ -16,7 +17,7 @@ export default async function Watch({
 
   const { data: video } = await supabase
     .from("videos")
-    .select("id, title, description, status, views, created_at, owner")
+    .select("id, title, description, status, views, created_at, owner, visibility")
     .eq("id", id)
     .maybeSingle();
 
@@ -44,9 +45,13 @@ export default async function Watch({
     .eq("id", video.owner)
     .maybeSingle();
 
+  // Private videos require a short-lived signed token to play. We only reach here
+  // for videos the viewer is allowed to read (RLS), so minting is safe.
+  const token = video.visibility === "private" ? await cfStreamToken(id) : null;
+
   return (
     <div className="mx-auto max-w-4xl">
-      <StreamPlayer uid={id} />
+      <StreamPlayer uid={id} token={token} />
       <div className="mt-4 flex items-start justify-between gap-4">
         <div>
           <h1 className="text-xl font-bold">{video.title}</h1>

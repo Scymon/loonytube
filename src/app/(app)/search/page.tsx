@@ -53,7 +53,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   if (wantV) {
     const { data } = await supabase
       .from("videos").select("id, title, description, thumbnail, views, duration, created_at, owner")
-      .eq("status", "ready").or(`title.ilike.${like},description.ilike.${like}`)
+      .eq("status", "ready").eq("visibility", "public").or(`title.ilike.${like},description.ilike.${like}`)
       .order("views", { ascending: false }).limit(tab === "videos" ? 20 : 3);
     const owners = [...new Set((data ?? []).map((v) => v.owner))];
     const who = new Map<string, Prof>();

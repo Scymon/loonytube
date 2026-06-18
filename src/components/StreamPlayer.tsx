@@ -4,7 +4,7 @@ import { Stream } from "@cloudflare/stream-react";
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
-export default function StreamPlayer({ uid }: { uid: string }) {
+export default function StreamPlayer({ uid, token }: { uid: string; token?: string | null }) {
   const supabase = createClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const streamRef = useRef<any>(null);
@@ -36,7 +36,7 @@ export default function StreamPlayer({ uid }: { uid: string }) {
             (!static !p-0) and let the absolutely-positioned iframe fill OUR
             bounded box instead; the player letterboxes to fit. */}
         <Stream
-          src={uid}
+          src={token || uid}
           controls
           responsive
           streamRef={streamRef}

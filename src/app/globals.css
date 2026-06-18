@@ -65,3 +65,20 @@ html, body {
   /* ---- Inline bright link ---- */
   .lt-link { @apply font-semibold text-link hover:underline; }
 }
+
+/* Keep the covert nav search transparent even when Chromium tries to paint its
+   autofill / autocomplete-preview background. Native suggestions still appear;
+   only the pale box + black text are suppressed. */
+#nav-search:-webkit-autofill,
+#nav-search:-webkit-autofill:hover,
+#nav-search:-webkit-autofill:focus,
+#nav-search:-webkit-autofill:active,
+#nav-search:autofill {
+  -webkit-text-fill-color: #22d3ee !important;
+  caret-color: #22d3ee;
+  font-size: 18px !important;
+  font-family: inherit !important;
+  -webkit-box-shadow: 0 0 0 1000px transparent inset !important;
+  /* defer the autofill background animation indefinitely so it never renders */
+  transition: background-color 100000s ease-in-out 0s !important;
+}

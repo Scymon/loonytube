@@ -22,7 +22,10 @@ export async function POST(req: Request) {
 
   // Initiate a resumable TUS upload, server-side. `direct_user=true` makes Cloudflare
   // return an upload URL the browser can use WITHOUT our API token.
-  const meta = `name ${Buffer.from(title, "utf8").toString("base64")}`;
+  // Private videos are created with requireSignedURLs so the media can't be streamed
+  // without a server-minted token (public/unlisted stream freely).
+  let meta = `name ${Buffer.from(title, "utf8").toString("base64")}`;
+  if (vis === "private") meta += `,requiresignedurls`;
   const cfRes = await fetch(
     `https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/stream?direct_user=true`,
     {

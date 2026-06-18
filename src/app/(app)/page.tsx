@@ -26,6 +26,7 @@ export default async function Home() {
     .from("videos")
     .select("id, title, thumbnail, duration, views, created_at, owner")
     .eq("status", "ready")
+    .eq("visibility", "public")
     .order("views", { ascending: false })
     .limit(1);
   const heroRow = (heroRows ?? [])[0] as Row | undefined;
@@ -35,6 +36,7 @@ export default async function Home() {
     .from("videos")
     .select("id, title, thumbnail, duration, views, created_at, owner")
     .eq("status", "ready")
+    .eq("visibility", "public")
     .order("created_at", { ascending: false })
     .limit(12);
   const feed = ((feedRows ?? []) as Row[]).filter((v) => v.id !== heroRow?.id);
@@ -97,6 +99,7 @@ export default async function Home() {
     .from("videos")
     .select("id, title, thumbnail, duration, category, created_at")
     .eq("status", "ready")
+    .eq("visibility", "public")
     .not("category", "is", null)
     .order("created_at", { ascending: false })
     .limit(48);

@@ -133,8 +133,8 @@ export default function Nav({ onLogoClick }: { onLogoClick?: () => void }) {
           </nav>
         </div>
 
-        {/* center: covert search — the whole empty space is the field */}
-        <div className="mx-3 hidden flex-1 sm:mx-6 md:flex">
+        {/* center: covert search — the whole empty space is the field (all breakpoints) */}
+        <div className="mx-3 flex flex-1 sm:mx-6">
           <Suspense fallback={<div className="h-10 w-full" />}>
             <SearchBar />
           </Suspense>

@@ -83,7 +83,7 @@ export default async function HashtagPage({
   if (tab === "videos") {
     const { data } = await supabase
       .from("videos").select("id, title, description, thumbnail, views, duration, created_at, owner")
-      .eq("status", "ready").ilike("title", `%${tag}%`).order("views", { ascending: false }).limit(12);
+      .eq("status", "ready").eq("visibility", "public").ilike("title", `%${tag}%`).order("views", { ascending: false }).limit(12);
     await loadProfiles([...new Set((data ?? []).map((v) => v.owner))]);
     videos = (data ?? []).map((v) => ({ ...v, channel: profCache.get(v.owner)?.full_name || profCache.get(v.owner)?.username || "Channel" }));
   }
