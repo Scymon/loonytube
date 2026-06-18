@@ -6,8 +6,84 @@ Entries are milestone deliveries, newest first. Each lists the delivery zip(s) a
 ---
 
 ## [Unreleased] — next up
+- **Public channel page** (`/@handle`). Surfaces banner/avatar/bio/socials; gives follow-notifications, the "People you might like" rail, and a profile **Message** button real destinations. *(keystone — unblocks several pending links)*
 - **Step 3 — Comment unification + Repost/Quote.** Converge video comments onto `posts` nodes (one universal Comment node), add `host_type`/`host_id`, add a `reposts` table, and wire repost/quote actions + the feed/thread union. *(carries a migration)*
-- Then: **Articles**, **public channel page** (`/@handle`), scheduled-release enforcement, notifications, explore, live streaming.
+- Then: **Articles**, scheduled-release enforcement, explore, live streaming.
+
+---
+
+## [0.14] Admin switch enforcement — 2026-06-18
+_`loonytube-admin-switches.zip` · migration: `admin-switches.sql`_
+
+The `signups_enabled` / `uploads_enabled` switches were editable in the admin console but checked nowhere. Now enforced server-side.
+
+### Fixed
+- **Uploads kill switch** — `/api/upload-url` rejects with `403` when `uploads_enabled` is off, before any Cloudflare URL or video row is created. Admins bypass it (via `is_admin()`) so they can still operate while public uploads are paused.
+- **Signups kill switch** — enforced at the database layer: a `BEFORE INSERT` trigger on `auth.users` (`guard_signups_enabled`) rejects new accounts when `signups_enabled` is off, so even a direct GoTrue `signUp` that skips the page fails. The `/signup` page also renders a clean "Sign-ups are paused" state.
+
+---
+
+## [0.13] Video privacy enforcement — 2026-06-18
+_`loonytube-privacy.zip` · migration: `privacy.sql`_
+
+Ready videos were readable and streamable regardless of `visibility`, and playback was unsigned. Privacy now holds at every layer.
+
+### Fixed
+- **`videos read` RLS** tightened: `private` rows are owner-only; `public`/`unlisted` remain readable once ready.
+- **Discovery filters** — home hero/feed/category shelves, search, hashtag feeds, and the post-page "more from creator" rail now require `visibility = 'public'`, so `unlisted` and `private` never leak into discovery.
+- **Cloudflare signed playback for private videos** — created with `requireSignedURLs` (TUS metadata); the watch page mints a short-lived signed token server-side **only after** the RLS-gated read succeeds, so the media itself (not just the DB row) is protected.
+
+### Added
+- `src/lib/cloudflare.ts` (`cfStreamToken`, `cfSetRequireSignedURLs`).
+- `/api/video/visibility` — owner-only route that flips Cloudflare's `requireSignedURLs` **first**, then updates the row, so visibility and media protection never drift. Studio's visibility edits route through it.
+
+### Known follow-up
+- A private video's **auto-generated** Cloudflare thumbnail also requires signing, so the owner may see a broken thumb in Studio (custom uploaded thumbnails are unaffected). Cosmetic, owner-only.
+
+---
+
+## [0.12] Nav search — mobile + covert polish — 2026-06-18
+_`loonytube-mobile-search.zip`, `loonytube-search-autofill.zip`, `loonytube-search-autofill-font.zip` · no migration_
+
+### Fixed
+- The covert search field was `hidden … md:flex`, so it was missing on mobile. It now renders at every breakpoint, filling the space between the logo and the magnifier exactly as on desktop.
+- Suppressed Chromium's autofill paint on the covert field (`#nav-search`): the pale box and black text are gone (deferred background animation + `-webkit-text-fill-color`), and the autofill/autocomplete **preview** now stays 18px cyan instead of dropping to the browser default. Native autocomplete suggestions are untouched.
+
+---
+
+## [0.11] Notifications — 2026-06-18
+_`loonytube-notifications.zip` (migration: `notifications.sql`) · `loonytube-dm-notif-dropdown.zip` (migration: `notifications-dm.sql`)_
+
+### Added
+- **Trigger-generated notifications** — DB triggers fan out a notification the instant the underlying action happens (follow, post like, video like, comment on a thread, comment on a video), so they can't be forged by clients and fire regardless of surface. Self-actions are skipped.
+- **`/notifications` page** — actor avatar + message + relative time, unread highlight, mark-all-read on open, realtime prepend. Links to the relevant `/post/[id]` or `/watch/[id]`.
+- **Nav bell** (was "coming soon") — now a **dropdown** previewing the 8 most recent notifications with a live unread badge; "See all" / "Open notifications" link to the full page. Opening it marks read and clears the badge.
+- **DM notifications** — a new message fans out a `dm` notification (deduped to one unread per conversation). Opening the conversation clears it; the bell links to `/messages?to=<sender>`.
+- Shared `src/lib/notif.ts` (`NOTIF_VERB`, `notifHref`) so the dropdown and full page render identically.
+
+---
+
+## [0.10] Direct Messages — 2026-06-18
+_`loonytube-dms.zip` · migration: `messages.sql`_
+
+### Added
+- **1:1 DMs** at `/messages` (chat icon in the nav, was "coming soon"): conversation list with avatar/last-message/unread badge, realtime thread with optimistic send, Enter-to-send, mark-read, and a people-search to start new conversations.
+- **`get_or_create_dm()`** RPC (finds-or-creates a 1:1, no duplicate threads) and **`my_conversations()`** RPC (one-call list with the other participant + last message + unread count).
+- Deep-link entry `/messages?to=<userId>` to open or start a DM (one-liner for a future profile "Message" button).
+
+### Security
+- RLS via a `SECURITY DEFINER` membership helper (`is_conversation_member`) so policies don't recurse; you can only read/send in conversations you belong to. Realtime respects the same RLS. Schema supports groups (`is_group` + multi-member); UI is 1:1.
+
+---
+
+## [0.9] Roles, admin console & invites — 2026-06-17
+_`loonytube-roles-admin.zip` + `loonytube-admin-saved.zip` (migration: `roles.sql`) · `loonytube-invite-gate.zip` (migration: `waitlist.sql`)_
+
+### Added
+- **Role ladder** — `superadmin > admin > creator > guest` on `profiles.role`, guarded so only a superadmin can change roles. `SECURITY DEFINER` helpers `app_role()` / `is_admin()` / `is_superadmin()`.
+- **`/settings`** — account, role badge, sign-out, and an Admin card for admins.
+- **`/admin` console** (gated) — feature switches (`invite_only` superadmin-locked), invite generator (`LOON-XXXXX` codes), role manager (superadmin-only), and a waitlist viewer. Instant-save with a transient "Saved ✓ / Created ✓" flash.
+- **Invite + waitlist funnel** — `app_settings` singleton, `invites` table + `redeem_invite()` / `has_onboarding_access()`, and a `waitlist` table. `/signup` reads `invite_only` and front-loads an invite-code **or** waitlist capture before the form; off = normal signup.
 
 ---
 
