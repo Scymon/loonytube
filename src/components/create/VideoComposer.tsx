@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { UPLOAD_LIMITS } from "@/lib/upload-limits";
 import * as tus from "tus-js-client";
 
 const CATEGORIES = [
@@ -10,6 +11,12 @@ const CATEGORIES = [
   "Comedy", "News", "Science", "Design", "Food", "Finance",
 ];
 type Visibility = "public" | "unlisted" | "private";
+
+function formatBytes(bytes: number) {
+  if (bytes >= 1024 ** 3) return `${(bytes / 1024 ** 3).toFixed(0)} GB`;
+  if (bytes >= 1024 ** 2) return `${(bytes / 1024 ** 2).toFixed(0)} MB`;
+  return `${(bytes / 1024).toFixed(0)} KB`;
+}
 
 export default function VideoComposer() {
   const router = useRouter();
@@ -29,13 +36,44 @@ export default function VideoComposer() {
   const inputRef = useRef<HTMLInputElement>(null);
   const thumbInput = useRef<HTMLInputElement>(null);
 
-  function pick(f: File | null | undefined) {
-    if (!f) return;
-    setFile(f);
-    if (!title) setTitle(f.name.replace(/\.[^.]+$/, ""));
+  // ── Pre-flight helpers ────────────────────────────────────────────────────
+  function validateVideoFile(f: File): string | null {
+    const allowedTypes = UPLOAD_LIMITS.ALLOWED_VIDEO_TYPES as readonly string[];
+    if (f.type && !allowedTypes.includes(f.type)) {
+      return `Unsupported format "${f.type}". Accepted: MP4, MOV, AVI, MKV, WebM and common variants.`;
+    }
+    if (f.size > UPLOAD_LIMITS.VIDEO_MAX_BYTES) {
+      return `File is ${formatBytes(f.size)} — exceeds the ${formatBytes(UPLOAD_LIMITS.VIDEO_MAX_BYTES)} limit.`;
+    }
+    return null;
   }
 
+  function validateThumbFile(f: File): string | null {
+    const allowedTypes = UPLOAD_LIMITS.ALLOWED_THUMB_TYPES as readonly string[];
+    if (f.type && !allowedTypes.includes(f.type)) {
+      return `Thumbnail must be JPEG, PNG, WebP, or GIF.`;
+    }
+    if (f.size > UPLOAD_LIMITS.THUMB_MAX_BYTES) {
+      return `Thumbnail is ${formatBytes(f.size)} — max is ${formatBytes(UPLOAD_LIMITS.THUMB_MAX_BYTES)}.`;
+    }
+    return null;
+  }
+
+  // ── File picker ───────────────────────────────────────────────────────────
+  function pick(f: File | null | undefined) {
+    if (!f) return;
+    const problem = validateVideoFile(f);
+    if (problem) { setStatus(problem); return; }
+    setStatus(null);
+    setFile(f);
+    if (!title) setTitle(f.name.replace(/\.[^.]+$/, "").slice(0, UPLOAD_LIMITS.TITLE_MAX));
+  }
+
+  // ── Thumbnail upload ──────────────────────────────────────────────────────
   async function uploadThumb(f: File) {
+    const problem = validateThumbFile(f);
+    if (problem) { setStatus(problem); return; }
+
     setThumbBusy(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setThumbBusy(false); setStatus("Sign in to upload a thumbnail."); return; }
@@ -48,11 +86,21 @@ export default function VideoComposer() {
     setThumbBusy(false);
   }
 
+  // ── Publish ───────────────────────────────────────────────────────────────
   async function publish() {
-    if (!file || !title) {
-      setStatus("Add a video file and a title first.");
-      return;
+    if (!file) { setStatus("Add a video file first."); return; }
+    if (!title.trim()) { setStatus("Add a title first."); return; }
+
+    // Client-side pre-flight (mirrors server validation for instant feedback)
+    const videoErr = validateVideoFile(file);
+    if (videoErr) { setStatus(videoErr); return; }
+    if (title.length > UPLOAD_LIMITS.TITLE_MAX) {
+      setStatus(`Title must be ${UPLOAD_LIMITS.TITLE_MAX} characters or fewer.`); return;
     }
+    if (description.length > UPLOAD_LIMITS.DESCRIPTION_MAX) {
+      setStatus(`Description must be ${UPLOAD_LIMITS.DESCRIPTION_MAX.toLocaleString()} characters or fewer.`); return;
+    }
+
     setBusy(true);
     setProgress(0);
     setStatus("Requesting upload slot…");
@@ -61,9 +109,10 @@ export default function VideoComposer() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        title,
+        title: title.trim(),
         description,
         size: file.size,
+        type: file.type || undefined,
         category,
         visibility,
         madeForKids: !kids, // "Not made for kids" checked => made_for_kids = false
@@ -80,16 +129,16 @@ export default function VideoComposer() {
     setStatus("Uploading…");
     const upload = new tus.Upload(file, {
       uploadUrl: json.uploadUrl,
-      chunkSize: 8 * 1024 * 1024, // 8 MiB (multiple of 256 KiB, ≥5 MiB CF minimum) — resilient on mobile
+      chunkSize: 8 * 1024 * 1024, // 8 MiB (≥5 MiB CF minimum, multiple of 256 KiB)
       retryDelays: [0, 3000, 5000, 10000, 20000],
       onError: (err) => {
         setBusy(false);
-        // tus DetailedError exposes the HTTP response on originalResponse.
-        // No response at all => the request never reached Cloudflare (network / CORS / ad-blocker / VPN).
         const resp = (err as { originalResponse?: { getStatus?: () => number } | null }).originalResponse;
         const httpStatus = resp?.getStatus?.();
         if (!httpStatus) {
-          setStatus("Upload was blocked before reaching our servers. This is almost always an ad-blocker, VPN, or privacy browser (e.g. Brave Shields). Turn off blocking for this site, or try a different browser or network.");
+          setStatus(
+            "Upload was blocked before reaching our servers. This is almost always an ad-blocker, VPN, or privacy browser (e.g. Brave Shields). Turn off blocking for this site, or try a different browser or network.",
+          );
         } else {
           setStatus(`Upload failed (HTTP ${httpStatus}). ${err.message}`);
         }
@@ -103,6 +152,9 @@ export default function VideoComposer() {
     upload.start();
   }
 
+  const titleOver = title.length > UPLOAD_LIMITS.TITLE_MAX;
+  const descOver  = description.length > UPLOAD_LIMITS.DESCRIPTION_MAX;
+
   return (
     <div>
       {/* drop zone */}
@@ -115,13 +167,16 @@ export default function VideoComposer() {
           drag ? "border-teal bg-teal/5" : "border-edge bg-surface/40 hover:border-hair"
         }`}
       >
-        <input ref={inputRef} type="file" accept="video/*" className="hidden" onChange={(e) => pick(e.target.files?.[0])} />
+        <input ref={inputRef} type="file" accept="video/*" className="hidden"
+          onChange={(e) => pick(e.target.files?.[0])} />
         <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#2dd4b4" strokeWidth="1.6">
           <path d="M12 16V8M8 11l4-4 4 4" /><path d="M4 16a4 4 0 002 7h12a4 4 0 001-7.9" opacity="0.6" />
         </svg>
         <p className="mt-3 text-lg font-bold text-foam">{file ? file.name : "Drop your video here"}</p>
         <p className="text-sm text-teal">or Browse Files</p>
-        <p className="mt-1 text-xs text-mist">MP4, MOV, AVI up to 10GB</p>
+        <p className="mt-1 text-xs text-mist">
+          MP4, MOV, AVI, MKV, WebM · up to {formatBytes(UPLOAD_LIMITS.VIDEO_MAX_BYTES)}
+        </p>
       </div>
 
       {busy && (
@@ -133,12 +188,33 @@ export default function VideoComposer() {
       <div className="mt-8 grid gap-8 lg:grid-cols-[1.4fr,1fr]">
         <div className="space-y-5">
           <div>
-            <label className="lt-label">Video Title</label>
-            <input className="lt-input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Give it a title" />
+            <div className="flex items-baseline justify-between">
+              <label className="lt-label">Video Title</label>
+              <span className={`text-xs tabular-nums ${titleOver ? "text-red-400" : "text-mist"}`}>
+                {title.length}/{UPLOAD_LIMITS.TITLE_MAX}
+              </span>
+            </div>
+            <input
+              className="lt-input"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Give it a title"
+              maxLength={UPLOAD_LIMITS.TITLE_MAX + 20}
+            />
           </div>
           <div>
-            <label className="lt-label">Description</label>
-            <textarea className="lt-input min-h-[120px]" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Tell viewers about your video…" />
+            <div className="flex items-baseline justify-between">
+              <label className="lt-label">Description</label>
+              <span className={`text-xs tabular-nums ${descOver ? "text-red-400" : "text-mist"}`}>
+                {description.length}/{UPLOAD_LIMITS.DESCRIPTION_MAX.toLocaleString()}
+              </span>
+            </div>
+            <textarea
+              className="lt-input min-h-[120px]"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Tell viewers about your video…"
+            />
           </div>
           <div>
             <label className="lt-label">Category</label>
@@ -150,8 +226,14 @@ export default function VideoComposer() {
 
         <div className="space-y-5">
           <div>
-            <label className="lt-label">Thumbnail</label>
-            <input ref={thumbInput} type="file" accept="image/*" hidden onChange={(e) => e.target.files?.[0] && uploadThumb(e.target.files[0])} />
+            <label className="lt-label">
+              Thumbnail
+              <span className="ml-1 text-xs font-normal text-mist">
+                (JPEG/PNG/WebP/GIF · max {formatBytes(UPLOAD_LIMITS.THUMB_MAX_BYTES)})
+              </span>
+            </label>
+            <input ref={thumbInput} type="file" accept="image/jpeg,image/png,image/webp,image/gif"
+              hidden onChange={(e) => e.target.files?.[0] && uploadThumb(e.target.files[0])} />
             <button type="button" onClick={() => thumbInput.current?.click()} disabled={thumbBusy}
               className="relative flex aspect-video w-full items-center justify-center gap-2 overflow-hidden rounded-[10px] border border-dashed border-edge text-sm text-teal transition hover:border-hair disabled:opacity-60">
               {thumbUrl ? (
@@ -162,7 +244,9 @@ export default function VideoComposer() {
               )}
             </button>
             {thumbUrl && (
-              <button type="button" onClick={() => setThumbUrl(null)} className="mt-1 text-xs text-mist hover:text-foam">Remove thumbnail</button>
+              <button type="button" onClick={() => setThumbUrl(null)} className="mt-1 text-xs text-mist hover:text-foam">
+                Remove thumbnail
+              </button>
             )}
           </div>
           <div>
@@ -197,7 +281,8 @@ export default function VideoComposer() {
       <div className="mt-8 flex items-center justify-end gap-5">
         <button type="button" title="Drafts — coming soon" className="text-sm font-semibold text-mist hover:text-foam">Save Draft</button>
         <button type="button" title="Scheduling — coming soon" className="text-sm font-semibold text-mist hover:text-foam">Schedule</button>
-        <button onClick={publish} disabled={busy} className="rounded-[10px] px-6 py-3 text-sm font-bold text-ink disabled:opacity-50"
+        <button onClick={publish} disabled={busy || titleOver || descOver}
+          className="rounded-[10px] px-6 py-3 text-sm font-bold text-ink disabled:opacity-50"
           style={{ backgroundImage: "linear-gradient(180deg,#3ad6bd,#3e9fe6)" }}>
           {busy ? `Uploading ${progress}%` : "Publish Video"}
         </button>

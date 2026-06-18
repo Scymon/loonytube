@@ -1,9 +1,17 @@
 -- LoonyTube — media storage bucket (custom video thumbnails; reused later for
 -- article covers/inline images). Safe to re-run.
 
-insert into storage.buckets (id, name, public)
-values ('media', 'media', true)
-on conflict (id) do nothing;
+-- 5 MiB cap; only image types accepted (thumbnails / article covers).
+-- file_size_limit is in bytes; allowed_mime_types is enforced by Supabase Storage.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'media', 'media', true,
+  5242880,
+  array['image/jpeg','image/png','image/webp','image/gif']
+)
+on conflict (id) do update set
+  file_size_limit      = excluded.file_size_limit,
+  allowed_mime_types   = excluded.allowed_mime_types;
 
 -- world-readable; users may write only inside their own uid folder ("<uid>/...")
 drop policy if exists "media read"   on storage.objects;
