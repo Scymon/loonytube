@@ -10,6 +10,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Not signed in" }, { status: 401 });
   }
 
+  // Uploads kill switch: when uploads_enabled is off, only admins may upload.
+  const { data: settings } = await supabase
+    .from("app_settings").select("uploads_enabled").eq("id", 1).maybeSingle();
+  if (settings && settings.uploads_enabled === false) {
+    const { data: isAdmin } = await supabase.rpc("is_admin");
+    if (!isAdmin) {
+      return NextResponse.json({ error: "Uploads are temporarily disabled." }, { status: 403 });
+    }
+  }
+
   const { title, description, size, category, visibility, madeForKids, thumbnail } = await req.json();
   if (!title || typeof title !== "string") {
     return NextResponse.json({ error: "Title required" }, { status: 400 });
