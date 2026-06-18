@@ -5,27 +5,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import Avatar from "@/components/Avatar";
 import { ago } from "@/lib/format";
-
-type Notif = {
-  id: string; actor_id: string | null; actor_username: string | null; actor_name: string | null;
-  actor_avatar: string | null; type: string; entity_type: string | null; entity_id: string | null;
-  read: boolean; created_at: string;
-};
-
-const VERB: Record<string, string> = {
-  follow: "followed you",
-  post_like: "liked your post",
-  video_like: "liked your video",
-  comment: "commented on your thread",
-  video_comment: "commented on your video",
-};
-
-function hrefFor(n: Notif): string | null {
-  if (!n.entity_id) return null;
-  if (n.entity_type === "post") return `/post/${n.entity_id}`;
-  if (n.entity_type === "video") return `/watch/${n.entity_id}`;
-  return null; // profile pages not built yet
-}
+import { NOTIF_VERB, notifHref, type Notif } from "@/lib/notif";
 
 export default function NotificationList({ meId }: { meId: string }) {
   const supabase = createClient();
@@ -60,13 +40,13 @@ export default function NotificationList({ meId }: { meId: string }) {
         {items.length === 0 && <p className="px-4 py-12 text-center text-sm text-mist">Nothing yet. Likes, comments, and new followers will show up here.</p>}
         {items.map((n) => {
           const name = n.actor_name || n.actor_username || "Someone";
-          const href = hrefFor(n);
+          const href = notifHref(n);
           const inner = (
             <div className={`flex items-center gap-3 px-4 py-3 ${!n.read ? "bg-sky/5" : ""}`}>
               <Avatar name={name} src={n.actor_avatar} size={40} />
               <p className="min-w-0 flex-1 text-sm text-foam">
                 <span className="font-semibold">{name}</span>{" "}
-                <span className="text-mist">{VERB[n.type] ?? "interacted with you"}</span>
+                <span className="text-mist">{NOTIF_VERB[n.type] ?? "interacted with you"}</span>
               </p>
               <span className="shrink-0 text-xs text-mist">{ago(n.created_at)}</span>
               {!n.read && <span className="h-2 w-2 shrink-0 rounded-full bg-teal" />}

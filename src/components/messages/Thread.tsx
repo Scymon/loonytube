@@ -18,9 +18,13 @@ export default function Thread({ conversationId, meId, header, onActivity }: {
   useEffect(() => {
     let active = true;
     setLoading(true);
-    const markRead = () =>
-      supabase.from("conversation_members").update({ last_read_at: new Date().toISOString() })
+    const markRead = async () => {
+      await supabase.from("conversation_members").update({ last_read_at: new Date().toISOString() })
         .eq("conversation_id", conversationId).eq("user_id", meId);
+      // clear the DM notification(s) for this conversation so the bell stays in sync
+      await supabase.from("notifications").update({ read: true })
+        .eq("type", "dm").eq("entity_id", conversationId).eq("read", false);
+    };
 
     (async () => {
       const { data } = await supabase.from("messages").select("id, sender, body, created_at")
