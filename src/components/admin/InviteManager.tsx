@@ -11,6 +11,7 @@ export default function InviteManager({ initial, uid }: { initial: Invite[]; uid
   const [rows, setRows] = useState(initial);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
+  const [saved, setSaved] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
 
@@ -22,6 +23,8 @@ export default function InviteManager({ initial, uid }: { initial: Invite[]; uid
     setBusy(false);
     if (error) { setErr(error.message); return; }
     setRows((r) => [data as Invite, ...r]); setNote("");
+    setSaved(true);
+    setTimeout(() => setSaved(false), 1600);
   }
   async function remove(code: string) {
     const { error } = await supabase.from("invites").delete().eq("code", code);
@@ -36,6 +39,7 @@ export default function InviteManager({ initial, uid }: { initial: Invite[]; uid
         <button onClick={create} disabled={busy} className="rounded-full px-5 py-2.5 text-sm font-bold text-ink disabled:opacity-50" style={{ backgroundImage: "linear-gradient(180deg,#3ad6bd,#3e9fe6)" }}>
           {busy ? "Generating…" : "Generate invite"}
         </button>
+        <span className={`text-xs font-semibold text-teal transition-opacity duration-300 ${saved ? "opacity-100" : "opacity-0"}`}>Created ✓</span>
       </div>
       {err && <p className="mt-2 text-sm text-loonred">{err}</p>}
 

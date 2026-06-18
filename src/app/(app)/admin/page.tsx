@@ -21,6 +21,8 @@ export default async function AdminPage() {
     .from("app_settings").select("invite_only, signups_enabled, uploads_enabled").eq("id", 1).maybeSingle();
   const { data: invites } = await supabase
     .from("invites").select("code, note, redeemed_by, redeemed_at, created_at, expires_at").order("created_at", { ascending: false }).limit(50);
+  const { data: waitlist } = await supabase
+    .from("waitlist").select("email, created_at").order("created_at", { ascending: false }).limit(100);
 
   let users: UserRow[] = [];
   if (isSuper) {
@@ -38,6 +40,20 @@ export default async function AdminPage() {
 
       <h2 className="mt-8 mb-3 text-lg font-bold">Invites</h2>
       <InviteManager initial={(invites ?? []) as Invite[]} uid={user.id} />
+
+      <h2 className="mt-8 mb-3 text-lg font-bold">Waitlist {waitlist && waitlist.length > 0 && <span className="text-sm font-normal text-mist">· {waitlist.length}</span>}</h2>
+      <div className="rounded-xl border border-edge bg-surface p-4">
+        {waitlist && waitlist.length > 0 ? (
+          <ul className="divide-y divide-edge text-sm">
+            {waitlist.map((w) => (
+              <li key={w.email} className="flex items-center justify-between py-2">
+                <span className="text-foam">{w.email}</span>
+                <span className="text-xs text-mist">{new Date(w.created_at).toLocaleDateString()}</span>
+              </li>
+            ))}
+          </ul>
+        ) : <p className="py-2 text-center text-sm text-mist">No waitlist signups yet.</p>}
+      </div>
 
       {isSuper && (
         <>

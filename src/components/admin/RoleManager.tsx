@@ -9,6 +9,7 @@ export default function RoleManager({ initial, selfId }: { initial: UserRow[]; s
   const supabase = createClient();
   const [rows, setRows] = useState(initial);
   const [q, setQ] = useState("");
+  const [saved, setSaved] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
   async function setRole(id: string, role: string) {
@@ -16,7 +17,9 @@ export default function RoleManager({ initial, selfId }: { initial: UserRow[]; s
     const prev = rows;
     setRows((r) => r.map((u) => (u.id === id ? { ...u, role } : u)));
     const { error } = await supabase.from("profiles").update({ role }).eq("id", id);
-    if (error) { setRows(prev); setErr(error.message); }
+    if (error) { setRows(prev); setErr(error.message); return; }
+    setSaved(id);
+    setTimeout(() => setSaved((cur) => (cur === id ? null : cur)), 1600);
   }
 
   const filtered = rows.filter((u) =>
@@ -33,10 +36,13 @@ export default function RoleManager({ initial, selfId }: { initial: UserRow[]; s
               <p className="truncate font-semibold text-foam">{u.full_name || u.username || "—"}</p>
               <p className="truncate text-xs text-mist">@{u.username ?? "—"}</p>
             </div>
-            <select value={u.role} onChange={(e) => setRole(u.id, e.target.value)} disabled={u.id === selfId}
-              className="lt-input max-w-[150px] disabled:opacity-50" title={u.id === selfId ? "You can't change your own role" : ""}>
-              {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
-            </select>
+            <div className="flex items-center gap-2">
+              <span className={`text-xs font-semibold text-teal transition-opacity duration-300 ${saved === u.id ? "opacity-100" : "opacity-0"}`}>Saved ✓</span>
+              <select value={u.role} onChange={(e) => setRole(u.id, e.target.value)} disabled={u.id === selfId}
+                className="lt-input max-w-[150px] disabled:opacity-50" title={u.id === selfId ? "You can't change your own role" : ""}>
+                {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
+              </select>
+            </div>
           </div>
         ))}
         {filtered.length === 0 && <p className="py-4 text-center text-sm text-mist">No users match.</p>}

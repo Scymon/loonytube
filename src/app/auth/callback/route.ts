@@ -28,6 +28,10 @@ export async function GET(req: Request) {
     data: { user },
   } = await supabase.auth.getUser();
   if (user) {
+    // If the signup carried a validated invite (email-confirmation path), redeem it now.
+    const invite = url.searchParams.get("invite");
+    if (invite) await supabase.rpc("redeem_invite", { p_code: invite });
+
     const { data: prof } = await supabase
       .from("profiles")
       .select("onboarded_at")

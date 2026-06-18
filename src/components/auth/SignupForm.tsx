@@ -9,7 +9,7 @@ import SocialButtons from "@/components/auth/SocialButtons";
 
 const USERNAME_RE = /^[a-zA-Z0-9_]{3,20}$/;
 
-export default function SignupForm() {
+export default function SignupForm({ inviteCode }: { inviteCode?: string }) {
   const supabase = createClient();
   const router = useRouter();
   const [fullName, setFullName] = useState("");
@@ -54,7 +54,7 @@ export default function SignupForm() {
       password,
       options: {
         data: { full_name: fullName.trim() },
-        emailRedirectTo: `${window.location.origin}/auth/callback?next=/onboarding/interests`,
+        emailRedirectTo: `${window.location.origin}/auth/callback?next=/onboarding/interests${inviteCode ? `&invite=${encodeURIComponent(inviteCode)}` : ""}`,
       },
     });
     if (error) {
@@ -78,6 +78,9 @@ export default function SignupForm() {
       setBusy(false);
       return setErr("That username was just taken. Pick another.");
     }
+
+    // Redeem the invite now that we're authenticated (validated at the gate).
+    if (inviteCode) await supabase.rpc("redeem_invite", { p_code: inviteCode });
 
     router.push("/onboarding/interests");
     router.refresh();
