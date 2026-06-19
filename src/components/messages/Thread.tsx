@@ -87,7 +87,7 @@ export default function Thread({ conversationId, meId, header, onActivity }: {
       </div>
       <div className="border-t border-edge p-3">
         <div className="flex items-end gap-2">
-          <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={1}
+          <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={1} maxLength={4000}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
             placeholder="Message…" className="lt-input max-h-32 min-h-[44px] flex-1 resize-none" />
           <button onClick={send} className="rounded-full px-5 py-2.5 text-sm font-bold text-ink" style={{ backgroundImage: "linear-gradient(180deg,#3ad6bd,#3e9fe6)" }}>Send</button>

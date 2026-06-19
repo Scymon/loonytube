@@ -44,9 +44,12 @@ export default function NotificationBell() {
     if (next) {
       setLoading(true);
       const { data } = await supabase.rpc("my_notifications", { p_limit: 8 });
-      setItems((data ?? []) as Notif[]);
+      const fetched = (data ?? []) as Notif[];
+      setItems(fetched);
       setLoading(false);
-      await supabase.from("notifications").update({ read: true }).eq("read", false);
+      if (fetched.length > 0) {
+        await supabase.from("notifications").update({ read: true }).in("id", fetched.map((n) => n.id));
+      }
       refetchCount();
     }
   }

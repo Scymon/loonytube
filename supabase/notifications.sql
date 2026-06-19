@@ -105,24 +105,7 @@ returns table (id uuid, actor_id uuid, actor_username text, actor_name text, act
   limit p_limit;
 $$;
 
--- DM → notify the other participant(s); one unread "dm" notif per conversation
-create or replace function public.notify_dm() returns trigger
-  language plpgsql security definer set search_path = public as $$
-begin
-  insert into public.notifications(user_id, actor, type, entity_type, entity_id)
-  select cm.user_id, new.sender, 'dm', 'conversation', new.conversation_id::text
-  from public.conversation_members cm
-  where cm.conversation_id = new.conversation_id
-    and cm.user_id <> new.sender
-    and not exists (
-      select 1 from public.notifications n
-      where n.user_id = cm.user_id and n.type = 'dm'
-        and n.entity_id = new.conversation_id::text and n.read = false
-    );
-  return new;
-end; $$;
-drop trigger if exists notify_dm on public.messages;
-create trigger notify_dm after insert on public.messages for each row execute function public.notify_dm();
+-- Note: notify_dm function and trigger live in notifications-dm.sql (applied after this file).
 
 do $$ begin
   if not exists (select 1 from pg_publication_tables where pubname='supabase_realtime' and schemaname='public' and tablename='notifications') then

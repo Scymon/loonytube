@@ -21,7 +21,7 @@ create table if not exists public.messages (
   id uuid primary key default gen_random_uuid(),
   conversation_id uuid references public.conversations(id) on delete cascade,
   sender uuid references public.profiles(id),
-  body text not null,
+  body text not null check (char_length(body) <= 4000),
   created_at timestamptz not null default now()
 );
 create index if not exists messages_conv_idx on public.messages(conversation_id, created_at);
