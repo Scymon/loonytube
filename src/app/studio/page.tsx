@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { nfmt, ago } from "@/lib/format";
+import VideoStatusPoller from "@/components/studio/VideoStatusPoller";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,11 @@ export default async function StudioDashboard() {
   const ready = list.filter((v) => v.status === "ready").length;
   const processing = list.filter((v) => v.status !== "ready").length;
 
+  // IDs whose status still needs to resolve — poller will sync these
+  const processingIds = list
+    .filter((v) => v.status !== "ready" && v.status !== "failed")
+    .map((v) => v.id);
+
   const [{ count: postCount }, { count: followerCount }] = await Promise.all([
     supabase.from("posts").select("*", { count: "exact", head: true }).eq("owner", uid).is("parent_id", null),
     supabase.from("follows").select("*", { count: "exact", head: true }).eq("followee", uid),
@@ -32,6 +38,9 @@ export default async function StudioDashboard() {
 
   return (
     <div>
+      {/* Silently polls Cloudflare for any video that hasn't reached a terminal state */}
+      <VideoStatusPoller processingIds={processingIds} />
+
       <h1 className="text-2xl font-bold">Channel dashboard</h1>
       <p className="mt-1 text-sm text-mist">An overview of your channel{processing > 0 ? ` · ${processing} processing` : ""}.</p>
 
