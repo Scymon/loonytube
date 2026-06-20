@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { UPLOAD_LIMITS } from "@/lib/upload-limits";
@@ -11,7 +10,6 @@ const CATEGORIES = [
   "Comedy", "News", "Science", "Design", "Food", "Finance",
 ];
 type Visibility = "public" | "unlisted" | "private";
-type UploadedStatus = "processing" | "ready" | "failed";
 
 function formatBytes(bytes: number) {
   if (bytes >= 1024 ** 3) return `${(bytes / 1024 ** 3).toFixed(0)} GB`;
@@ -24,7 +22,7 @@ function formatTime(s: number) {
   return `${m}:${sec.toString().padStart(2, "0")}`;
 }
 
-export default function VideoComposer({ onBack }: { onBack?: () => void } = {}) {
+export default function VideoComposer({ onComplete }: { onComplete?: (videoId: string) => void } = {}) {
   const supabase = createClient();
 
   // ── Core upload state ─────────────────────────────────────────────────────
@@ -50,11 +48,6 @@ export default function VideoComposer({ onBack }: { onBack?: () => void } = {}) 
   const [scrubTime, setScrubTime] = useState(0);
   const [videoDuration, setVideoDuration] = useState(0);
 
-  // ── Post-upload done screen ───────────────────────────────────────────────
-  const [uploadedId, setUploadedId] = useState<string | null>(null);
-  const [uploadedTitle, setUploadedTitle] = useState("");
-  const [uploadedThumb, setUploadedThumb] = useState<string | null>(null);
-  const [uploadedStatus, setUploadedStatus] = useState<UploadedStatus>("processing");
 
   // ── Refs ──────────────────────────────────────────────────────────────────
   const inputRef = useRef<HTMLInputElement>(null);
@@ -70,29 +63,6 @@ export default function VideoComposer({ onBack }: { onBack?: () => void } = {}) 
     if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
   }, []);
 
-  // ── Poll processing status after upload ───────────────────────────────────
-  useEffect(() => {
-    if (!uploadedId || uploadedStatus !== "processing") return;
-    let alive = true;
-    async function poll() {
-      try {
-        const res = await fetch("/api/sync-video-status", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ videoId: uploadedId }),
-        });
-        if (!alive) return;
-        if (res.ok) {
-          const { status: s } = await res.json() as { status: string };
-          if (s === "ready") setUploadedStatus("ready");
-          else if (s === "failed") setUploadedStatus("failed");
-        }
-      } catch { /* ignore */ }
-    }
-    poll();
-    const timer = setInterval(poll, 5000);
-    return () => { alive = false; clearInterval(timer); };
-  }, [uploadedId, uploadedStatus]);
 
   // ── Trigger frame capture when a new file is loaded ───────────────────────
   // We wait for the video element (vidRef) — which is always in the DOM — to
@@ -310,10 +280,9 @@ export default function VideoComposer({ onBack }: { onBack?: () => void } = {}) 
       onProgress: (sent, total) => setProgress(Math.round((sent / total) * 100)),
       onSuccess: () => {
         setBusy(false);
-        setUploadedId(json.videoId);
-        setUploadedTitle(title.trim());
-        setUploadedThumb(thumbUrl);
-        setUploadedStatus("processing");
+        const vid = json.videoId as string;
+        reset();
+        onComplete?.(vid);
       },
     }).start();
   }
@@ -326,8 +295,6 @@ export default function VideoComposer({ onBack }: { onBack?: () => void } = {}) 
     setAutoThumbs([null, null, null]); setThumbPane(null); setShowScrubber(false);
     setScrubTime(0); setVideoDuration(0);
     setProgress(0); setStatus(null); setBusy(false); setDrag(false);
-    setUploadedId(null); setUploadedTitle(""); setUploadedThumb(null);
-    setUploadedStatus("processing");
     autoSelectedRef.current = false;
     capturingRef.current = false;
     if (objectUrlRef.current) { URL.revokeObjectURL(objectUrlRef.current); objectUrlRef.current = null; }
@@ -336,63 +303,6 @@ export default function VideoComposer({ onBack }: { onBack?: () => void } = {}) 
   const titleOver = title.length > UPLOAD_LIMITS.TITLE_MAX;
   const descOver  = description.length > UPLOAD_LIMITS.DESCRIPTION_MAX;
 
-  // ── Done screen ───────────────────────────────────────────────────────────
-  if (uploadedId) {
-    return (
-      <div className="flex flex-col items-center gap-6 py-8 text-center">
-        <div className="aspect-video w-56 overflow-hidden rounded-xl border border-edge bg-black shadow-lg">
-          {uploadedThumb
-            ? <img src={uploadedThumb} alt="" className="h-full w-full object-cover" />
-            : <div className="h-full w-full" style={{ background: "linear-gradient(160deg,#13202c,#0a0f15)" }} />}
-        </div>
-        <div className="space-y-1.5">
-          <h2 className="text-lg font-bold text-foam">{uploadedTitle}</h2>
-          {uploadedStatus === "processing" && (
-            <div className="flex items-center justify-center gap-2 text-sm text-mist">
-              <span className="relative flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-sky opacity-75" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-sky" />
-              </span>
-              Processing on Cloudflare…
-            </div>
-          )}
-          {uploadedStatus === "ready"  && <p className="text-sm font-semibold text-teal">✓ Ready to watch!</p>}
-          {uploadedStatus === "failed" && <p className="text-sm text-red-400">Processing failed — check the Studio for details.</p>}
-        </div>
-        <div className="flex flex-wrap items-center justify-center gap-3">
-          {uploadedStatus === "ready" && (
-            <Link href={`/watch/${uploadedId}`}
-              className="rounded-[10px] px-5 py-2.5 text-sm font-bold text-ink"
-              style={{ backgroundImage: "linear-gradient(180deg,#3ad6bd,#3e9fe6)" }}>
-              Watch video
-            </Link>
-          )}
-          {onBack ? (
-            <button type="button" onClick={onBack}
-              className="rounded-[10px] border border-edge bg-surface px-5 py-2.5 text-sm font-semibold text-foam hover:bg-edge/40">
-              Go to Studio
-            </button>
-          ) : (
-            <Link href="/studio/content"
-              className="rounded-[10px] border border-edge bg-surface px-5 py-2.5 text-sm font-semibold text-foam hover:bg-edge/40">
-              Go to Studio
-            </Link>
-          )}
-          <button type="button" onClick={reset}
-            className="rounded-[10px] border border-edge bg-surface px-5 py-2.5 text-sm font-semibold text-foam hover:bg-edge/40">
-            Upload another
-          </button>
-        </div>
-        <p className="max-w-xs text-xs text-mist">
-          {uploadedStatus === "processing"
-            ? "This usually takes a minute or two. You can close this and check the Studio later."
-            : uploadedStatus === "ready"
-            ? "Your video is live and visible to viewers."
-            : "Your file was received but encoding failed. Try re-uploading."}
-        </p>
-      </div>
-    );
-  }
 
   // Determine which static image to show over the video when not scrubbing
   const staticFrame: string | null =

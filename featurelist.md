@@ -114,6 +114,26 @@
 [ ] LoonyTube Premium revenue share
 [ ] Crowdfunding / “Thanks” features
 
+#### 10a. Platform Access Tiers — “Skin in the Game” Gatekeeping
+Two competing options under consideration. A feature flag / monetization toggle in Admin controls which model (or neither) is active.
+
+**Option A — Recurring subscription tiers**
+[ ] Free tier: sign up + watch only (no posting, no comments)
+[ ] Commenter tier ($2/mo): comment on videos + post text threads
+[ ] Creator tier ($5/mo): all of the above + video upload access
+[ ] Monetization toggle in Admin: `off` (fully free), `tiers_active` (enforces gates), `legacy` (grandfathers existing accounts)
+[ ] Stripe integration: subscription checkout, webhook to sync role on payment/cancellation
+[ ] Studio → Monetization settings section: view current tier, manage subscription, upgrade/downgrade
+[ ] Grace period: N-day window after payment lapses before upload/comment access is revoked
+
+**Option B — Freemium + one-time activation**
+[ ] Free tier: sign up + watch + one comment per video (first comment always free to lower friction)
+[ ] Commenter tier ($2/mo recurring): unlimited comments + text posts
+[ ] Creator activation ($5 one-time, not recurring): permanent video upload access — lower barrier before distribution is proven
+[ ] Monetization toggle same as Option A
+[ ] Same Stripe integration; one-time payment stored as a permanent flag on the profile rather than a subscription
+[ ] Option to layer ad revenue share on top: creators who hit a threshold earn back their activation fee
+
 ### 11. Live Streaming & Interactive
 [ ] Live stream creation (web + mobile)
 [ ] Stream scheduling & reminders

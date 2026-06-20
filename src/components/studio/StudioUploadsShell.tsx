@@ -4,9 +4,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import ContentTable, { type Row } from "@/components/studio/ContentTable";
 import VideoComposer from "@/components/create/VideoComposer";
+import { ProcessingToast } from "@/components/ProcessingToast";
 
 export default function StudioUploadsShell({ initial }: { initial: Row[] }) {
   const [view, setView] = useState<"list" | "upload">("list");
+  const [processingId, setProcessingId] = useState<string | null>(null);
   const router = useRouter();
 
   function goToList() {
@@ -27,7 +29,7 @@ export default function StudioUploadsShell({ initial }: { initial: Row[] }) {
           </svg>
           Back to uploads
         </button>
-        <VideoComposer onBack={goToList} />
+        <VideoComposer onComplete={(id) => { setProcessingId(id); goToList(); }} />
       </div>
     );
   }
@@ -50,6 +52,8 @@ export default function StudioUploadsShell({ initial }: { initial: Row[] }) {
       <div className="mt-6">
         <ContentTable initial={initial} />
       </div>
+      {processingId && <ProcessingToast videoId={processingId} onDismiss={() => setProcessingId(null)} />}
     </div>
   );
 }
+

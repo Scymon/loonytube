@@ -8,7 +8,33 @@ Entries are milestone deliveries, newest first. Each lists the delivery zip(s) a
 ## [Unreleased] — next up
 - **Public channel page** (`/@handle`). Surfaces banner/avatar/bio/socials; gives follow-notifications, the "People you might like" rail, and a profile **Message** button real destinations. *(keystone — unblocks several pending links)*
 - **Step 3 — Comment unification + Repost/Quote.** Converge video comments onto `posts` nodes (one universal Comment node), add `host_type`/`host_id`, add a `reposts` table, and wire repost/quote actions + the feed/thread union. *(carries a migration)*
+- **Monetization tier system.** Platform-level toggle (off / tiers_active / legacy). Two competing models in featurelist §10a: recurring tiers ($2 commenter / $5 creator) vs freemium + one-time creator activation ($5). Stripe integration, role-sync webhook, Studio monetization settings. *No migration until model is chosen.*
 - Then: **Articles**, scheduled-release enforcement, explore, live streaming.
+
+---
+
+## [0.15] Thumbnail system unification + Studio upload flow — 2026-06-20
+_No migration required_
+
+### Added
+- **`ThumbnailPicker` shared component** (`src/components/ThumbnailPicker.tsx`) — single component used by both VideoComposer and the ContentTable edit modal. Owns the 4-pane selector grid, film-icon scrubber toggle, 16:9 preview container, scrubber panel, and custom upload button. Data source differences handled via render props (`previewContent`, `scrubberContent`).
+- **`StudioUploadsShell`** (`src/components/studio/StudioUploadsShell.tsx`) — wraps `/studio/content`. Adds an "+ Upload video" button that renders `VideoComposer` inline in the Studio, then switches back to the content list on completion and calls `router.refresh()` to surface the new row.
+- **`ProcessingToast`** (`src/components/ProcessingToast.tsx`) — fixed bottom-right corner toast shown after upload. Pulsing blue dot + "Processing… View" link (→ `/studio/content`) + ✕. Auto-dismisses after 8 s.
+
+### Changed
+- **VideoComposer post-upload flow** — removed the full done screen and the Cloudflare status-polling loop. On upload success the form now resets to blank immediately and fires `onComplete(videoId)` to the parent. `CreateTabs` and `StudioUploadsShell` both show `ProcessingToast` in response.
+- **Cloudflare thumbnail URL format** — fixed `cfThumb` in ContentTable from `?time=Np` (invalid, CF ignores it and returns the same default frame for every request) to `?time=Xs` (seconds). This was the root cause of all 3 suggestion panes showing identical images and the scrubber appearing frozen.
+- **`pctToSecs(pct, duration)`** helper — converts 0–100 slider percentage to real seconds using `videos.duration`. Falls back to `pct * 1.2` when duration is null.
+- **`duration` added to Studio content query** — `page.tsx` selects and maps it through the `Row` type so `pctToSecs` has real data from the DB.
+- **Scrubber preview freeze fixed** — removed the `scrubDisplaySrc ?? cfThumb(...)` short-circuit bug: once `scrubDisplaySrc` was non-null the `??` operator swallowed all subsequent slider changes. Preview src is now computed inline; `key={src}` on `<img>` forces remount on each URL change.
+- **`CreateTabs`** — wired `onComplete` → `processingId` → `ProcessingToast`. Tab stays open after upload so the user can immediately start another.
+
+### Removed
+- `uploadedId / uploadedTitle / uploadedThumb / uploadedStatus` states from VideoComposer.
+- Cloudflare status-polling `useEffect` from VideoComposer.
+- Done screen (`if (uploadedId) { return <...> }`) from VideoComposer.
+- `FILM_ICON` SVG and `thumbFileInput` ref from VideoComposer and ContentTable (now owned by `ThumbnailPicker`).
+- Percentage labels overlaid on thumbnail suggestion panes.
 
 ---
 

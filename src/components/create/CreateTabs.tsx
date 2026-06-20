@@ -1,6 +1,7 @@
 "use client";
 
 import { lazy, Suspense, useState, type ReactNode } from "react";
+import { ProcessingToast } from "@/components/ProcessingToast";
 // Lazy-load all three composers so their JS (especially tus-js-client inside
 // VideoComposer) is only fetched when the tab is first activated, not when the
 // modal opens.
@@ -30,25 +31,31 @@ const TABS: { key: CreateTab; label: string; icon: ReactNode }[] = [
 
 export default function CreateTabs({ initialTab = "video" }: { initialTab?: CreateTab }) {
   const [tab, setTab] = useState<CreateTab>(initialTab);
+  const [processingId, setProcessingId] = useState<string | null>(null);
 
   return (
-    <div>
-      <div className="mb-6 flex gap-1 border-b border-edge">
-        {TABS.map(({ key, label, icon }) => (
-          <button key={key} onClick={() => setTab(key)} title={label} aria-label={label}
-            className={`-mb-px flex items-center justify-center border-b-2 px-5 pb-3 pt-1 transition ${
-              tab === key ? "border-sky text-sky" : "border-transparent text-mist hover:text-foam"
-            }`}>
-            {icon}
-          </button>
-        ))}
-      </div>
+    <>
+      <div>
+        <div className="mb-6 flex gap-1 border-b border-edge">
+          {TABS.map(({ key, label, icon }) => (
+            <button key={key} onClick={() => setTab(key)} title={label} aria-label={label}
+              className={`-mb-px flex items-center justify-center border-b-2 px-5 pb-3 pt-1 transition ${
+                tab === key ? "border-sky text-sky" : "border-transparent text-mist hover:text-foam"
+              }`}>
+              {icon}
+            </button>
+          ))}
+        </div>
 
-      <Suspense fallback={<p className="py-16 text-center text-sm text-mist">Loading…</p>}>
-        {tab === "video" && <VideoComposer />}
-        {tab === "post" && <PostComposer />}
-        {tab === "article" && <ArticleComposer />}
-      </Suspense>
-    </div>
+        <Suspense fallback={<p className="py-16 text-center text-sm text-mist">Loading…</p>}>
+          {tab === "video" && <VideoComposer onComplete={(id) => setProcessingId(id)} />}
+          {tab === "post" && <PostComposer />}
+          {tab === "article" && <ArticleComposer />}
+        </Suspense>
+      </div>
+      {processingId && (
+        <ProcessingToast videoId={processingId} onDismiss={() => setProcessingId(null)} />
+      )}
+    </>
   );
 }
