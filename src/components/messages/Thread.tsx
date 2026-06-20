@@ -111,10 +111,12 @@ export default function Thread({ conversationId, meId, header, onActivity }: {
                   {imgs.length > 0 && (
                     <div className={`grid gap-1 ${m.body ? "mt-2" : ""} ${imgs.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
                       {imgs.map((src, i) => (
-                        <a key={i} href={src} target="_blank" rel="noreferrer">
+                        <button key={i} type="button"
+                          onClick={() => window.open(src, "_blank", "noopener,noreferrer")}
+                          className="cursor-zoom-in">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img src={src} alt="" loading="lazy" className="max-h-64 w-full rounded-lg object-cover" />
-                        </a>
+                        </button>
                       ))}
                     </div>
                   )}

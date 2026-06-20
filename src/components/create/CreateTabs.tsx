@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
-import VideoComposer from "@/components/create/VideoComposer";
-import PostComposer from "@/components/create/PostComposer";
-import ArticleComposer from "@/components/create/ArticleComposer";
+import { lazy, Suspense, useState, type ReactNode } from "react";
+// Lazy-load all three composers so their JS (especially tus-js-client inside
+// VideoComposer) is only fetched when the tab is first activated, not when the
+// modal opens.
+const VideoComposer   = lazy(() => import("@/components/create/VideoComposer"));
+const PostComposer    = lazy(() => import("@/components/create/PostComposer"));
+const ArticleComposer = lazy(() => import("@/components/create/ArticleComposer"));
 
 export type CreateTab = "video" | "post" | "article";
 
@@ -28,16 +29,7 @@ const TABS: { key: CreateTab; label: string; icon: ReactNode }[] = [
 ];
 
 export default function CreateTabs({ initialTab = "video" }: { initialTab?: CreateTab }) {
-  const supabase = createClient();
-  const router = useRouter();
   const [tab, setTab] = useState<CreateTab>(initialTab);
-  const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => { if (!data.user) router.push("/login"); else setReady(true); });
-  }, [supabase, router]);
-
-  if (!ready) return <p className="py-16 text-center text-mist">…</p>;
 
   return (
     <div>
@@ -52,9 +44,11 @@ export default function CreateTabs({ initialTab = "video" }: { initialTab?: Crea
         ))}
       </div>
 
-      {tab === "video" && <VideoComposer />}
-      {tab === "post" && <PostComposer />}
-      {tab === "article" && <ArticleComposer />}
+      <Suspense fallback={<p className="py-16 text-center text-sm text-mist">Loading…</p>}>
+        {tab === "video" && <VideoComposer />}
+        {tab === "post" && <PostComposer />}
+        {tab === "article" && <ArticleComposer />}
+      </Suspense>
     </div>
   );
 }

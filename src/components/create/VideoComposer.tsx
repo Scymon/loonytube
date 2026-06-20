@@ -4,7 +4,6 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { UPLOAD_LIMITS } from "@/lib/upload-limits";
-import * as tus from "tus-js-client";
 
 const CATEGORIES = [
   "Gaming", "Tech", "Education & Tech", "Music", "Sports",
@@ -127,6 +126,7 @@ export default function VideoComposer() {
     }
 
     setStatus("Uploading…");
+    const tus = await import("tus-js-client");
     const upload = new tus.Upload(file, {
       uploadUrl: json.uploadUrl,
       chunkSize: 8 * 1024 * 1024, // 8 MiB (≥5 MiB CF minimum, multiple of 256 KiB)
