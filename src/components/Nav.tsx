@@ -25,12 +25,14 @@ function NavIcon({
   label,
   active,
   soon,
+  onClick,
 }: {
   k: IconKey;
   href?: string;
   label: string;
   active?: boolean;
   soon?: boolean;
+  onClick?: () => void;
 }) {
   const inner = (
     <span
@@ -44,6 +46,13 @@ function NavIcon({
       {active && <span className="absolute -bottom-[14px] h-0.5 w-7 rounded-full bg-sky" />}
     </span>
   );
+  if (onClick) {
+    return (
+      <button type="button" onClick={onClick} aria-label={label} title={label}>
+        {inner}
+      </button>
+    );
+  }
   if (soon || !href) {
     return (
       <button type="button" title={`${label} — coming soon`} aria-label={label}>
@@ -62,6 +71,8 @@ export default function Nav({ onLogoClick }: { onLogoClick?: () => void }) {
   const supabase = createClient();
   const router = useRouter();
   const pathname = usePathname();
+  const openCreate = (tab: "video" | "post" | "article" = "video") =>
+    router.push(`${pathname}?compose=${tab}`);
   const [email, setEmail] = useState<string | null>(null);
   const [name, setName] = useState<string | null>(null);
   const [avatar, setAvatar] = useState<string | null>(null);
@@ -127,7 +138,7 @@ export default function Nav({ onLogoClick }: { onLogoClick?: () => void }) {
           <nav className="ml-1 hidden items-center gap-1 md:flex">
             <NavIcon k="home" href="/" label="Home" active={is("/")} />
             <NavIcon k="explore" label="Explore" soon />
-            <NavIcon k="create" href="/create" label="Create" active={is("/create")} />
+            <NavIcon k="create" label="Create" onClick={() => openCreate()} active={pathname === "/create"} />
             <NavIcon k="chat" href="/messages" label="Messages" active={pathname.startsWith("/messages")} />
             <NavIcon k="profile" label="Profile" soon />
           </nav>
@@ -160,9 +171,9 @@ export default function Nav({ onLogoClick }: { onLogoClick?: () => void }) {
                     <p className="truncate text-sm font-semibold text-foam">{name}</p>
                     <p className="truncate text-xs text-mist">{email}</p>
                   </div>
-                  <Link href="/create" onClick={() => setMenu(false)} className="block px-4 py-2.5 text-sm text-foam hover:bg-edge/60">
+                  <button onClick={() => { setMenu(false); openCreate("video"); }} className="block w-full px-4 py-2.5 text-left text-sm text-foam hover:bg-edge/60">
                     Upload a video
-                  </Link>
+                  </button>
                   <Link href="/studio" onClick={() => setMenu(false)} className="block px-4 py-2.5 text-sm text-foam hover:bg-edge/60">
                     Creator Studio
                   </Link>

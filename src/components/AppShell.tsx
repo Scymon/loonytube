@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Nav from "@/components/Nav";
 import Ribbon from "@/components/Ribbon";
+import CreateModal from "@/components/create/CreateModal";
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
@@ -35,6 +36,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         onToggleExpand={() => persist(true, !expanded)}
       />
       <main className={`px-4 py-6 transition-[padding] duration-200 sm:px-6 ${pad}`}>{children}</main>
+      <Suspense fallback={null}><CreateModal /></Suspense>
     </>
   );
 }

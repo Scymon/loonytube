@@ -66,7 +66,7 @@ export default async function Home() {
   // Latest top-level Loon Post (real). No fake fallback — empty shows "coming soon".
   const { data: latestPost } = await supabase
     .from("posts")
-    .select("id, owner, body, created_at")
+    .select("id, owner, body, images, created_at")
     .is("parent_id", null)
     .order("created_at", { ascending: false })
     .limit(1)
@@ -88,6 +88,7 @@ export default async function Home() {
       avatar: pa?.avatar_url ?? null,
       agoLabel,
       body: latestPost.body,
+      images: latestPost.images,
       comments: preplies ?? 0,
       reposts: 0,
       likes: plikes ?? 0,

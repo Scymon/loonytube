@@ -1,3 +1,4 @@
+import PostImages from "@/components/post/PostImages";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import Avatar from "@/components/Avatar";
@@ -27,7 +28,7 @@ export default async function PostDetail({ params }: { params: Promise<{ id: str
 
   const { data: post } = await supabase
     .from("posts")
-    .select("id, owner, parent_id, body, video_id, created_at")
+    .select("id, owner, parent_id, body, images, video_id, created_at")
     .eq("id", id)
     .maybeSingle();
 
@@ -113,6 +114,7 @@ export default async function PostDetail({ params }: { params: Promise<{ id: str
         </div>
 
         <div className="mt-4"><Body text={post.body} /></div>
+        <PostImages images={post.images as string[] | null} />
 
         {vid && (
           <Link href={`/watch/${vid.id}`} className="group mt-4 block">

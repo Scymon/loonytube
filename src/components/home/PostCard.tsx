@@ -2,6 +2,7 @@
 // the labeled sample in placeholders.ts only when there are no posts yet.
 import Link from "next/link";
 import Avatar from "@/components/Avatar";
+import PostImages from "@/components/post/PostImages";
 import { nfmt } from "@/lib/format";
 
 export type CardPost = {
@@ -11,6 +12,7 @@ export type CardPost = {
   avatar?: string | null;
   agoLabel: string;
   body: string;
+  images?: string[] | null;
   comments: number;
   reposts: number;
   likes: number;
@@ -35,6 +37,7 @@ export default function PostCard({ post }: { post: CardPost }) {
         </p>
       </div>
       <Body text={post.body} />
+      <PostImages images={post.images} />
       <div className="mt-4 flex items-center gap-8 text-sm text-mist">
         <span className="inline-flex items-center gap-2">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M21 12a8 8 0 01-11.5 7.2L3 21l1.8-6.5A8 8 0 1121 12z" /></svg>
