@@ -21,10 +21,23 @@ create table if not exists public.messages (
   id uuid primary key default gen_random_uuid(),
   conversation_id uuid references public.conversations(id) on delete cascade,
   sender uuid references public.profiles(id),
-  body text not null check (char_length(body) <= 4000),
+  body text not null,
   created_at timestamptz not null default now()
 );
 create index if not exists messages_conv_idx on public.messages(conversation_id, created_at);
+
+-- Body-length cap (<= 4000 chars). Applied as a standalone, guarded ALTER rather
+-- than an inline CHECK in the CREATE above: `create table if not exists` is a
+-- no-op on an already-existing table, so an inline constraint would never reach a
+-- live database where `messages` predates it. This block lands the constraint on
+-- both fresh and existing databases, and is safe to re-run.
+-- NOTE: if any existing row has body length > 4000 the ALTER will fail; the UI has
+-- always capped input at 4000, so existing rows should comply.
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'messages_body_len_chk') then
+    alter table public.messages add constraint messages_body_len_chk check (char_length(body) <= 4000);
+  end if;
+end $$;
 
 -- Membership check as SECURITY DEFINER so policies don't recurse.
 create or replace function public.is_conversation_member(p_conv uuid, p_uid uuid default auth.uid())
