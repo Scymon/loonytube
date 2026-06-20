@@ -8,3 +8,4 @@ app.code-workspace
 
 # TypeScript incremental build cache
 tsconfig.tsbuildinfo
+_tmp_*
