@@ -4,13 +4,13 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { UPLOAD_LIMITS } from "@/lib/upload-limits";
+import { ThumbnailPicker } from "@/components/ThumbnailPicker";
 
 const CATEGORIES = [
   "Gaming", "Tech", "Education & Tech", "Music", "Sports",
   "Comedy", "News", "Science", "Design", "Food", "Finance",
 ];
 type Visibility = "public" | "unlisted" | "private";
-type ThumbMode = "none" | "auto0" | "auto1" | "auto2" | "scrub" | "file";
 type UploadedStatus = "processing" | "ready" | "failed";
 
 function formatBytes(bytes: number) {
@@ -24,32 +24,10 @@ function formatTime(s: number) {
   return `${m}:${sec.toString().padStart(2, "0")}`;
 }
 
-// ── Initial form state (used for reset too) ───────────────────────────────
-function freshState() {
-  return {
-    file: null as File | null,
-    title: "",
-    description: "",
-    category: "Gaming",
-    visibility: "public" as Visibility,
-    kids: true,
-    thumbUrl: null as string | null,
-    thumbBusy: false,
-    autoThumbs: [null, null, null] as (string | null)[],
-    thumbMode: "none" as ThumbMode,
-    scrubTime: 0,
-    videoDuration: 0,
-    progress: 0,
-    status: null as string | null,
-    busy: false,
-    drag: false,
-  };
-}
-
-export default function VideoComposer() {
+export default function VideoComposer({ onBack }: { onBack?: () => void } = {}) {
   const supabase = createClient();
 
-  // ── Core state ────────────────────────────────────────────────────────────
+  // ── Core upload state ─────────────────────────────────────────────────────
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -65,7 +43,10 @@ export default function VideoComposer() {
   const [thumbUrl, setThumbUrl] = useState<string | null>(null);
   const [thumbBusy, setThumbBusy] = useState(false);
   const [autoThumbs, setAutoThumbs] = useState<(string | null)[]>([null, null, null]);
-  const [thumbMode, setThumbMode] = useState<ThumbMode>("none");
+  // thumbPane: which selector (0/1/2) has the checkmark. null = custom/none.
+  // showScrubber: whether the scrubber slider is visible (pane 4 is a toggle).
+  const [thumbPane, setThumbPane] = useState<0 | 1 | 2 | null>(null);
+  const [showScrubber, setShowScrubber] = useState(false);
   const [scrubTime, setScrubTime] = useState(0);
   const [videoDuration, setVideoDuration] = useState(0);
 
@@ -77,20 +58,21 @@ export default function VideoComposer() {
 
   // ── Refs ──────────────────────────────────────────────────────────────────
   const inputRef = useRef<HTMLInputElement>(null);
-  const thumbFileInput = useRef<HTMLInputElement>(null);
-  const captureVidRef = useRef<HTMLVideoElement | null>(null);
-  const scrubVidRef = useRef<HTMLVideoElement>(null);
+  // Single video element used for BOTH frame capture and scrubbing.
+  // Keeping it in the DOM is critical — off-screen detached video elements
+  // do not guarantee decoded frames, causing all captured stills to look identical.
+  const vidRef = useRef<HTMLVideoElement>(null);
   const objectUrlRef = useRef<string | null>(null);
+  const autoSelectedRef = useRef(false);
+  const capturingRef = useRef(false); // prevent concurrent capture runs
 
-  // Revoke object URL on unmount
   useEffect(() => () => {
     if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
   }, []);
 
-  // ── Poll processing status after upload completes ─────────────────────────
+  // ── Poll processing status after upload ───────────────────────────────────
   useEffect(() => {
     if (!uploadedId || uploadedStatus !== "processing") return;
-    // Poll immediately, then every 5 s
     let alive = true;
     async function poll() {
       try {
@@ -112,6 +94,42 @@ export default function VideoComposer() {
     return () => { alive = false; clearInterval(timer); };
   }, [uploadedId, uploadedStatus]);
 
+  // ── Trigger frame capture when a new file is loaded ───────────────────────
+  // We wait for the video element (vidRef) — which is always in the DOM — to
+  // report loadedmetadata, then sequentially capture frames from it.
+  // Using a DOM-mounted video is the only reliable cross-browser way to get
+  // distinct decoded frames at different seek positions.
+  useEffect(() => {
+    if (!file) return;
+    autoSelectedRef.current = false;
+    capturingRef.current = false;
+
+    const vid = vidRef.current;
+    if (!vid) return;
+
+    function onMeta() {
+      const dur = vid!.duration;
+      if (!isFinite(dur) || dur <= 0) return;
+      setVideoDuration(dur);
+      const mid = dur * 0.5;
+      setScrubTime(mid);
+      vid!.currentTime = mid;
+      if (!capturingRef.current) {
+        capturingRef.current = true;
+        captureAutoThumbs(vid!, dur);
+      }
+    }
+
+    // readyState >= 1 means HAVE_METADATA — might already be loaded
+    if (vid.readyState >= 1) {
+      onMeta();
+    } else {
+      vid.addEventListener("loadedmetadata", onMeta, { once: true });
+      return () => vid.removeEventListener("loadedmetadata", onMeta);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [file]);
+
   // ── Validation ────────────────────────────────────────────────────────────
   function validateVideoFile(f: File): string | null {
     const allowed = UPLOAD_LIMITS.ALLOWED_VIDEO_TYPES as readonly string[];
@@ -130,20 +148,25 @@ export default function VideoComposer() {
   }
 
   // ── Frame capture ─────────────────────────────────────────────────────────
+  // Seek the video to `time` and capture once the frame is actually painted.
+  // requestAnimationFrame after `seeked` is required because `seeked` fires when
+  // the position is set, not when the decoded frame is ready to read from canvas.
   function captureFrameAt(vid: HTMLVideoElement, time: number): Promise<string> {
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => reject(new Error("seek timeout")), 8000);
-      vid.addEventListener("seeked", function onSeeked() {
+      const onSeeked = () => {
         clearTimeout(timer);
-        vid.removeEventListener("seeked", onSeeked);
-        try {
-          const c = document.createElement("canvas");
-          c.width = vid.videoWidth || 640;
-          c.height = vid.videoHeight || 360;
-          c.getContext("2d")?.drawImage(vid, 0, 0, c.width, c.height);
-          resolve(c.toDataURL("image/jpeg", 0.85));
-        } catch (e) { reject(e); }
-      }, { once: true });
+        requestAnimationFrame(() => {
+          try {
+            const c = document.createElement("canvas");
+            c.width = vid.videoWidth || 640;
+            c.height = vid.videoHeight || 360;
+            c.getContext("2d")?.drawImage(vid, 0, 0, c.width, c.height);
+            resolve(c.toDataURL("image/jpeg", 0.85));
+          } catch (e) { reject(e); }
+        });
+      };
+      vid.addEventListener("seeked", onSeeked, { once: true });
       vid.currentTime = time;
     });
   }
@@ -155,8 +178,18 @@ export default function VideoComposer() {
       try {
         result[i] = await captureFrameAt(vid, times[i]);
         setAutoThumbs([...result]);
-      } catch { /* leave null */ }
+        // Auto-select pane 0 the moment the first frame arrives
+        if (i === 0 && !autoSelectedRef.current && result[0]) {
+          autoSelectedRef.current = true;
+          uploadDataUrl(result[0]).then((url) => {
+            if (url) { setThumbUrl(url); setThumbPane(0); }
+          });
+        }
+      } catch { /* leave null — timeout or decode failure */ }
     }
+    // Restore video to scrub position after capture is done
+    if (vidRef.current) vidRef.current.currentTime = scrubTime;
+    capturingRef.current = false;
   }
 
   // ── Upload helpers ────────────────────────────────────────────────────────
@@ -187,7 +220,8 @@ export default function VideoComposer() {
     if (error) { setThumbBusy(false); setStatus(`Thumbnail upload failed: ${error.message}`); return; }
     const { data } = supabase.storage.from("media").getPublicUrl(path);
     setThumbUrl(data.publicUrl);
-    setThumbMode("file");
+    setThumbPane(null);
+    setShowScrubber(false);
     setThumbBusy(false);
   }
 
@@ -200,45 +234,39 @@ export default function VideoComposer() {
     setFile(f);
     if (!title) setTitle(f.name.replace(/\.[^.]+$/, "").slice(0, UPLOAD_LIMITS.TITLE_MAX));
     setAutoThumbs([null, null, null]);
-    setThumbMode("none");
     setThumbUrl(null);
+    setThumbPane(null);
+    setShowScrubber(false);
     setScrubTime(0);
     setVideoDuration(0);
     if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
-    const url = URL.createObjectURL(f);
-    objectUrlRef.current = url;
-    const vid = document.createElement("video");
-    vid.preload = "auto";
-    vid.muted = true;
-    vid.playsInline = true;
-    vid.src = url;
-    captureVidRef.current = vid;
-    vid.addEventListener("loadedmetadata", () => {
-      const dur = vid.duration;
-      if (!isFinite(dur) || dur <= 0) return;
-      setVideoDuration(dur);
-      setScrubTime(Math.min(dur * 0.5, dur));
-      captureAutoThumbs(vid, dur);
-    });
+    objectUrlRef.current = URL.createObjectURL(f);
+    // Do NOT create a detached video element here.
+    // The useEffect([file]) will trigger capture via the DOM-mounted vidRef.
   }
 
-  async function selectAutoThumb(i: number) {
+  // ── Pane selection ────────────────────────────────────────────────────────
+  async function selectPane(i: 0 | 1 | 2) {
     const dataUrl = autoThumbs[i];
-    if (!dataUrl) return;
-    setThumbMode(`auto${i}` as ThumbMode);
+    if (!dataUrl || thumbBusy) return;
+    setThumbPane(i);
+    setShowScrubber(false);
     const url = await uploadDataUrl(dataUrl);
     if (url) setThumbUrl(url);
   }
 
   async function confirmScrubFrame() {
-    const vid = scrubVidRef.current;
+    const vid = vidRef.current;
     if (!vid) return;
     const c = document.createElement("canvas");
     c.width = vid.videoWidth || 640;
     c.height = vid.videoHeight || 360;
     c.getContext("2d")?.drawImage(vid, 0, 0, c.width, c.height);
     const url = await uploadDataUrl(c.toDataURL("image/jpeg", 0.85));
-    if (url) setThumbUrl(url);
+    if (url) {
+      setThumbUrl(url);
+      setThumbPane(null);
+    }
   }
 
   // ── Publish ───────────────────────────────────────────────────────────────
@@ -267,7 +295,7 @@ export default function VideoComposer() {
     if (!res.ok) { setBusy(false); setStatus(json.error ?? "Failed to init upload."); return; }
     setStatus("Uploading…");
     const tus = await import("tus-js-client");
-    const upload = new tus.Upload(file, {
+    new tus.Upload(file, {
       uploadUrl: json.uploadUrl,
       chunkSize: 8 * 1024 * 1024,
       retryDelays: [0, 3000, 5000, 10000, 20000],
@@ -281,53 +309,44 @@ export default function VideoComposer() {
       },
       onProgress: (sent, total) => setProgress(Math.round((sent / total) * 100)),
       onSuccess: () => {
-        // ↳ Stay in the modal — show the done/processing screen
         setBusy(false);
         setUploadedId(json.videoId);
         setUploadedTitle(title.trim());
         setUploadedThumb(thumbUrl);
         setUploadedStatus("processing");
       },
-    });
-    upload.start();
+    }).start();
   }
 
-  // ── Reset to upload another ───────────────────────────────────────────────
+  // ── Reset ─────────────────────────────────────────────────────────────────
   function reset() {
-    const s = freshState();
-    setFile(s.file); setTitle(s.title); setDescription(s.description);
-    setCategory(s.category); setVisibility(s.visibility); setKids(s.kids);
-    setThumbUrl(s.thumbUrl); setThumbBusy(s.thumbBusy);
-    setAutoThumbs(s.autoThumbs); setThumbMode(s.thumbMode);
-    setScrubTime(s.scrubTime); setVideoDuration(s.videoDuration);
-    setProgress(s.progress); setStatus(s.status); setBusy(s.busy); setDrag(s.drag);
+    setFile(null); setTitle(""); setDescription(""); setCategory(CATEGORIES[0]);
+    setVisibility("public"); setKids(true);
+    setThumbUrl(null); setThumbBusy(false);
+    setAutoThumbs([null, null, null]); setThumbPane(null); setShowScrubber(false);
+    setScrubTime(0); setVideoDuration(0);
+    setProgress(0); setStatus(null); setBusy(false); setDrag(false);
     setUploadedId(null); setUploadedTitle(""); setUploadedThumb(null);
     setUploadedStatus("processing");
+    autoSelectedRef.current = false;
+    capturingRef.current = false;
     if (objectUrlRef.current) { URL.revokeObjectURL(objectUrlRef.current); objectUrlRef.current = null; }
-    captureVidRef.current = null;
   }
 
   const titleOver = title.length > UPLOAD_LIMITS.TITLE_MAX;
   const descOver  = description.length > UPLOAD_LIMITS.DESCRIPTION_MAX;
-  const autoCapturing = !!file && autoThumbs.some((t) => t === null);
-  const scrubActive = thumbMode === "scrub";
 
-  // ── ─── Done screen ───────────────────────────────────────────────────────
+  // ── Done screen ───────────────────────────────────────────────────────────
   if (uploadedId) {
     return (
       <div className="flex flex-col items-center gap-6 py-8 text-center">
-        {/* Thumbnail preview */}
         <div className="aspect-video w-56 overflow-hidden rounded-xl border border-edge bg-black shadow-lg">
           {uploadedThumb
-            ? // eslint-disable-next-line @next/next/no-img-element
-              <img src={uploadedThumb} alt="" className="h-full w-full object-cover" />
+            ? <img src={uploadedThumb} alt="" className="h-full w-full object-cover" />
             : <div className="h-full w-full" style={{ background: "linear-gradient(160deg,#13202c,#0a0f15)" }} />}
         </div>
-
-        {/* Title + status */}
         <div className="space-y-1.5">
           <h2 className="text-lg font-bold text-foam">{uploadedTitle}</h2>
-
           {uploadedStatus === "processing" && (
             <div className="flex items-center justify-center gap-2 text-sm text-mist">
               <span className="relative flex h-2 w-2">
@@ -337,15 +356,9 @@ export default function VideoComposer() {
               Processing on Cloudflare…
             </div>
           )}
-          {uploadedStatus === "ready" && (
-            <p className="text-sm font-semibold text-teal">✓ Ready to watch!</p>
-          )}
-          {uploadedStatus === "failed" && (
-            <p className="text-sm text-red-400">Processing failed — check the Studio for details.</p>
-          )}
+          {uploadedStatus === "ready"  && <p className="text-sm font-semibold text-teal">✓ Ready to watch!</p>}
+          {uploadedStatus === "failed" && <p className="text-sm text-red-400">Processing failed — check the Studio for details.</p>}
         </div>
-
-        {/* CTAs */}
         <div className="flex flex-wrap items-center justify-center gap-3">
           {uploadedStatus === "ready" && (
             <Link href={`/watch/${uploadedId}`}
@@ -354,16 +367,22 @@ export default function VideoComposer() {
               Watch video
             </Link>
           )}
-          <Link href="/studio/content"
-            className="rounded-[10px] border border-edge bg-surface px-5 py-2.5 text-sm font-semibold text-foam hover:bg-edge/40">
-            Go to Studio
-          </Link>
+          {onBack ? (
+            <button type="button" onClick={onBack}
+              className="rounded-[10px] border border-edge bg-surface px-5 py-2.5 text-sm font-semibold text-foam hover:bg-edge/40">
+              Go to Studio
+            </button>
+          ) : (
+            <Link href="/studio/content"
+              className="rounded-[10px] border border-edge bg-surface px-5 py-2.5 text-sm font-semibold text-foam hover:bg-edge/40">
+              Go to Studio
+            </Link>
+          )}
           <button type="button" onClick={reset}
             className="rounded-[10px] border border-edge bg-surface px-5 py-2.5 text-sm font-semibold text-foam hover:bg-edge/40">
             Upload another
           </button>
         </div>
-
         <p className="max-w-xs text-xs text-mist">
           {uploadedStatus === "processing"
             ? "This usually takes a minute or two. You can close this and check the Studio later."
@@ -375,7 +394,13 @@ export default function VideoComposer() {
     );
   }
 
-  // ── ─── Upload form ───────────────────────────────────────────────────────
+  // Determine which static image to show over the video when not scrubbing
+  const staticFrame: string | null =
+    (thumbPane !== null ? autoThumbs[thumbPane] : null) ??
+    thumbUrl ??
+    autoThumbs[0];
+
+  // ── Upload form ───────────────────────────────────────────────────────────
   return (
     <div>
       {/* Drop zone */}
@@ -440,7 +465,7 @@ export default function VideoComposer() {
 
         {/* Right: thumbnail / visibility / audience */}
         <div className="space-y-5">
-          {/* Thumbnail */}
+          {/* ── Thumbnail ─────────────────────────────────────────────── */}
           <div>
             <div className="flex items-baseline justify-between">
               <label className="lt-label">
@@ -449,91 +474,47 @@ export default function VideoComposer() {
                   (JPEG/PNG/WebP/GIF · max {formatBytes(UPLOAD_LIMITS.THUMB_MAX_BYTES)})
                 </span>
               </label>
-              {thumbMode !== "none" && (
-                <button type="button" onClick={() => { setThumbUrl(null); setThumbMode("none"); }}
+              {(thumbUrl || thumbPane !== null) && (
+                <button type="button"
+                  onClick={() => { setThumbUrl(null); setThumbPane(null); setShowScrubber(false); }}
                   className="text-xs text-mist hover:text-foam">Clear</button>
               )}
             </div>
-
-            {/* 4 panes */}
-            <div className="grid grid-cols-4 gap-2">
-              {([0, 1, 2] as const).map((i) => {
-                const thumb = autoThumbs[i];
-                const sel = thumbMode === (`auto${i}` as ThumbMode);
-                return (
-                  <button key={i} type="button"
-                    onClick={() => selectAutoThumb(i)}
-                    disabled={thumbBusy || (!thumb && !file)}
-                    className={`group relative aspect-video overflow-hidden rounded-lg border-2 transition ${
-                      sel ? "border-sky" : "border-edge hover:border-hair"
-                    } bg-surface disabled:cursor-default`}
-                  >
-                    {thumb ? (
-                      <>
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={thumb} alt="" className="h-full w-full object-cover" />
-                        {sel && (
-                          <span className="absolute bottom-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-sky">
-                            <svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round"><path d="M2 6l3 3 5-5" /></svg>
-                          </span>
-                        )}
-                      </>
-                    ) : file && autoCapturing ? (
-                      <div className="grid h-full w-full place-items-center">
-                        <div className="h-3 w-3 animate-spin rounded-full border-2 border-edge border-t-mist" />
-                      </div>
-                    ) : (
-                      <div className="h-full w-full" />
-                    )}
-                  </button>
-                );
-              })}
-
-              {/* Pane 3: scrubber */}
-              <button type="button"
-                onClick={() => setThumbMode("scrub")}
-                disabled={!file || !videoDuration}
-                className={`group relative aspect-video overflow-hidden rounded-lg border-2 transition ${
-                  scrubActive ? "border-sky" : "border-edge hover:border-hair"
-                } bg-surface disabled:cursor-default disabled:opacity-40`}
-                title="Pick a custom frame"
-              >
-                {scrubActive && thumbUrl ? (
-                  <>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={thumbUrl} alt="" className="h-full w-full object-cover" />
-                    <span className="absolute bottom-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-sky">
-                      <svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round"><path d="M2 6l3 3 5-5" /></svg>
-                    </span>
-                  </>
-                ) : (
-                  <div className="grid h-full w-full place-items-center text-mist group-hover:text-foam">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
-                      <rect x="2" y="6" width="20" height="12" rx="2" />
-                      <path d="M7 6V4M12 6V4M17 6V4M7 18v2M12 18v2M17 18v2" />
-                      <circle cx="12" cy="12" r="2.5" />
-                    </svg>
-                  </div>
-                )}
-              </button>
-            </div>
-
-            {!file && <p className="mt-1.5 text-xs text-mist">Load a video to generate thumbnail suggestions.</p>}
-            {file && autoCapturing && <p className="mt-1.5 text-xs text-mist">Generating suggestions…</p>}
-
-            {/* Scrubber panel */}
-            {scrubActive && objectUrlRef.current && videoDuration > 0 && (
-              <div className="mt-2 overflow-hidden rounded-xl border border-sky/40 bg-surface">
-                {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-                <video ref={scrubVidRef} src={objectUrlRef.current} muted playsInline preload="auto"
-                  className="w-full bg-black"
-                  onLoadedData={(e) => { (e.target as HTMLVideoElement).currentTime = scrubTime; }} />
-                <div className="space-y-2 p-3">
+            <ThumbnailPicker
+              suggestions={autoThumbs as [string | null, string | null, string | null]}
+              selectedPane={thumbPane}
+              onSelectPane={selectPane}
+              showScrubber={showScrubber}
+              onToggleScrubber={() => file && videoDuration > 0 && setShowScrubber((v) => !v)}
+              scrubberEnabled={!!file && videoDuration > 0}
+              previewContent={file ? (
+                <>
+                  {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+                  <video
+                    ref={vidRef}
+                    src={objectUrlRef.current ?? undefined}
+                    muted playsInline preload="auto"
+                    className="absolute inset-0 h-full w-full object-cover"
+                  />
+                  {!showScrubber && (
+                    <div className="absolute inset-0 z-10">
+                      {staticFrame
+                        ? <img src={staticFrame} alt="" className="h-full w-full object-cover" /> // eslint-disable-line @next/next/no-img-element
+                        : <div className="flex h-full w-full items-center justify-center bg-black/40">
+                            <div className="h-5 w-5 animate-spin rounded-full border-2 border-edge border-t-mist" />
+                          </div>
+                      }
+                    </div>
+                  )}
+                </>
+              ) : null}
+              scrubberContent={file && videoDuration > 0 ? (
+                <>
                   <input type="range" min={0} max={videoDuration} step={0.033} value={scrubTime}
                     onChange={(e) => {
                       const t = parseFloat(e.target.value);
                       setScrubTime(t);
-                      if (scrubVidRef.current) scrubVidRef.current.currentTime = t;
+                      if (vidRef.current) vidRef.current.currentTime = t;
                     }}
                     className="w-full accent-sky" />
                   <div className="flex items-center justify-between">
@@ -544,17 +525,12 @@ export default function VideoComposer() {
                     </button>
                     <span className="text-xs tabular-nums text-mist">{formatTime(videoDuration)}</span>
                   </div>
-                </div>
-              </div>
-            )}
-
-            {/* Upload custom image */}
-            <input ref={thumbFileInput} type="file" accept="image/jpeg,image/png,image/webp,image/gif"
-              hidden onChange={(e) => e.target.files?.[0] && uploadThumbFile(e.target.files[0])} />
-            <button type="button" onClick={() => thumbFileInput.current?.click()} disabled={thumbBusy}
-              className="mt-2 text-xs text-mist hover:text-foam disabled:opacity-50">
-              + Upload custom image
-            </button>
+                </>
+              ) : null}
+              busy={thumbBusy}
+              onFileSelect={uploadThumbFile}
+              emptyHint={!file ? "Load a video to generate thumbnail suggestions." : undefined}
+            />
           </div>
 
           {/* Visibility */}
@@ -591,10 +567,10 @@ export default function VideoComposer() {
           className="text-sm font-semibold text-mist hover:text-foam">Save Draft</button>
         <button type="button" title="Scheduling — coming soon"
           className="text-sm font-semibold text-mist hover:text-foam">Schedule</button>
-        <button onClick={publish} disabled={busy || titleOver || descOver}
+        <button onClick={publish} disabled={busy || thumbBusy || titleOver || descOver}
           className="rounded-[10px] px-6 py-3 text-sm font-bold text-ink disabled:opacity-50"
           style={{ backgroundImage: "linear-gradient(180deg,#3ad6bd,#3e9fe6)" }}>
-          {busy ? `Uploading ${progress}%` : "Publish Video"}
+          {busy ? `Uploading ${progress}%` : thumbBusy ? "Uploading thumbnail…" : "Publish Video"}
         </button>
       </div>
     </div>

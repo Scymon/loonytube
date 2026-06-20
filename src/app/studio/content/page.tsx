@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
-import ContentTable, { type Row } from "@/components/studio/ContentTable";
+import StudioUploadsShell from "@/components/studio/StudioUploadsShell";
+import { type Row } from "@/components/studio/ContentTable";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +11,7 @@ export default async function StudioContent() {
 
   const { data: videos } = await supabase
     .from("videos")
-    .select("id, title, description, thumbnail, status, visibility, views, created_at, scheduled_at")
+    .select("id, title, description, thumbnail, status, visibility, views, created_at, scheduled_at, duration")
     .eq("owner", uid)
     .order("created_at", { ascending: false });
   const list = videos ?? [];
@@ -32,13 +33,8 @@ export default async function StudioContent() {
     status: v.status, visibility: (v as { visibility?: string }).visibility ?? "public",
     views: Number(v.views ?? 0), comments: cCount.get(v.id) ?? 0, likes: lCount.get(v.id) ?? 0,
     created_at: v.created_at, scheduled_at: (v as { scheduled_at?: string | null }).scheduled_at ?? null,
+    duration: (v as { duration?: number | null }).duration ?? null,
   }));
 
-  return (
-    <div>
-      <h1 className="text-2xl font-bold">Channel content</h1>
-      <p className="mt-1 text-sm text-mist">Edit titles, descriptions, visibility, and release schedule.</p>
-      <div className="mt-6"><ContentTable initial={rows} /></div>
-    </div>
-  );
+  return <StudioUploadsShell initial={rows} />;
 }
