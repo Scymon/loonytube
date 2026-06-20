@@ -78,10 +78,9 @@ export async function POST(req: Request) {
   const thumbStr = typeof thumbnail === "string" && thumbnail ? thumbnail : null;
   if (thumbStr) {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const expectedPrefix = supabaseUrl
-      ? `${supabaseUrl}/storage/v1/object/public/media/`
-      : null;
-    if (expectedPrefix && !thumbStr.startsWith(expectedPrefix)) {
+    if (!supabaseUrl) return err("Server misconfiguration: NEXT_PUBLIC_SUPABASE_URL not set", 500);
+    const expectedPrefix = `${supabaseUrl}/storage/v1/object/public/media/`;
+    if (!thumbStr.startsWith(expectedPrefix)) {
       return err("Thumbnail must be uploaded to our media storage", 400);
     }
   }

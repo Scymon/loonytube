@@ -19,6 +19,7 @@ export default function ArticleComposer() {
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [publishedId, setPublishedId] = useState<string | null>(null);
   const coverRef = useRef<HTMLInputElement>(null);
   const inlineRef = useRef<HTMLInputElement>(null);
 
@@ -66,8 +67,28 @@ export default function ArticleComposer() {
     const { data, error } = await supabase.from("articles")
       .insert({ owner: uid, title: title.trim(), cover_url: cover, blocks: clean }).select("id").single();
     if (error) { setBusy(false); return setErr(error.message); }
-    router.push(`/article/${(data as { id: string }).id}`);
-    router.refresh();
+    setPublishedId((data as { id: string }).id);
+    setBusy(false);
+  }
+
+  if (publishedId) {
+    const url = `${window.location.origin}/article/${publishedId}`;
+    return (
+      <div className="space-y-4 py-4 text-center">
+        <p className="text-lg font-bold text-foam">Article published!</p>
+        <p className="text-sm text-mist">Share the link with your audience.</p>
+        <div className="flex items-center gap-2 rounded-xl border border-edge bg-surface px-4 py-3">
+          <span className="flex-1 truncate text-left text-sm text-foam">{url}</span>
+          <button
+            onClick={() => navigator.clipboard.writeText(url)}
+            className="shrink-0 rounded-lg bg-teal/20 px-3 py-1.5 text-xs font-semibold text-teal hover:bg-teal/30">
+            Copy link
+          </button>
+        </div>
+        <button onClick={() => router.push(`/article/${publishedId}`)}
+          className="text-sm text-sky hover:underline">Open article →</button>
+      </div>
+    );
   }
 
   return (
