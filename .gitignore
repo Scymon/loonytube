@@ -9,3 +9,7 @@ app.code-workspace
 # TypeScript incremental build cache
 tsconfig.tsbuildinfo
 _tmp_*
+
+# Agent instructions (local only)
+CLAUDE.md
+SKILLS.md
