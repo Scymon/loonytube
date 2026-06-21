@@ -55,11 +55,90 @@ function blockClass(type: BlockType): string {
   }
 }
 
+
+// ─── Paste: HTML / Markdown → blocks ─────────────────────────────────────────
+
+function htmlToBlocks(html: string): Block[] {
+  if (typeof window === "undefined") return [];
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  const out: Block[] = [];
+
+  function walk(node: Node) {
+    if (node.nodeType === Node.TEXT_NODE) {
+      const t = node.textContent?.trim();
+      if (t) out.push({ id: rid(), type: "text", value: t });
+      return;
+    }
+    if (node.nodeType !== Node.ELEMENT_NODE) return;
+    const el = node as Element;
+    const tag = el.tagName.toLowerCase();
+    const text = el.textContent?.trim() ?? "";
+
+    const BLOCK_TAGS = ["h1","h2","h3","h4","h5","h6","p","div","blockquote","pre","ul","ol","hr","article","section","figure"];
+    const hasBlockChild = Array.from(el.children).some(c => BLOCK_TAGS.includes(c.tagName.toLowerCase()));
+
+    switch (tag) {
+      case "h1": case "h2":
+        if (text) out.push({ id: rid(), type: "h2", value: text }); break;
+      case "h3": case "h4": case "h5": case "h6":
+        if (text) out.push({ id: rid(), type: "h3", value: text }); break;
+      case "blockquote":
+        if (text) out.push({ id: rid(), type: "quote", value: text }); break;
+      case "pre":
+        if (text) out.push({ id: rid(), type: "code", value: el.textContent ?? "" }); break;
+      case "hr":
+        out.push({ id: rid(), type: "divider" }); break;
+      case "img": {
+        const src = el.getAttribute("src");
+        if (src && !src.startsWith("data:")) out.push({ id: rid(), type: "image", url: src });
+        break;
+      }
+      case "p": case "li":
+        if (!hasBlockChild && text) out.push({ id: rid(), type: "text", value: text });
+        else el.childNodes.forEach(walk);
+        break;
+      default:
+        if (hasBlockChild) el.childNodes.forEach(walk);
+        else if (text && BLOCK_TAGS.includes(tag)) out.push({ id: rid(), type: "text", value: text });
+        else el.childNodes.forEach(walk);
+    }
+  }
+
+  doc.body.childNodes.forEach(walk);
+  return out;
+}
+
+function markdownToBlocks(md: string): Block[] | null {
+  const lines = md.split("\n");
+  const hasMd = lines.some(l => /^#{1,3}\s/.test(l) || /^>\s/.test(l) || /^```/.test(l) || /^---+$/.test(l));
+  if (!hasMd) return null;
+  const out: Block[] = [];
+  let inCode = false;
+  let codeLines: string[] = [];
+  for (const line of lines) {
+    if (line.startsWith("```")) {
+      if (inCode) { out.push({ id: rid(), type: "code", value: codeLines.join("\n") }); codeLines = []; inCode = false; }
+      else inCode = true;
+      continue;
+    }
+    if (inCode) { codeLines.push(line); continue; }
+    const h2 = line.match(/^#{1,2}\s+(.+)/);
+    const h3 = line.match(/^#{3,}\s+(.+)/);
+    const q  = line.match(/^>\s*(.*)/);
+    if (h3)               out.push({ id: rid(), type: "h3",     value: h3[1] });
+    else if (h2)          out.push({ id: rid(), type: "h2",     value: h2[1] });
+    else if (q)           out.push({ id: rid(), type: "quote",  value: q[1] });
+    else if (/^---+$/.test(line)) out.push({ id: rid(), type: "divider" });
+    else if (line.trim()) out.push({ id: rid(), type: "text",   value: line });
+  }
+  return out.length ? out : null;
+}
+
 // ─── Auto-growing textarea ────────────────────────────────────────────────────
 
 function AutoText({
   value, onChange, placeholder, className, onEnter, onFocus, onBlur,
-  refCallback, onKeyDown,
+  refCallback, onKeyDown, onPaste,
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -70,6 +149,7 @@ function AutoText({
   onBlur?: () => void;
   refCallback?: (el: HTMLTextAreaElement | null) => void;
   onKeyDown?: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
+  onPaste?: (e: React.ClipboardEvent<HTMLTextAreaElement>) => void;
 }) {
   const ref = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
@@ -92,6 +172,7 @@ function AutoText({
       onChange={(e) => onChange(e.target.value)}
       onFocus={onFocus}
       onBlur={onBlur}
+      onPaste={onPaste}
       onKeyDown={(e) => {
         if (e.key === "Enter" && !e.shiftKey && onEnter) {
           e.preventDefault();
@@ -253,6 +334,7 @@ export default function ArticleComposer() {
   const [draftSaved, setDraftSaved]   = useState(false);
   const [hasDraft, setHasDraft]       = useState(false);
   const [dragOver, setDragOver]         = useState<"cover" | "body" | null>(null);
+  const [dropIdx, setDropIdx]           = useState<number | null>(null);
 
   const coverRef       = useRef<HTMLInputElement>(null);
   const imageRef       = useRef<HTMLInputElement>(null);
@@ -271,6 +353,13 @@ export default function ArticleComposer() {
   function makeKeyHandler(blockId: string, idx: number) {
     return (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
       const el = e.currentTarget;
+
+      // Ctrl/Cmd+A — stop propagation so parent modal doesn't intercept;
+      // browser's native textarea select-all still fires.
+      if ((e.key === "a" || e.key === "A") && (e.ctrlKey || e.metaKey)) {
+        e.stopPropagation();
+        return;
+      }
 
       if ((e.key === "Backspace" || e.key === "Delete") && el.value === "") {
         if (blocks.length <= 1) return;
@@ -340,6 +429,45 @@ export default function ArticleComposer() {
     setHasDraft(false);
   }
 
+  function makePasteHandler(blockId: string, idx: number) {
+    return (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+      const html  = e.clipboardData.getData("text/html");
+      const plain = e.clipboardData.getData("text/plain");
+
+      let parsed: Block[] | null = null;
+      if (html)  parsed = htmlToBlocks(html);
+      if ((!parsed || parsed.length <= 1) && plain) {
+        const md = markdownToBlocks(plain);
+        if (md && md.length > 1) parsed = md;
+      }
+
+      // Only intercept if we actually got multiple blocks or a non-text first block
+      if (!parsed || parsed.length === 0) return;
+      if (parsed.length === 1 && parsed[0].type === "text") return;
+
+      e.preventDefault();
+      const last = parsed[parsed.length - 1];
+
+      setBlocks((bs) => {
+        const cur = bs[idx];
+        const before = bs.slice(0, idx);
+        const after  = bs.slice(idx + 1);
+        // Replace current block if it's empty, otherwise insert after
+        return cur.value?.trim()
+          ? [...before, cur, ...parsed!, ...after]
+          : [...before, ...parsed!, ...after];
+      });
+
+      if (!["image", "divider"].includes(last.type)) {
+        setTimeout(() => {
+          const el = blockRefs.current.get(last.id);
+          if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
+          setFocusedId(last.id);
+        }, 30);
+      }
+    };
+  }
+
   // ── Drag-and-drop helpers ─────────────────────────────────────────────────
   function getDropUrl(e: React.DragEvent): string | null {
     const raw = e.dataTransfer.getData("text/uri-list") || e.dataTransfer.getData("text/plain") || "";
@@ -355,16 +483,20 @@ export default function ArticleComposer() {
     if (url) setCover(url);
   }
 
-  async function handleBodyDrop(e: React.DragEvent) {
+  async function handleBodyDrop(e: React.DragEvent, insertIdx?: number) {
     e.preventDefault(); setDragOver(null);
+    const idx = insertIdx ?? blocks.length;
+    function splice(bs: Block[], newBlock: Block) {
+      return [...bs.slice(0, idx), newBlock, ...bs.slice(idx)];
+    }
     const file = e.dataTransfer.files?.[0];
     if (file?.type.startsWith("image/")) {
       setUploading(true); const u = await upload(file);
-      if (u) setBlocks((bs) => [...bs, { id: rid(), type: "image", url: u }]);
+      if (u) setBlocks((bs) => splice(bs, { id: rid(), type: "image", url: u }));
       setUploading(false); return;
     }
     const url = getDropUrl(e);
-    if (url) setBlocks((bs) => [...bs, { id: rid(), type: "image", url }]);
+    if (url) setBlocks((bs) => splice(bs, { id: rid(), type: "image", url }));
   }
 
   // ── Upload ─────────────────────────────────────────────────────────────────
@@ -410,16 +542,19 @@ export default function ArticleComposer() {
     setTimeout(() => setFocusedId(nb.id), 50);
   };
 
-  const appendText = () => {
+  function insertAfter(blockId: string) {
     const nb = { id: rid(), type: "text" as BlockType, value: "" };
-    setBlocks((bs) => [...bs, nb]);
-    // Wait for React to render + refCallback to fire, then focus the real element
+    setBlocks((bs) => {
+      const idx = bs.findIndex((b) => b.id === blockId);
+      if (idx === -1) return [...bs, nb];
+      return [...bs.slice(0, idx + 1), nb, ...bs.slice(idx + 1)];
+    });
     setTimeout(() => {
       const el = blockRefs.current.get(nb.id);
       if (el) { el.focus(); el.setSelectionRange(0, 0); }
       setFocusedId(nb.id);
     }, 30);
-  };
+  }
 
   const setText    = (id: string, v: string) => setBlocks((bs) => bs.map((b) => b.id === id ? { ...b, value: v } : b));
   const setCaption = (id: string, v: string) => setBlocks((bs) => bs.map((b) => b.id === id ? { ...b, caption: v } : b));
@@ -503,7 +638,7 @@ export default function ArticleComposer() {
         onChange={(v) => setTitle(v.slice(0, 200))}
         placeholder="Article title…"
         className="w-full border-0 border-b border-edge bg-transparent pb-4 text-3xl font-bold text-foam placeholder-mist/30 outline-none focus:border-teal"
-        onEnter={appendText}
+        onEnter={() => blocks.length > 0 ? focusBlock(blocks[0].id, "start") : insertAfter("")}
       />
 
       {/* Cover */}
@@ -541,14 +676,34 @@ export default function ArticleComposer() {
 
       {/* Blocks */}
       <div
-        className={["space-y-1 rounded-xl transition", dragOver === "body" ? "ring-1 ring-teal/30 bg-teal/5" : ""].join(" ")}
-        onDragOver={(e) => { e.preventDefault(); setDragOver("body"); }}
-        onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOver(null); }}
-        onDrop={handleBodyDrop}>
+        className="space-y-1"
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragOver("body");
+          // Compute which gap the cursor is over
+          const children = Array.from(e.currentTarget.children) as HTMLElement[];
+          let idx = children.length; // default: after last
+          for (let i = 0; i < children.length; i++) {
+            const rect = children[i].getBoundingClientRect();
+            if (e.clientY < rect.top + rect.height / 2) { idx = i; break; }
+          }
+          setDropIdx(idx);
+        }}
+        onDragLeave={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+            setDragOver(null); setDropIdx(null);
+          }
+        }}
+        onDrop={(e) => { handleBodyDrop(e, dropIdx ?? blocks.length); setDropIdx(null); }}>
         {blocks.map((b, i) => {
           const focused = focusedId === b.id;
           return (
-            <div key={b.id} className="group relative">
+            <div key={b.id}>
+              {/* Drop indicator line */}
+              {dragOver === "body" && dropIdx === i && (
+                <div className="my-1 h-0.5 w-full rounded-full bg-teal/60" />
+              )}
+            <div className="group relative">
               {/* Floating toolbar — shown when focused */}
               {focused && (
                 <div className="absolute -top-8 right-0 z-20">
@@ -592,9 +747,10 @@ export default function ArticleComposer() {
                     className={blockClass(b.type)}
                     onFocus={() => setFocusedId(b.id)}
                     onBlur={() => setTimeout(() => setFocusedId((id) => id === b.id ? null : id), 150)}
-                    onEnter={appendText}
+                    onEnter={() => insertAfter(b.id)}
                     refCallback={(el) => { if (el) blockRefs.current.set(b.id, el); else blockRefs.current.delete(b.id); }}
                     onKeyDown={makeKeyHandler(b.id, i)}
+                    onPaste={makePasteHandler(b.id, i)}
                   />
                 </div>
               ) : (
@@ -610,14 +766,20 @@ export default function ArticleComposer() {
                   className={blockClass(b.type)}
                   onFocus={() => setFocusedId(b.id)}
                   onBlur={() => setTimeout(() => setFocusedId((id) => id === b.id ? null : id), 150)}
-                  onEnter={appendText}
+                  onEnter={() => insertAfter(b.id)}
                   refCallback={(el) => { if (el) blockRefs.current.set(b.id, el); else blockRefs.current.delete(b.id); }}
                   onKeyDown={makeKeyHandler(b.id, i)}
+                  onPaste={makePasteHandler(b.id, i)}
                 />
               )}
             </div>
+            </div>
           );
         })}
+        {/* Drop indicator after last block */}
+        {dragOver === "body" && dropIdx === blocks.length && (
+          <div className="my-1 h-0.5 w-full rounded-full bg-teal/60" />
+        )}
       </div>
 
       {/* Add block bar */}
