@@ -119,7 +119,8 @@ export default function Nav({ onLogoClick }: { onLogoClick?: () => void }) {
   const isStudio = pathname.startsWith("/studio");
 
   return (
-    <header className="sticky top-0 z-50 border-b border-edge bg-panel/90 backdrop-blur">
+    <>
+      <header className="sticky top-0 z-50 border-b border-edge bg-panel/90 backdrop-blur">
       <div className="flex w-full items-center justify-between px-4 py-2.5 sm:px-6">
         {/* left: logo + icon rail */}
         <div className="flex items-center gap-1 sm:gap-2">
@@ -139,7 +140,7 @@ export default function Nav({ onLogoClick }: { onLogoClick?: () => void }) {
             <NavIcon k="home" href="/" label="Home" active={is("/")} />
             <NavIcon k="explore" label="Explore" soon />
             <NavIcon k="create" label="Create" onClick={() => openCreate()} active={pathname === "/create"} />
-            <NavIcon k="chat" href="/messages" label="Messages" active={pathname.startsWith("/messages")} />
+            <NavIcon k="chat" href="/threads" label="Messages" active={pathname.startsWith("/messages")} />
             <NavIcon k="profile" label="Profile" soon />
           </nav>
         </div>
@@ -202,5 +203,38 @@ export default function Nav({ onLogoClick }: { onLogoClick?: () => void }) {
         </div>
       </div>
     </header>
+
+      {/* ── Mobile bottom nav — hidden inside conversations & on md+ ── */}
+      {!(pathname.startsWith("/messages/") || pathname.startsWith("/threads/dms/")) && (
+      <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden border-t border-edge bg-panel/95 backdrop-blur-md">
+        <div className="relative flex items-center justify-around px-2 pt-2 pb-[env(safe-area-inset-bottom,8px)]">
+          <Link href="/" aria-label="Home" className={`flex flex-col items-center gap-0.5 px-2 py-1 ${is("/") ? "text-sky" : "text-mist"}`}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d={ICONS.home} /></svg>
+            <span className="text-[10px] font-medium">Home</span>
+          </Link>
+          <Link href="/explore" aria-label="Explore" className={`flex flex-col items-center gap-0.5 px-2 py-1 ${pathname.startsWith("/explore") ? "text-sky" : "text-mist"}`}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d={ICONS.explore} /></svg>
+            <span className="text-[10px] font-medium">Explore</span>
+          </Link>
+          <div className="w-14" aria-hidden="true" />
+          <Link href="/threads" aria-label="Threads" className={`flex flex-col items-center gap-0.5 px-2 py-1 ${pathname.startsWith("/threads") || pathname.startsWith("/messages") ? "text-sky" : "text-mist"}`}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d={ICONS.chat} /></svg>
+            <span className="text-[10px] font-medium">Threads</span>
+          </Link>
+          <Link href="/dashboard" aria-label="Dashboard" className={`flex flex-col items-center gap-0.5 px-2 py-1 ${pathname.startsWith("/dashboard") ? "text-sky" : "text-mist"}`}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d={ICONS.profile} /></svg>
+            <span className="text-[10px] font-medium">Dashboard</span>
+          </Link>
+          <button type="button" onClick={() => openCreate()} aria-label="Create"
+            className="absolute left-1/2 -translate-x-1/2 -top-5 flex flex-col items-center gap-0.5">
+            <span className="grid h-11 w-11 place-items-center rounded-full border border-teal/60 bg-teal/10 text-teal shadow-[0_0_12px_rgba(58,214,189,0.2)]">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={ICONS.create} /></svg>
+            </span>
+            <span className="text-[10px] font-medium text-teal">Create</span>
+          </button>
+        </div>
+      </nav>
+      )}
+    </>
   );
 }
