@@ -131,4 +131,6 @@ $$;
 -- BOOTSTRAP: make yourself the first superadmin (run once; replace the handle).
 -- Works from the SQL editor because auth.uid() is NULL there (trusted context).
 -- ─────────────────────────────────────────────────────────────────────────────
-update public.profiles set role = 'superadmin' where username = 'david';
+-- update public.profiles set role = 'superadmin' where id = '<your-user-id>';
+-- WARNING: use your UUID from auth.users, NOT your username.
+-- A malicious user could register the username before you run this.

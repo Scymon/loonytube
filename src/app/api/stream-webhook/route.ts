@@ -37,7 +37,7 @@ export async function POST(req: Request) {
 
   // Replay protection: reject stale signatures (10-min tolerance for clock skew).
   const ageSec = Math.floor(Date.now() / 1000) - parseInt(time, 10);
-  if (!Number.isFinite(ageSec) || ageSec < -60 || ageSec > 600) {
+  if (!Number.isFinite(ageSec) || ageSec < -5 || ageSec > 60) {
     return NextResponse.json({ error: "Signature expired" }, { status: 401 });
   }
 
