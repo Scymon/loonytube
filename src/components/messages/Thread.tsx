@@ -53,7 +53,7 @@ function XEmbedCard({ embed, mine }: { embed: XPostEmbed; mine: boolean }) {
   useEffect(() => {
     let cancelled = false;
     fetch(
-      `https://publish.twitter.com/oembed?url=${encodeURIComponent(embed.url)}&dnt=true&theme=dark&omit_script=false`
+      `/api/oembed/x?url=${encodeURIComponent(embed.url)}`
     )
       .then((r) => r.json())
       .then((d) => {
