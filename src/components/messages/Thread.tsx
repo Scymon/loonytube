@@ -385,7 +385,7 @@ export default function Thread({ conversationId, meId, header, onActivity }: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversationId, meId]);
 
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [msgs]);
+  useEffect(() => { if (endRef.current) { endRef.current.scrollTop = endRef.current.scrollHeight; } }, [msgs]);
 
   async function pickImages(files: FileList | null) {
     if (!files) return;
@@ -477,17 +477,16 @@ export default function Thread({ conversationId, meId, header, onActivity }: {
   }
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="flex items-center gap-3 border-b border-edge px-4 py-3">
-        {header && (
-          <>
-            <Avatar name={header.name} src={header.avatar} size={36} />
-            <p className="font-bold text-foam">{header.name}</p>
-          </>
-        )}
-      </div>
+    <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+      {header && (
+        <div className="flex items-center gap-3 border-b border-edge px-4 py-3">
+          <Avatar name={header.name} src={header.avatar} size={36} />
+          <p className="font-bold text-foam">{header.name}</p>
+        </div>
+      )}
 
-      <div className="flex-1 space-y-2 overflow-y-auto px-4 py-4">
+      <div ref={endRef} className="flex-1 min-h-0 overflow-y-auto">
+        <div className="min-h-full flex flex-col justify-end space-y-2 px-4 py-4">
         {loading ? (
           <p className="text-center text-sm text-mist">Loading…</p>
         ) : msgs.length === 0 ? (
@@ -502,7 +501,7 @@ export default function Thread({ conversationId, meId, header, onActivity }: {
                 <p className="mb-0.5 text-[11px] text-red-400">⚠ Failed to send</p>
               )}
               <div
-                className={`w-full max-w-[75%] rounded-2xl px-3.5 py-2 text-[15px] ${m.failed ? "opacity-50" : ""} ${mine ? "text-ink" : "bg-surface text-foam"}`}
+                className={`max-w-[90%] sm:max-w-[460px] rounded-2xl px-3.5 py-2 text-[15px] ${m.failed ? "opacity-50" : ""} ${mine ? "text-ink" : "bg-surface text-foam"}`}
                 style={mine ? { backgroundImage: "linear-gradient(180deg,#3ad6bd,#3e9fe6)" } : undefined}
               >
                 {m.body && (() => {
@@ -548,10 +547,10 @@ export default function Thread({ conversationId, meId, header, onActivity }: {
             </div>
           );
         })}
-        <div ref={endRef} />
+        </div>
       </div>
 
-      <div className="border-t border-edge p-3">
+      <div className="shrink-0 border-t border-edge p-3">
         {(() => {
           const detectedX = extractXUrl(body);
           return (detectedX || pendingEmbeds.length > 0) ? (

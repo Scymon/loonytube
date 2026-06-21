@@ -100,6 +100,21 @@ export default function YourPage() {
 
 ---
 
+## Module Size Rule — 300 Line Hard Limit
+
+**No component or page file should exceed 300 lines.**
+
+This is the primary defence against file corruption (the Edit tool's null-byte bug only appears on large files) and the main driver of code reuse.
+
+When a file hits 250 lines:
+- Extract visual sub-components into their own files (`MessageBubble.tsx`, `EmbedCard.tsx`)
+- Extract stateful logic into hooks (`src/hooks/useConversation.ts`)
+- Extract shared types into `src/types/<domain>.ts`
+
+The components built so far follow this pattern: `DmList`, `DmShell`, `ThreadsSidebar`, `ThreadsShell` are all separate files under 150 lines. Continue this pattern for every new feature.
+
+---
+
 ## Adding a New Component
 
 Create `src/components/your-section/YourComponent.tsx`.

@@ -11,7 +11,7 @@ type Convo = {
 };
 type Person = { id: string; username: string | null; full_name: string | null; avatar_url: string | null };
 
-export default function Messenger({ meId }: { meId: string }) {
+export default function DmList({ meId, activeId }: { meId: string; activeId?: string }) {
   const supabase = createClient();
   const router = useRouter();
   const params = useSearchParams();
@@ -27,21 +27,21 @@ export default function Messenger({ meId }: { meId: string }) {
 
   useEffect(() => { load(); }, [load]);
 
-  // ?to=<userId> → create or find DM and navigate straight to it
+  // ?to=<userId> deep link → create/find DM and navigate
   useEffect(() => {
     const to = params.get("to");
     if (!to) return;
     (async () => {
       const { data, error } = await supabase.rpc("get_or_create_dm", { p_other: to });
-      if (!error && data) router.replace(`/messages/${data}`);
-      else router.replace("/messages");
+      if (!error && data) router.replace(`/threads/dms/${data}`);
+      else router.replace("/threads/dms");
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params]);
 
   // live list refresh
   useEffect(() => {
-    const ch = supabase.channel("dm-list")
+    const ch = supabase.channel("dm-list-threads")
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, () => load())
       .subscribe();
     return () => { supabase.removeChannel(ch); };
@@ -59,25 +59,29 @@ export default function Messenger({ meId }: { meId: string }) {
 
   async function startWith(id: string) {
     const { data, error } = await supabase.rpc("get_or_create_dm", { p_other: id });
-    if (!error && data) router.push(`/messages/${data}`);
+    if (!error && data) router.push(`/threads/dms/${data}`);
   }
 
   const nameOf = (c: Convo) => c.other_name || c.other_username || "User";
 
   return (
-    <div className="mx-auto max-w-2xl">
-      <div className="flex items-center justify-between px-4 py-3">
-        <h1 className="text-lg font-bold text-foam">Threads</h1>
-        <button onClick={() => setShowNew((v) => !v)}
-          className="rounded-full bg-surface px-3 py-1.5 text-xs font-semibold text-teal hover:bg-edge">
+    <div className="flex h-full flex-col overflow-hidden border-r border-edge">
+      <div className="flex shrink-0 items-center justify-between px-4 py-3 border-b border-edge">
+        <h2 className="text-base font-bold text-foam">Direct Messages</h2>
+        <button
+          onClick={() => setShowNew((v) => !v)}
+          className="rounded-full bg-surface px-3 py-1.5 text-xs font-semibold text-teal hover:bg-edge"
+        >
           {showNew ? "Cancel" : "New"}
         </button>
       </div>
 
       {showNew ? (
-        <div className="px-4">
-          <input autoFocus value={q} onChange={(e) => search(e.target.value)}
-            placeholder="Search people…" className="lt-input w-full" />
+        <div className="p-4">
+          <input
+            autoFocus value={q} onChange={(e) => search(e.target.value)}
+            placeholder="Search people…" className="lt-input w-full"
+          />
           <div className="mt-2 space-y-1">
             {results.map((p) => (
               <button key={p.id} onClick={() => startWith(p.id)}
@@ -93,26 +97,36 @@ export default function Messenger({ meId }: { meId: string }) {
           </div>
         </div>
       ) : (
-        <div>
-          {convos.length === 0
-            ? <p className="px-4 py-8 text-center text-sm text-mist">No conversations yet. Tap "New" to start one.</p>
-            : convos.map((c) => (
-              <button key={c.conversation_id} onClick={() => router.push(`/messages/${c.conversation_id}`)}
-                className="flex w-full items-center gap-3 border-b border-edge/50 px-4 py-3 text-left hover:bg-edge/40">
-                <Avatar name={nameOf(c)} src={c.other_avatar} size={44} />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-semibold text-foam">{nameOf(c)}</p>
-                  <p className={`truncate text-sm ${c.unread > 0 ? "font-semibold text-foam" : "text-mist"}`}>
-                    {c.last_body ?? "New conversation"}
-                  </p>
-                </div>
-                {c.unread > 0 && (
-                  <span className="ml-auto grid h-5 min-w-[20px] place-items-center rounded-full bg-teal px-1.5 text-xs font-bold text-ink">
-                    {c.unread}
-                  </span>
-                )}
-              </button>
-            ))}
+        <div className="flex-1 overflow-y-auto pb-16 md:pb-0">
+          {convos.length === 0 ? (
+            <p className="px-4 py-8 text-center text-sm text-mist">No conversations yet. Tap "New" to start one.</p>
+          ) : (
+            convos.map((c) => {
+              const isActive = c.conversation_id === activeId;
+              return (
+                <button
+                  key={c.conversation_id}
+                  onClick={() => router.push(`/threads/dms/${c.conversation_id}`)}
+                  className={`flex w-full items-center gap-3 border-b border-edge/50 px-4 py-3 text-left transition-colors hover:bg-edge/40 ${
+                    isActive ? "bg-edge/60" : ""
+                  }`}
+                >
+                  <Avatar name={nameOf(c)} src={c.other_avatar} size={44} />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-semibold text-foam">{nameOf(c)}</p>
+                    <p className={`truncate text-sm ${c.unread > 0 ? "font-semibold text-foam" : "text-mist"}`}>
+                      {c.last_body ?? "New conversation"}
+                    </p>
+                  </div>
+                  {c.unread > 0 && (
+                    <span className="ml-auto grid h-5 min-w-[20px] place-items-center rounded-full bg-teal px-1.5 text-xs font-bold text-ink">
+                      {c.unread}
+                    </span>
+                  )}
+                </button>
+              );
+            })
+          )}
         </div>
       )}
     </div>

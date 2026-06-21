@@ -1,5 +1,23 @@
 # LoonyTube — File Editing Rules
 
+## Primary Design Strategy — Files Under 300 Lines
+
+**Split first. Build modules. Never let a component file exceed 300 lines.**
+
+When a file approaches 300 lines, extract into sub-components or hooks before adding more code. Small, focused modules mean:
+- The Edit tool's null-byte corruption risk is eliminated (problem only appears on large files)
+- Sub-components can be reused across features without rebuilding
+- Each file is fully readable in one pass
+
+**How to split:**
+- Extract sub-components: `MessageBubble`, `EmbedCard`, `VideoPickerModal` — each its own file
+- Extract hooks: `useConversation`, `useEmbeds`, `useImageUpload` — into `src/hooks/`
+- Extract types: shared types into `src/types/messages.ts` etc.
+
+If you're about to add code to a file that's already 250+ lines — stop. Split first.
+
+---
+
 ## The One Rule
 
 **Never rewrite a whole file. Always use surgical Python replacement.**
