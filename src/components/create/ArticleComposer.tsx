@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type BlockType = "text" | "h2" | "h3" | "quote" | "code" | "image" | "divider";
+type BlockType = "text" | "h2" | "h3" | "quote" | "code" | "image" | "divider" | "video";
 
 type Block = {
   id: string;
@@ -14,6 +14,9 @@ type Block = {
   value?: string;
   url?: string;
   caption?: string;
+  videoId?: string;
+  videoTitle?: string;
+  videoThumb?: string;
 };
 
 const rid = () => Math.random().toString(36).slice(2, 9);
@@ -42,6 +45,7 @@ const BLOCK_TYPES: BlockConfig[] = [
   { type: "code",    icon: "</>", label: "Code" },
   { type: "divider", icon: "—",   label: "Divider" },
   { type: "image",   icon: "⊞",   label: "Image" },
+  { type: "video",   icon: "▶",   label: "Video" },
 ];
 
 // className for each block type's input/display
@@ -132,6 +136,71 @@ function markdownToBlocks(md: string): Block[] | null {
     else if (line.trim()) out.push({ id: rid(), type: "text",   value: line });
   }
   return out.length ? out : null;
+}
+
+
+// ─── Video picker (inline, for video blocks) ─────────────────────────────────
+
+type VideoRow = { id: string; title: string; thumbnail: string | null };
+
+function VideoPickerBlock({
+  supabase, uid, onPick,
+}: {
+  supabase: ReturnType<typeof createClient>;
+  uid: string;
+  onPick: (v: VideoRow) => void;
+}) {
+  const [videos, setVideos] = useState<VideoRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [q, setQ] = useState("");
+
+  useEffect(() => {
+    supabase
+      .from("videos")
+      .select("id, title, thumbnail")
+      .eq("owner", uid)
+      .eq("status", "ready")
+      .order("created_at", { ascending: false })
+      .limit(48)
+      .then(({ data }) => { setVideos((data as VideoRow[]) ?? []); setLoading(false); });
+  }, [supabase, uid]);
+
+  const filtered = q
+    ? videos.filter((v) => v.title.toLowerCase().includes(q.toLowerCase()))
+    : videos;
+
+  return (
+    <div className="rounded-xl border border-edge bg-surface p-3 space-y-3">
+      <p className="text-xs font-semibold text-mist">Pick a video from your library</p>
+      <input value={q} onChange={(e) => setQ(e.target.value)}
+        placeholder="Search videos…"
+        className="w-full rounded-lg border border-edge bg-transparent px-3 py-2 text-sm text-foam placeholder-mist/40 outline-none focus:border-teal" />
+      {loading ? (
+        <p className="text-xs text-mist py-4 text-center">Loading…</p>
+      ) : filtered.length === 0 ? (
+        <p className="text-xs text-mist py-4 text-center">No ready videos found.</p>
+      ) : (
+        <div className="grid grid-cols-3 gap-2 max-h-52 overflow-y-auto pr-1">
+          {filtered.map((v) => (
+            <button key={v.id} onClick={() => onPick(v)}
+              className="group relative overflow-hidden rounded-lg border border-edge transition hover:border-teal">
+              {v.thumbnail ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={v.thumbnail} alt={v.title} className="w-full aspect-video object-cover" />
+              ) : (
+                <div className="w-full aspect-video bg-edge/40 flex items-center justify-center">
+                  <span className="text-mist text-lg">▶</span>
+                </div>
+              )}
+              <div className="absolute inset-x-0 bottom-0 bg-black/70 px-1.5 py-1 text-[10px] text-white truncate">
+                {v.title}
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 // ─── Auto-growing textarea ────────────────────────────────────────────────────
@@ -335,6 +404,7 @@ export default function ArticleComposer() {
   const [hasDraft, setHasDraft]       = useState(false);
   const [dragOver, setDragOver]         = useState<"cover" | "body" | null>(null);
   const [dropIdx, setDropIdx]           = useState<number | null>(null);
+  const [menuOpen, setMenuOpen]         = useState(false);
 
   const coverRef       = useRef<HTMLInputElement>(null);
   const imageRef       = useRef<HTMLInputElement>(null);
@@ -354,6 +424,28 @@ export default function ArticleComposer() {
     return (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
       const el = e.currentTarget;
 
+      // Enter — split block at cursor; code blocks get plain newlines
+      if (e.key === "Enter" && !e.shiftKey) {
+        const btype = blocks[idx]?.type;
+        if (btype === "code") return; // let textarea newline through
+        e.preventDefault();
+        const cursor = el.selectionStart ?? el.value.length;
+        const textBefore = el.value.slice(0, cursor);
+        const textAfter  = el.value.slice(el.selectionEnd ?? cursor);
+        setText(blockId, textBefore);
+        const nb: Block = { id: rid(), type: "text", value: textAfter };
+        setBlocks((bs) => {
+          const i2 = bs.findIndex((b) => b.id === blockId);
+          return i2 === -1 ? [...bs, nb] : [...bs.slice(0, i2 + 1), nb, ...bs.slice(i2 + 1)];
+        });
+        setTimeout(() => {
+          const newEl = blockRefs.current.get(nb.id);
+          if (newEl) { newEl.focus(); newEl.setSelectionRange(0, 0); }
+          setFocusedId(nb.id);
+        }, 30);
+        return;
+      }
+
       // Ctrl/Cmd+A — stop propagation so parent modal doesn't intercept;
       // browser's native textarea select-all still fires.
       if ((e.key === "a" || e.key === "A") && (e.ctrlKey || e.metaKey)) {
@@ -361,14 +453,37 @@ export default function ArticleComposer() {
         return;
       }
 
-      if ((e.key === "Backspace" || e.key === "Delete") && el.value === "") {
+      if (e.key === "Backspace" && el.selectionStart === 0 && el.selectionEnd === 0) {
+        if (el.value === "") {
+          // Empty block: delete it and jump to prev
+          if (blocks.length <= 1) return;
+          e.preventDefault();
+          const prev = blocks[idx - 1];
+          remove(blockId);
+          if (prev && !["image", "divider", "video"].includes(prev.type)) {
+            setTimeout(() => focusBlock(prev.id, "end"), 30);
+          }
+          return;
+        }
+        // Non-empty block at caret start: merge text onto end of previous block
+        const prev = blocks[idx - 1];
+        if (!prev || ["image", "divider", "video"].includes(prev.type)) return;
+        e.preventDefault();
+        const junctionPos = (prev.value ?? "").length;
+        setText(prev.id, (prev.value ?? "") + el.value);
+        remove(blockId);
+        setTimeout(() => {
+          const prevEl = blockRefs.current.get(prev.id);
+          if (prevEl) { prevEl.focus(); prevEl.setSelectionRange(junctionPos, junctionPos); }
+          setFocusedId(prev.id);
+        }, 30);
+        return;
+      }
+      // Delete key on empty block only
+      if (e.key === "Delete" && el.value === "") {
         if (blocks.length <= 1) return;
         e.preventDefault();
-        const prev = blocks[idx - 1];
         remove(blockId);
-        if (prev && !["image", "divider"].includes(prev.type)) {
-          setTimeout(() => focusBlock(prev.id, "end"), 30);
-        }
         return;
       }
 
@@ -576,11 +691,13 @@ export default function ArticleComposer() {
       .map((b) =>
         b.type === "image"   ? { type: "image", url: b.url, caption: b.caption?.trim() || undefined } :
         b.type === "divider" ? { type: "divider" } :
+        b.type === "video"   ? { type: "video", videoId: b.videoId, videoTitle: b.videoTitle, videoThumb: b.videoThumb } :
         { type: b.type, value: (b.value || "").trim() }
       )
       .filter((b) =>
         b.type === "image"   ? !!(b as { url?: string }).url :
         b.type === "divider" ? true :
+        b.type === "video"   ? !!(b as { videoId?: string }).videoId :
         !!((b as { value?: string }).value)
       );
     if (clean.length === 0) return setErr("Add some content before publishing.");
@@ -738,6 +855,40 @@ export default function ArticleComposer() {
                     placeholder="Caption…"
                     className="w-full bg-transparent text-center text-xs text-mist/50 placeholder-mist/25 outline-none focus:text-mist" />
                 </div>
+              ) : b.type === "video" ? (
+                b.videoId ? (
+                  <div className="relative overflow-hidden rounded-xl border border-edge cursor-pointer"
+                    onClick={() => setFocusedId(b.id)}>
+                    {b.videoThumb ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={b.videoThumb} alt={b.videoTitle || ""} className="w-full max-h-[420px] object-cover" />
+                    ) : (
+                      <div className="w-full aspect-video bg-edge/30 flex items-center justify-center">
+                        <span className="text-5xl text-mist/40">▶</span>
+                      </div>
+                    )}
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="h-14 w-14 rounded-full bg-black/60 backdrop-blur flex items-center justify-center">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="white"><path d="M6 4l12 6-12 6z"/></svg>
+                      </div>
+                    </div>
+                    {b.videoTitle && (
+                      <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 to-transparent px-4 py-3">
+                        <p className="text-sm font-semibold text-white truncate">{b.videoTitle}</p>
+                      </div>
+                    )}
+                  </div>
+                ) : uid ? (
+                  <VideoPickerBlock
+                    supabase={supabase}
+                    uid={uid}
+                    onPick={(v) => setBlocks((bs) => bs.map((bl) =>
+                      bl.id === b.id
+                        ? { ...bl, videoId: v.id, videoTitle: v.title, videoThumb: v.thumbnail ?? undefined }
+                        : bl
+                    ))}
+                  />
+                ) : null
               ) : b.type === "quote" ? (
                 <div className={["border-l-2 pl-4 transition", focused ? "border-teal" : "border-edge/40"].join(" ")}>
                   <AutoText
@@ -747,7 +898,6 @@ export default function ArticleComposer() {
                     className={blockClass(b.type)}
                     onFocus={() => setFocusedId(b.id)}
                     onBlur={() => setTimeout(() => setFocusedId((id) => id === b.id ? null : id), 150)}
-                    onEnter={() => insertAfter(b.id)}
                     refCallback={(el) => { if (el) blockRefs.current.set(b.id, el); else blockRefs.current.delete(b.id); }}
                     onKeyDown={makeKeyHandler(b.id, i)}
                     onPaste={makePasteHandler(b.id, i)}
@@ -766,7 +916,6 @@ export default function ArticleComposer() {
                   className={blockClass(b.type)}
                   onFocus={() => setFocusedId(b.id)}
                   onBlur={() => setTimeout(() => setFocusedId((id) => id === b.id ? null : id), 150)}
-                  onEnter={() => insertAfter(b.id)}
                   refCallback={(el) => { if (el) blockRefs.current.set(b.id, el); else blockRefs.current.delete(b.id); }}
                   onKeyDown={makeKeyHandler(b.id, i)}
                   onPaste={makePasteHandler(b.id, i)}
@@ -782,9 +931,41 @@ export default function ArticleComposer() {
         )}
       </div>
 
-      {/* Add block bar */}
-      <div className="border-t border-edge/30 pt-3">
-        <AddBar onAdd={addBlock} uploading={uploading} />
+      {/* Floating cMenu toolbar */}
+      <div className="sticky bottom-0 z-10 flex justify-center pt-4 pb-1">
+        <div className="flex items-center gap-0.5 rounded-full border border-edge bg-ink/95 px-2 py-1 shadow-xl backdrop-blur-sm">
+          {BLOCK_TYPES.map(({ type, icon, label }) => (
+            <button key={type} onClick={() => { addBlock(type); setMenuOpen(false); }}
+              title={label} disabled={uploading}
+              className="flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-bold text-mist/60 transition hover:bg-edge/40 hover:text-foam disabled:opacity-30">
+              {icon}
+            </button>
+          ))}
+          <span className="mx-1.5 h-3 w-px bg-edge/40" />
+          <div className="relative">
+            <button onClick={() => setMenuOpen((o) => !o)} title="More"
+              className="flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold text-mist/40 transition hover:bg-edge/40 hover:text-foam">
+              •••
+            </button>
+            {menuOpen && (
+              <div className="absolute bottom-full right-0 mb-2 min-w-[160px] overflow-hidden rounded-xl border border-edge bg-ink/95 py-1 shadow-xl backdrop-blur-sm"
+                onMouseLeave={() => setMenuOpen(false)}>
+                <p className="px-3 pt-1 pb-0.5 text-[10px] font-semibold uppercase tracking-wider text-mist/40">Editor</p>
+                {uploading && (
+                  <div className="px-3 py-2 text-xs text-mist">Uploading…</div>
+                )}
+                <button onClick={() => { setBlocks([{ id: rid(), type: "text", value: "" }]); setMenuOpen(false); }}
+                  className="w-full px-3 py-2 text-left text-xs text-mist transition hover:bg-edge/40 hover:text-loonred">
+                  Clear body
+                </button>
+                <button onClick={() => { saveDraft(); setMenuOpen(false); }}
+                  className="w-full px-3 py-2 text-left text-xs text-mist transition hover:bg-edge/40 hover:text-foam">
+                  Save draft
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {err && <p className="text-sm text-loonred">{err}</p>}

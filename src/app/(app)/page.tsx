@@ -5,6 +5,7 @@ import VideoRow, { type FeedVideo } from "@/components/home/VideoRow";
 import PostCard, { type CardPost } from "@/components/home/PostCard";
 import ComingSoon from "@/components/home/ComingSoon";
 import RealShelf, { type ShelfVideo } from "@/components/home/RealShelf";
+import ArticleCard, { type CardArticle } from "@/components/home/ArticleCard";
 
 export const dynamic = "force-dynamic";
 
@@ -95,6 +96,37 @@ export default async function Home() {
     };
   }
 
+  // Latest published article.
+  const { data: latestArticle } = await supabase
+    .from("articles")
+    .select("id, owner, title, cover_url, blocks, created_at")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  let articleCard: CardArticle | null = null;
+  if (latestArticle) {
+    const { data: aa } = await supabase
+      .from("profiles")
+      .select("username, full_name, avatar_url")
+      .eq("id", latestArticle.owner)
+      .maybeSingle();
+    const secs = Math.max(1, Math.floor((Date.now() - new Date(latestArticle.created_at).getTime()) / 1000));
+    const agoLabel = secs < 3600 ? `${Math.floor(secs / 60) || 1}m` : secs < 86400 ? `${Math.floor(secs / 3600)}h` : `${Math.floor(secs / 86400)}d`;
+    const wordCount = ((latestArticle.blocks ?? []) as { value?: string }[])
+      .reduce((n, b) => n + (b.value ?? "").split(/\s+/).filter(Boolean).length, 0);
+    articleCard = {
+      id: latestArticle.id,
+      title: latestArticle.title,
+      cover_url: latestArticle.cover_url ?? null,
+      author: aa?.full_name || aa?.username || "someone",
+      handle: aa?.username || "user",
+      avatar: aa?.avatar_url ?? null,
+      agoLabel,
+      readMinutes: Math.max(1, Math.round(wordCount / 200)),
+    };
+  }
+
   // Real category shelves (from videos.category). Empty -> "coming soon".
   const { data: catRows } = await supabase
     .from("videos")
@@ -130,6 +162,7 @@ export default async function Home() {
         <div className="space-y-6">
           {feedVideos[0] && <VideoRow video={feedVideos[0]} />}
           {postCard ? <PostCard post={postCard} /> : <ComingSoon label="No posts yet — start the conversation" />}
+          {articleCard && <ArticleCard article={articleCard} />}
           {feedVideos.slice(1).map((v) => (
             <VideoRow key={v.id} video={v} />
           ))}
