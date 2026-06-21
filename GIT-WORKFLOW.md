@@ -5,68 +5,59 @@
 ## Branch Structure
 
 ```
-main              ← production (loonytube.tv) — Vercel auto-deploys
-└── dev           ← staging — merges into main to ship
-    ├── features  ← new pages, components, functionality
-    ├── fixes     ← bug fixes (non-urgent)
-    ├── security  ← RLS, auth, signed URLs, hardening
-    ├── refactor  ← restructures, no behavior change
-    ├── docs      ← README, changelog, SOP updates
-    └── chore     ← dependencies, lockfile, config
-
-hotfix            ← emergency only, branches off main directly
+main          ← production (Vercel auto-deploys)
+dev           ← staging (Vercel preview URL)
+  └─ feature/xyz
+  └─ fix/xyz
+  └─ chore/xyz
+  └─ refactor/xyz
+  └─ security/xyz
+  └─ docs/xyz
+hotfix/xyz    ← branches off main directly (emergencies only)
 ```
-
-The category branches (`features`, `fixes`, etc.) are **permanent** — they never get deleted. Work on them, merge into `dev`, and the branch stays ready for the next task.
 
 ---
 
-## Daily Workflow
-
-### 1. Pick your branch and pull latest
+## Daily Workflow — New Feature or Fix
 
 ```powershell
-git checkout features    # or fixes, security, refactor, docs, chore
-git pull origin features
-```
-
-### 2. Do your work, commit often
-
-```powershell
-git add .
-git commit -m "feat: add shorts feed vertical scroll"
-git push origin features
-# Vercel auto-creates a preview URL for every branch
-```
-
-### 3. Merge into dev when ready
-
-```powershell
+# 1. Always start from dev
 git checkout dev
-git pull origin dev
-git merge features
+git pull origin dev          # get latest before branching
+
+# 2. Create your branch
+git checkout -b feature/channel-page
+
+# 3. Do your work, commit often
+git add .
+git commit -m "feat: add public channel page skeleton"
+git commit -m "feat: wire follow button on channel page"
+
+# 4. Push your branch
+git push origin feature/channel-page
+# Vercel auto-creates a preview URL for this branch
+
+# 5. When done, merge into dev
+git checkout dev
+git merge feature/channel-page
 git push origin dev
-# Test on the dev Vercel preview URL before shipping
-```
+# Test on the dev preview URL
 
-### 4. Sync category branch with latest dev before starting new work
-
-```powershell
-git checkout dev && git pull origin dev
-git checkout features
-git merge dev
+# 6. Clean up the feature branch
+git branch -d feature/channel-page
+git push origin --delete feature/channel-page
 ```
 
 ---
 
 ## Shipping to Production
 
-Only when `dev` is tested and stable:
-
 ```powershell
+# Only when dev is tested and stable
 git checkout main
 git merge dev
-git push origin main        # Vercel auto-deploys to loonytube.tv
+git push origin main
+# Vercel auto-deploys to production
 
 # Tag the release
 git tag v0.16.0
@@ -77,31 +68,60 @@ git push origin v0.16.0
 
 ## Hotfix — Production is Broken
 
-The one exception to the normal flow. Branches off `main`, not `dev`.
-
 ```powershell
-# 1. Branch off main
+# 1. Branch off MAIN (not dev)
 git checkout main
 git pull origin main
-git checkout -b hotfix
+git checkout -b hotfix/signup-broken
 
 # 2. Fix it
 git add .
-git commit -m "fix: describe what broke"
+git commit -m "fix: signup broken due to guard trigger"
 
 # 3. Merge to main → goes live
 git checkout main
-git merge hotfix
+git merge hotfix/signup-broken
 git push origin main
 
-# 4. Backport to dev → keeps branches in sync
+# 4. Merge to dev → keeps them in sync
 git checkout dev
-git merge hotfix
+git merge hotfix/signup-broken
 git push origin dev
 
-# 5. Tag if significant
+# 5. Tag it if significant
 git tag v0.16.1
 git push origin v0.16.1
+
+# 6. Clean up
+git branch -d hotfix/signup-broken
+git push origin --delete hotfix/signup-broken
+```
+
+---
+
+## Branch Naming
+
+| Prefix | Use for |
+|--------|---------|
+| `feature/` | New functionality |
+| `fix/` | Bug fixes (non-urgent) |
+| `hotfix/` | Urgent production fixes |
+| `chore/` | Dependencies, lockfile, config |
+| `refactor/` | Code restructure, no behavior change |
+| `security/` | Auth, RLS, signed URLs, hardening |
+| `docs/` | README, changelog, SOP updates |
+
+Examples:
+```
+feature/channel-page
+feature/monetization-tiers
+fix/thumbnail-scrubber
+fix/nav-mobile-search
+hotfix/upload-api-broken
+chore/regenerate-lockfile
+refactor/comment-unification
+security/webhook-hmac-verify
+docs/update-readme
 ```
 
 ---
@@ -109,6 +129,8 @@ git push origin v0.16.1
 ## Commit Message Format
 
 ```
+type: short description in present tense
+
 feat:     new feature
 fix:      bug fix
 chore:    tooling, deps, config
@@ -119,30 +141,30 @@ docs:     documentation only
 
 Examples:
 ```
-feat: add public channel page
+feat: add processing toast after video upload
 fix: cf thumbnail url format seconds not percent
 chore: regenerate pnpm lockfile
 security: enforce signed playback for private videos
-docs: update readme to reflect v0.16
+docs: update readme to reflect v0.15
 ```
 
 ---
 
 ## Versioning — When to Bump
 
-| Change | Bump | Example |
-|--------|------|---------|
+| Change | Version bump | Example |
+|--------|-------------|---------|
 | Bug fix, no new features | PATCH | `v0.15.0` → `v0.15.1` |
 | New feature, nothing breaks | MINOR | `v0.15.0` → `v0.16.0` |
 | Breaking change | MAJOR | `v0.x` → `v1.0.0` |
 
-**Current stage:** `0.x` = pre-alpha.
+**Current stage:** `0.x` = pre-alpha, anything goes.
 
 ```
-0.x.y        → now (active development)
-1.0.0-alpha  → invite-only beta with real users
-1.0.0-beta   → broader access, monetization live
-1.0.0        → public launch
+0.x.y          → now (active development)
+1.0.0-alpha    → invite-only beta with real users
+1.0.0-beta     → broader access, monetization live
+1.0.0          → public launch
 ```
 
 ---
@@ -156,15 +178,18 @@ git branch
 # What's changed?
 git status
 
-# See the branch graph
-git log --oneline --graph --all
+# Pull latest dev before branching
+git pull origin dev
+
+# See all branches
+git branch -a
 
 # Undo last commit (keep changes)
 git reset --soft HEAD~1
 
 # Stash work in progress before switching branches
 git stash
-git stash pop
+git stash pop          # bring it back
 
 # See recent commits
 git log --oneline -10
@@ -175,7 +200,7 @@ git log --oneline -10
 ## Rules
 
 1. **Never commit directly to `main`** — always go through `dev`.
-2. **Pull the category branch before starting work** — avoids merge conflicts.
-3. **Merge category branch → `dev` before shipping** — staging is the gate.
-4. **Hotfixes merge to both `main` AND `dev`** — never skip `dev` or the fix gets re-broken on next deploy.
-5. **Tag every production merge** — keeps the changelog anchored to real commits.
+2. **Always `git pull origin dev` before creating a new branch** — avoids merge conflicts.
+3. **Hotfixes merge to both `main` AND `dev`** — never skip `dev` or the fix gets re-broken next deploy.
+4. **Tag every production merge** — keeps the changelog anchored to real commits.
+5. **Delete branches after merging** — keeps the repo clean.
