@@ -76,6 +76,7 @@ export default function Nav({ onLogoClick }: { onLogoClick?: () => void }) {
   const [email, setEmail] = useState<string | null>(null);
   const [name, setName] = useState<string | null>(null);
   const [avatar, setAvatar] = useState<string | null>(null);
+  const [username, setUsername] = useState<string | null>(null);
   const [role, setRole] = useState<string | null>(null);
   const [menu, setMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -91,6 +92,7 @@ export default function Nav({ onLogoClick }: { onLogoClick?: () => void }) {
           .maybeSingle();
         setName(p?.full_name || p?.username || data.user.email || null);
         setAvatar(p?.avatar_url ?? null);
+        setUsername(p?.username ?? null);
         setRole(p?.role ?? null);
       }
     });
@@ -138,7 +140,7 @@ export default function Nav({ onLogoClick }: { onLogoClick?: () => void }) {
           {isStudio && <span className="ml-1 mr-1 text-lg font-bold tracking-tight text-foam">Studio</span>}
           <nav className="ml-1 hidden items-center gap-1 md:flex">
             <NavIcon k="home" href="/" label="Home" active={is("/")} />
-            <NavIcon k="explore" label="Explore" soon />
+            <NavIcon k="explore" href="/explore" label="Explore" active={pathname.startsWith("/explore")} />
             <NavIcon k="create" label="Create" onClick={() => openCreate()} active={pathname === "/create"} />
             <NavIcon k="chat" href="/threads" label="Messages" active={pathname.startsWith("/messages")} />
             <NavIcon k="profile" href="/dashboard" label="Dashboard" active={pathname.startsWith("/dashboard")} />
@@ -168,10 +170,11 @@ export default function Nav({ onLogoClick }: { onLogoClick?: () => void }) {
               </button>
               {menu && (
                 <div className="absolute right-0 mt-2 w-56 overflow-hidden rounded-xl border border-edge bg-panel shadow-xl">
-                  <div className="border-b border-edge px-4 py-3">
-                    <p className="truncate text-sm font-semibold text-foam">{name}</p>
-                    <p className="truncate text-xs text-mist">{email}</p>
-                  </div>
+                  <Link href={username ? `/@${username}` : "/dashboard"} onClick={() => setMenu(false)}
+                    className="block border-b border-edge px-4 py-3 hover:bg-edge/40 transition">
+                    <p className="truncate text-sm font-semibold text-teal">{name}</p>
+                    <p className="truncate text-xs text-mist">@{username ?? email}</p>
+                  </Link>
                   <button onClick={() => { setMenu(false); openCreate("video"); }} className="block w-full px-4 py-2.5 text-left text-sm text-foam hover:bg-edge/60">
                     Upload a video
                   </button>
