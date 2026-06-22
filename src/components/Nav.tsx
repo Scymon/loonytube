@@ -141,7 +141,7 @@ export default function Nav({ onLogoClick }: { onLogoClick?: () => void }) {
             <NavIcon k="explore" label="Explore" soon />
             <NavIcon k="create" label="Create" onClick={() => openCreate()} active={pathname === "/create"} />
             <NavIcon k="chat" href="/threads" label="Messages" active={pathname.startsWith("/messages")} />
-            <NavIcon k="profile" label="Profile" soon />
+            <NavIcon k="profile" href="/dashboard" label="Dashboard" active={pathname.startsWith("/dashboard")} />
           </nav>
         </div>
 
@@ -175,6 +175,9 @@ export default function Nav({ onLogoClick }: { onLogoClick?: () => void }) {
                   <button onClick={() => { setMenu(false); openCreate("video"); }} className="block w-full px-4 py-2.5 text-left text-sm text-foam hover:bg-edge/60">
                     Upload a video
                   </button>
+                  <Link href="/dashboard" onClick={() => setMenu(false)} className="block px-4 py-2.5 text-sm text-foam hover:bg-edge/60">
+                    My Dashboard
+                  </Link>
                   <Link href="/studio" onClick={() => setMenu(false)} className="block px-4 py-2.5 text-sm text-foam hover:bg-edge/60">
                     Creator Studio
                   </Link>
