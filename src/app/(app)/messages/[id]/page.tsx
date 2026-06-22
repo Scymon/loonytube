@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
-export default function MessageConvoRedirect({ params }: { params: { id: string } }) {
-  redirect(`/threads/dms/${params.id}`);
+export default async function MessageConvoRedirect({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  redirect(`/threads/dms/${id}`);
 }
