@@ -80,7 +80,7 @@ type Props = {
   followerCount: number;
   isOwnChannel: boolean;
   isFollowing: boolean;
-  notifLevel: string;
+  notifLevel: "all" | "personalized" | "none";
   signedIn: boolean;
 };
 
