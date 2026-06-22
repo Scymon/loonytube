@@ -7,7 +7,7 @@ import { nfmt } from "@/lib/format";
 export const dynamic = "force-dynamic";
 
 type Prof = { id: string; username: string | null; full_name: string | null; avatar_url: string | null };
-const TABS = [["all", "All"], ["videos", "Videos"], ["posts", "Posts"], ["people", "People"], ["tags", "Tags"]] as const;
+const TABS = [["all", "All"], ["videos", "Videos"], ["posts", "Posts"], ["people", "Channels"], ["tags", "Tags"]] as const;
 
 export default async function SearchPage({ searchParams }: { searchParams: Promise<{ q?: string; tab?: string }> }) {
   const { q = "", tab = "all" } = await searchParams;
@@ -146,7 +146,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
           )}
           {people.length > 0 && (
             <section className="space-y-3">
-              {tab === "all" && <h2 className="text-xs font-bold uppercase tracking-wide text-mist">People</h2>}
+              {tab === "all" && <h2 className="text-xs font-bold uppercase tracking-wide text-mist">Channels</h2>}
               {people.map((p) => (
                 <PeopleRow key={p.id} name={p.full_name || p.username || "user"} handle={p.username || "user"} avatar={p.avatar_url}
                   action={<FollowUserButton targetId={p.id} signedIn={!!user} initialFollowing={following.has(p.id)} variant="solid" />} />
@@ -182,7 +182,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
         )}
         {(suggest ?? []).length > 0 && (
           <section>
-            <h2 className="mb-3 border-l-2 border-teal pl-2 text-[12px] font-bold uppercase tracking-wide text-foam">People you might like</h2>
+            <h2 className="mb-3 border-l-2 border-teal pl-2 text-[12px] font-bold uppercase tracking-wide text-foam">Channels you might like</h2>
             <div className="space-y-3">
               {(suggest as Prof[]).map((p) => (
                 <PeopleRow key={p.id} name={p.full_name || p.username || "user"} handle={p.username || "user"} avatar={p.avatar_url}

@@ -3,6 +3,7 @@ import { cfStreamToken } from "@/lib/cloudflare";
 import StreamPlayer from "@/components/StreamPlayer";
 import LikeButton from "@/components/LikeButton";
 import Comments from "@/components/Comments";
+import WatchClient from "@/components/watch/WatchClient";
 import ProcessingWatcher from "@/components/ProcessingWatcher";
 
 export const dynamic = "force-dynamic";
@@ -59,7 +60,10 @@ export default async function Watch({
             {prof?.username ?? "someone"} · {video.views} views
           </p>
         </div>
-        <LikeButton videoId={id} />
+        <div className="flex items-center gap-2">
+          <WatchClient videoId={id} />
+          <LikeButton videoId={id} />
+        </div>
       </div>
       {video.description && (
         <p className="mt-4 whitespace-pre-wrap rounded-lg border border-edge bg-panel p-4 text-sm text-gray-300">
