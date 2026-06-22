@@ -45,7 +45,7 @@ export default async function Home() {
 
   // Batch-resolve creator names/avatars (decoupled query — avoids the FK-embed bug).
   const ids = [...new Set([heroRow?.owner, ...feed.map((v) => v.owner)].filter(Boolean) as string[])];
-  const who = new Map<string, { name: string; avatar: string | null }>();
+  const who = new Map<string, { name: string; avatar: string | null; handle: string }>();
   if (ids.length) {
     const { data: profs } = await supabase
       .from("profiles")

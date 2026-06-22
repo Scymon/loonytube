@@ -15,7 +15,7 @@ const SDK_URL = "https://embed.cloudflarestream.com/embed/sdk.latest.js";
 
 function iframeSrc(id: string, poster?: string) {
   const p = poster ? `&poster=${encodeURIComponent(poster)}` : "";
-  return `https://iframe.cloudflarestream.com/${id}?autoplay=true&muted=true&controls=false&preload=auto${p}`;
+  return `https://iframe.cloudflarestream.com/${id}?autoplay=true&muted=true&loop=true&controls=false&preload=auto${p}`;
 }
 
 function fmtTime(s: number) {
@@ -108,8 +108,8 @@ export default function DashHero({ featuredVideo, bannerUrl, videos }: Props) {
         playerRef.current = p;
         p.muted = mutedRef.current; // restore mute state across video changes
         p.addEventListener("play",  () => { setIsPaused(false); p.muted = mutedRef.current; });
-        p.addEventListener("ended", () => setVidIdx(i => (i + 1) % playlist.length));
         p.addEventListener("pause", () => setIsPaused(true));
+        p.addEventListener("ended", () => setVidIdx(i => (i + 1) % playlist.length));
         p.addEventListener("timeupdate", () => {
           const t = p.currentTime ?? 0;
           const dur = p.duration ?? 0;
@@ -124,14 +124,13 @@ export default function DashHero({ featuredVideo, bannerUrl, videos }: Props) {
         p.addEventListener("durationchange", () => { if (p.duration > 0) setDuration(p.duration); });
         p.addEventListener("loadedmetadata", () => {
           if (p.duration > 0) setDuration(p.duration);
-          p.muted = mutedRef.current;
+          p.muted = mutedRef.current; // override iframe URL's muted=true
           if (vid) {
             const saved = localStorage.getItem(`loonytube:resume:${vid}`);
             if (saved) {
               const t = parseFloat(saved);
               if (t > 2) {
                 p.currentTime = t;
-                // Retry 400ms later — Stream sometimes needs the video to buffer before seeking
                 setTimeout(() => { if (Math.abs(p.currentTime - t) > 2) p.currentTime = t; }, 400);
               }
             }
@@ -239,9 +238,9 @@ export default function DashHero({ featuredVideo, bannerUrl, videos }: Props) {
           )}
         </div>
         <div className="absolute bottom-2 left-0 right-0 px-4">
-          <Link href={`/watch/${featuredVideo.id}`} onClick={e => e.stopPropagation()}
+          <Link href={`/watch/${featuredVideo?.id ?? ""}`} onClick={e => e.stopPropagation()}
             className="block text-xl font-bold text-white drop-shadow line-clamp-1 hover:underline w-fit">
-            {featuredVideo.title}
+            {featuredVideo?.title}
           </Link>
           <Link href={`/${currentVideo?.channelHandle ?? ""}`} onClick={e => e.stopPropagation()}
             className="mt-1 flex items-center gap-2 w-fit">
