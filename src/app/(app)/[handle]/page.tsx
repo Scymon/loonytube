@@ -167,7 +167,7 @@ export default async function ChannelPage({
       </div>
 
       {/* Avatar + header row */}
-      <div className="-mt-12 flex flex-wrap items-end justify-between gap-4 pb-5">
+      <div className="-mt-12 relative z-10 flex flex-wrap items-end justify-between gap-4 pb-5">
         <div className="flex items-end gap-4">
           <div
             className="rounded-full"

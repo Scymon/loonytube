@@ -2,22 +2,17 @@
 
 import { useEffect, useRef, useState } from "react";
 import Avatar from "@/components/Avatar";
+import FollowUserButton from "@/components/discovery/FollowUserButton";
 import Link from "next/link";
-
-export type FeaturedVideo = {
-  id: string; title: string; thumbnail: string | null;
-  channelName: string; channelHandle: string; channelAvatar: string | null;
-  isLive?: boolean;
-};
-type Props = { featuredVideo: FeaturedVideo | null; bannerUrl?: string | null };
+import { nfmt } from "@/lib/format";
 
 const SDK_URL = "https://embed.cloudflarestream.com/embed/sdk.latest.js";
+const BANNER_FALLBACK = "linear-gradient(120deg,#0a1a2c 0%,#0d2b3e 40%,#103244 70%,#0a1622 100%)";
 
 function iframeSrc(id: string, poster?: string) {
   const p = poster ? `&poster=${encodeURIComponent(poster)}` : "";
   return `https://iframe.cloudflarestream.com/${id}?autoplay=true&muted=true&loop=true&controls=false&preload=auto${p}`;
 }
-
 function fmtTime(s: number) {
   if (!s || !isFinite(s)) return "0:00";
   const m = Math.floor(s / 60);
@@ -73,8 +68,26 @@ function CtrlBtn({ onClick, title, children }: {
   );
 }
 
+// ── Types ─────────────────────────────────────────────────────────────────────
+type VideoInfo = { id: string; title: string; thumbnail: string | null };
+type ProfileInfo = {
+  id: string; username: string; full_name: string | null;
+  avatar_url: string | null; banner_url: string | null;
+};
+type Props = {
+  video: VideoInfo | null;
+  profile: ProfileInfo;
+  followerCount: number;
+  isOwnChannel: boolean;
+  isFollowing: boolean;
+  notifLevel: string;
+  signedIn: boolean;
+};
+
 // ── Component ─────────────────────────────────────────────────────────────────
-export default function DashHero({ featuredVideo, bannerUrl }: Props) {
+export default function ChannelHero({
+  video, profile, followerCount, isOwnChannel, isFollowing, notifLevel, signedIn,
+}: Props) {
   const [isTheatre, setIsTheatre]     = useState(false);
   const [muted, setMuted]             = useState(true);
   const [isPaused, setIsPaused]       = useState(false);
@@ -83,7 +96,9 @@ export default function DashHero({ featuredVideo, bannerUrl }: Props) {
   const iframeRef    = useRef<HTMLIFrameElement>(null);
   const playerRef    = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const lastSavedRef  = useRef(0);
+  const lastSavedRef = useRef(0);
+
+  const displayName = profile.full_name || profile.username || "Channel";
 
   useEffect(() => {
     function initPlayer() {
@@ -98,9 +113,9 @@ export default function DashHero({ featuredVideo, bannerUrl }: Props) {
           setCurrentTime(t);
           if (dur > 0) setDuration(dur);
           const sec = Math.floor(t);
-          if (featuredVideo && sec > 0 && sec !== lastSavedRef.current) {
+          if (video && sec > 0 && sec !== lastSavedRef.current) {
             lastSavedRef.current = sec;
-            localStorage.setItem(`loonytube:resume:${featuredVideo.id}`, String(sec));
+            localStorage.setItem(`loonytube:resume:${video.id}`, String(sec));
           }
         });
         p.addEventListener("durationchange", () => { if (p.duration > 0) setDuration(p.duration); });
@@ -137,25 +152,18 @@ export default function DashHero({ featuredVideo, bannerUrl }: Props) {
     else document.exitFullscreen();
   }
 
-  /* ── Empty state ── */
-  if (!featuredVideo) {
+  /* ── No video: static banner ── */
+  if (!video) {
     return (
-      <div className="relative w-full overflow-hidden rounded-b-2xl" style={{ aspectRatio: "16/5", minHeight: 200 }}>
-        {bannerUrl
-          // eslint-disable-next-line @next/next/no-img-element
-          ? <img src={bannerUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
-          : <div className="absolute inset-0 bg-gradient-to-br from-[#0a1a2c] via-[#0d2b3e] to-[#0a1622]" />}
-        <div className="absolute inset-0 bg-black/50" />
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
-          <p className="text-lg font-semibold text-foam/80">Nothing queued up yet</p>
-          <p className="text-sm text-mist">Follow channels or like videos to fill this space</p>
-        </div>
+      <div className="relative w-full overflow-hidden rounded-b-2xl" style={{ minHeight: 144 }}
+        style={profile.banner_url ? { backgroundImage: `url(${profile.banner_url})`, backgroundSize: "cover", backgroundPosition: "center" } : { background: BANNER_FALLBACK }}>
+
       </div>
     );
   }
 
-  const pct = duration > 0 ? (currentTime / duration) * 100 : 0;
-  const poster = featuredVideo.thumbnail ?? undefined;
+  const pct    = duration > 0 ? (currentTime / duration) * 100 : 0;
+  const poster = video.thumbnail ?? undefined;
 
   return (
     <div ref={containerRef}
@@ -163,9 +171,9 @@ export default function DashHero({ featuredVideo, bannerUrl }: Props) {
       style={isTheatre ? { aspectRatio: "16/9", maxHeight: "80vh" } : { aspectRatio: "16/5", minHeight: 200 }}
       onClick={isTheatre ? () => togglePlayPause() : () => enterTheatre()}>
 
-      {/* Single iframe — src never changes */}
+      {/* Single iframe */}
       <div className="absolute inset-0 overflow-hidden">
-        <iframe ref={iframeRef} src={iframeSrc(featuredVideo.id, poster)}
+        <iframe ref={iframeRef} src={iframeSrc(video.id, poster)}
           allow="autoplay; fullscreen; picture-in-picture" allowFullScreen
           style={{
             position: "absolute", top: "50%", left: "50%",
@@ -177,59 +185,65 @@ export default function DashHero({ featuredVideo, bannerUrl }: Props) {
           }} />
       </div>
 
-      {/* ── Ambient overlay ── */}
+      {/* ── Ambient overlay: channel identity ── */}
       {!isTheatre && (<>
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-black/10 pointer-events-none" />
-        <div className="absolute top-4 left-4 flex items-center gap-2 pointer-events-none">
-          <span className="rounded-full bg-teal/90 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-ink">
-            Now Playing
-          </span>
-          {featuredVideo.isLive && (
-            <span className="rounded px-2 py-1 text-[11px] font-bold bg-loonred text-white">LIVE</span>
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/10 pointer-events-none" />
+
+        {/* Channel info — bottom-left */}
+        <div className="absolute bottom-3 left-4 flex items-center gap-3 pointer-events-none">
+          <Avatar name={displayName} src={profile.avatar_url} size={52} ring={true} />
+          <div>
+            <p className="text-lg font-bold text-white drop-shadow leading-tight">{displayName}</p>
+            <p className="text-xs text-foam/80">{nfmt(followerCount)} subscribers</p>
+          </div>
+        </div>
+
+        {/* Follow / Edit — bottom-right, clear of top-right controls */}
+        <div className="absolute bottom-3 right-4 pointer-events-auto" onClick={e => e.stopPropagation()}>
+          {isOwnChannel ? (
+            <a href="/studio/profile"
+              className="inline-flex rounded-full border border-white/30 bg-black/50 px-4 py-1.5 text-sm font-semibold text-white hover:bg-black/70 transition">
+              Edit channel
+            </a>
+          ) : (
+            <FollowUserButton
+              targetId={profile.id}
+              signedIn={signedIn}
+              initialFollowing={isFollowing}
+              initialNotifLevel={notifLevel}
+              variant="solid"
+            />
           )}
         </div>
-        <div className="absolute bottom-2 left-0 right-0 px-4">
-          <Link href={`/watch/${featuredVideo.id}`} onClick={e => e.stopPropagation()}
-            className="block text-xl font-bold text-white drop-shadow line-clamp-1 hover:underline w-fit">
-            {featuredVideo.title}
-          </Link>
-          <Link href={`/${featuredVideo.channelHandle}`} onClick={e => e.stopPropagation()}
-            className="mt-1 flex items-center gap-2 w-fit">
-            <Avatar name={featuredVideo.channelName} src={featuredVideo.channelAvatar} size={20} />
-            <span className="text-sm font-semibold text-foam/90 hover:underline">{featuredVideo.channelName}</span>
-          </Link>
-        </div>
-        {/* Thin progress bar — very bottom edge */}
+
+        {/* Thin progress bar — bottom edge */}
         <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-white/20 pointer-events-none z-10">
           <div className="h-full bg-teal/90 transition-none" style={{ width: `${pct}%` }} />
         </div>
       </>)}
 
-      {/* ── Theatre hover overlay: title + playhead + controls ── */}
+      {/* ── Theatre hover overlay ── */}
       {isTheatre && (
         <div className="absolute bottom-0 left-0 right-0 pointer-events-none
           bg-gradient-to-t from-black/85 via-black/40 to-transparent px-4 pb-4 pt-24
           opacity-0 group-hover:opacity-100 transition-opacity duration-200">
 
-          {/* Title + channel */}
-          <Link href={`/watch/${featuredVideo.id}`} onClick={e => e.stopPropagation()}
+          {/* Video title + channel */}
+          <Link href={`/watch/${video.id}`} onClick={e => e.stopPropagation()}
             className="block text-lg font-bold text-white drop-shadow line-clamp-1 hover:underline w-fit pointer-events-auto">
-            {featuredVideo.title}
+            {video.title}
           </Link>
-          <Link href={`/${featuredVideo.channelHandle}`} onClick={e => e.stopPropagation()}
-            className="mt-1 flex items-center gap-2 w-fit pointer-events-auto">
-            <Avatar name={featuredVideo.channelName} src={featuredVideo.channelAvatar} size={20} />
-            <span className="text-sm font-semibold text-foam/90 hover:underline">{featuredVideo.channelName}</span>
-          </Link>
+          <div className="mt-1 flex items-center gap-2 pointer-events-auto">
+            <Avatar name={displayName} src={profile.avatar_url} size={24} ring={true} />
+            <span className="text-sm font-semibold text-foam/90">{displayName}</span>
+          </div>
 
-          {/* Playhead row: seekbar + time */}
+          {/* Seekbar + time */}
           <div className="mt-3 flex items-center gap-3 pointer-events-auto">
-            {/* Seekable track */}
             <div className="relative h-1.5 flex-1 cursor-pointer" onClick={seekTo}>
               <div className="absolute inset-0 rounded-full bg-white/30" />
               <div className="absolute left-0 top-0 h-full rounded-full bg-white transition-none"
                 style={{ width: `${pct}%` }} />
-              {/* Scrub thumb */}
               <div className="absolute top-1/2 h-3.5 w-3.5 -translate-y-1/2 rounded-full bg-white shadow-md"
                 style={{ left: `calc(${pct}% - 7px)` }} />
             </div>
@@ -238,7 +252,7 @@ export default function DashHero({ featuredVideo, bannerUrl }: Props) {
             </span>
           </div>
 
-          {/* Buttons row */}
+          {/* Buttons */}
           <div className="mt-2 flex items-center gap-2 pointer-events-auto">
             <CtrlBtn onClick={togglePlayPause} title={isPaused ? "Play" : "Pause"}>
               {isPaused ? <IcoPlay /> : <IcoPause />}
@@ -252,7 +266,7 @@ export default function DashHero({ featuredVideo, bannerUrl }: Props) {
         </div>
       )}
 
-      {/* ── Theatre: big play icon when paused ── */}
+      {/* Big play icon when paused */}
       {isTheatre && isPaused && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <div className="grid h-20 w-20 place-items-center rounded-full bg-black/50 text-white">
@@ -261,7 +275,7 @@ export default function DashHero({ featuredVideo, bannerUrl }: Props) {
         </div>
       )}
 
-      {/* ── Controls: top-right ── */}
+      {/* Top-right controls */}
       <div className="absolute top-3 right-3 z-20 flex items-center gap-2">
         {!isTheatre && (<>
           <CtrlBtn onClick={toggleMute} title={muted ? "Unmute" : "Mute"}>

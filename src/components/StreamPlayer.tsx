@@ -7,7 +7,8 @@ import { createClient } from "@/lib/supabase/client";
 export default function StreamPlayer({ uid, token }: { uid: string; token?: string | null }) {
   const supabase = createClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const streamRef = useRef<any>(null);
+  const streamRef    = useRef<any>(null);
+  const lastSavedRef = useRef(0);
   const [portrait, setPortrait] = useState(false);
   const [resumeTime] = useState<number | undefined>(() => {
     if (typeof window === "undefined") return undefined;
@@ -19,6 +20,15 @@ export default function StreamPlayer({ uid, token }: { uid: string; token?: stri
     // Count a view (SECURITY DEFINER RPC, callable by anyone).
     supabase.rpc("increment_views", { vid: uid });
   }, [uid, supabase]);
+
+  function handleTimeUpdate() {
+    const t = streamRef.current?.currentTime ?? 0;
+    const sec = Math.floor(t);
+    if (sec > 0 && sec !== lastSavedRef.current) {
+      lastSavedRef.current = sec;
+      localStorage.setItem(`loonytube:resume:${uid}`, String(sec));
+    }
+  }
 
   // Detect orientation once dimensions are known, so vertical videos get a
   // bounded portrait frame instead of a frame as tall as the video itself.
@@ -46,6 +56,7 @@ export default function StreamPlayer({ uid, token }: { uid: string; token?: stri
           responsive
           streamRef={streamRef}
           onLoadedMetaData={detectOrientation}
+          onTimeUpdate={handleTimeUpdate}
           letterboxColor="#000000"
           startTime={resumeTime}
           className="!static !p-0"
