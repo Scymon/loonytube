@@ -9,6 +9,11 @@ export default function StreamPlayer({ uid, token }: { uid: string; token?: stri
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const streamRef = useRef<any>(null);
   const [portrait, setPortrait] = useState(false);
+  const [resumeTime] = useState<number | undefined>(() => {
+    if (typeof window === "undefined") return undefined;
+    const saved = localStorage.getItem(`loonytube:resume:${uid}`);
+    return saved ? parseFloat(saved) : undefined;
+  });
 
   useEffect(() => {
     // Count a view (SECURITY DEFINER RPC, callable by anyone).
@@ -42,6 +47,7 @@ export default function StreamPlayer({ uid, token }: { uid: string; token?: stri
           streamRef={streamRef}
           onLoadedMetaData={detectOrientation}
           letterboxColor="#000000"
+          startTime={resumeTime}
           className="!static !p-0"
         />
       </div>

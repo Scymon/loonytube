@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Avatar from "@/components/Avatar";
+import Link from "next/link";
 
 export type FeaturedVideo = {
   id: string; title: string; thumbnail: string | null;
@@ -82,6 +83,7 @@ export default function DashHero({ featuredVideo, bannerUrl }: Props) {
   const iframeRef    = useRef<HTMLIFrameElement>(null);
   const playerRef    = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const lastSavedRef  = useRef(0);
 
   useEffect(() => {
     function initPlayer() {
@@ -90,7 +92,14 @@ export default function DashHero({ featuredVideo, bannerUrl }: Props) {
         playerRef.current = p;
         p.addEventListener("play",           () => setIsPaused(false));
         p.addEventListener("pause",          () => setIsPaused(true));
-        p.addEventListener("timeupdate",     () => setCurrentTime(p.currentTime ?? 0));
+        p.addEventListener("timeupdate",     () => {
+          const t = p.currentTime ?? 0;
+          setCurrentTime(t);
+          if (featuredVideo && t - lastSavedRef.current >= 5) {
+            lastSavedRef.current = t;
+            localStorage.setItem(`loonytube:resume:${featuredVideo.id}`, String(Math.floor(t)));
+          }
+        });
         p.addEventListener("durationchange", () => setDuration(p.duration ?? 0));
         p.addEventListener("loadedmetadata", () => setDuration(p.duration ?? 0));
       }
@@ -176,12 +185,16 @@ export default function DashHero({ featuredVideo, bannerUrl }: Props) {
             <span className="rounded px-2 py-1 text-[11px] font-bold bg-loonred text-white">LIVE</span>
           )}
         </div>
-        <div className="absolute bottom-2 left-0 right-0 px-4 pointer-events-none">
-          <p className="text-xl font-bold text-white drop-shadow line-clamp-1">{featuredVideo.title}</p>
-          <div className="mt-1 flex items-center gap-2">
+        <div className="absolute bottom-2 left-0 right-0 px-4">
+          <Link href={`/watch/${featuredVideo.id}`} onClick={e => e.stopPropagation()}
+            className="block text-xl font-bold text-white drop-shadow line-clamp-1 hover:underline w-fit">
+            {featuredVideo.title}
+          </Link>
+          <Link href={`/${featuredVideo.channelHandle}`} onClick={e => e.stopPropagation()}
+            className="mt-1 flex items-center gap-2 w-fit">
             <Avatar name={featuredVideo.channelName} src={featuredVideo.channelAvatar} size={20} />
-            <span className="text-sm font-semibold text-foam/90">{featuredVideo.channelName}</span>
-          </div>
+            <span className="text-sm font-semibold text-foam/90 hover:underline">{featuredVideo.channelName}</span>
+          </Link>
         </div>
         {/* Thin progress bar — very bottom edge */}
         <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-white/20 pointer-events-none z-10">
@@ -196,11 +209,15 @@ export default function DashHero({ featuredVideo, bannerUrl }: Props) {
           opacity-0 group-hover:opacity-100 transition-opacity duration-200">
 
           {/* Title + channel */}
-          <p className="text-lg font-bold text-white drop-shadow line-clamp-1">{featuredVideo.title}</p>
-          <div className="mt-1 flex items-center gap-2">
+          <Link href={`/watch/${featuredVideo.id}`} onClick={e => e.stopPropagation()}
+            className="block text-lg font-bold text-white drop-shadow line-clamp-1 hover:underline w-fit pointer-events-auto">
+            {featuredVideo.title}
+          </Link>
+          <Link href={`/${featuredVideo.channelHandle}`} onClick={e => e.stopPropagation()}
+            className="mt-1 flex items-center gap-2 w-fit pointer-events-auto">
             <Avatar name={featuredVideo.channelName} src={featuredVideo.channelAvatar} size={20} />
-            <span className="text-sm font-semibold text-foam/90">{featuredVideo.channelName}</span>
-          </div>
+            <span className="text-sm font-semibold text-foam/90 hover:underline">{featuredVideo.channelName}</span>
+          </Link>
 
           {/* Playhead row: seekbar + time */}
           <div className="mt-3 flex items-center gap-3 pointer-events-auto">
