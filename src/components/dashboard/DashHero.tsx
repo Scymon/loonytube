@@ -169,10 +169,11 @@ export default function DashHero({ featuredVideo, bannerUrl }: Props) {
           allow="autoplay; fullscreen; picture-in-picture" allowFullScreen
           style={{
             position: "absolute", top: "50%", left: "50%",
-            transform: "translate(-50%,-50%)", width: "100%",
-            height: isTheatre ? "100%" : "56.25vw",
-            minWidth: isTheatre ? undefined : "177.78vh",
-            minHeight: isTheatre ? undefined : "100%",
+            transform: "translate(-50%,-50%)",
+            width: isTheatre ? "177.78vh" : "177.78vw",
+            height: isTheatre ? "100vh" : "56.25vw",
+            minWidth: "100%",
+            minHeight: "100%",
             border: "none", pointerEvents: "none",
           }} />
       </div>
