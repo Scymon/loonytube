@@ -299,7 +299,7 @@ function BlockToolbar({
           </svg>
         </ToolBtn>
         {typeOpen && (
-          <div className="absolute bottom-full left-0 mb-1.5 flex gap-1 rounded-xl border border-edge bg-ink/95 p-1.5 shadow-xl backdrop-blur-sm">
+          <div className="absolute bottom-full right-0 mb-1.5 flex gap-1 rounded-xl border border-edge bg-ink/95 p-1.5 shadow-xl backdrop-blur-sm">
             {BLOCK_TYPES.map((b) => (
               <button
                 key={b.type}
