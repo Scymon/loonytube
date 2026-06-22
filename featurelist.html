@@ -144,7 +144,7 @@ const DATA = [
     {id:"p1-theme", t:"Loonatic theme system", n:"Shared dark + light-blue/teal tokens across the whole Loon Suite. Apply to LoonyTube first.", s:"build"},
     {id:"p1-player", t:"Loonatic custom player", n:"Replace Cloudflare <Stream> with hls.js on the manifest; skinned controls. The whole point of the project.", s:"build"},
     {id:"p1-hmac", t:"Webhook HMAC verification", n:"Validate Webhook-Signature with the stored secret. Currently a TODO.", s:"quick"},
-    {id:"p1-backfill", t:"Backfill NULL duration / thumbnail", n:"Two early manual-flip videos. Re-upload, or fetch details + patch rows.", s:"quick"},
+    {id:"p1-backfill", t:"Backfill NULL duration / thumbnail", n:"Confirmed clean — all rows have duration and thumbnail populated (webhook backfilled automatically).", s:"done", done:true},
     {id:"p1-favicon", t:"Favicon + loon mark", n:"Kills the console 404; first brand touch.", s:"quick"},
     {id:"p1-deploy", t:"Deploy to Vercel", n:"Fixed production URL ends the ephemeral-tunnel webhook pain entirely.", s:"done", done:true},
     {id:"p1-roles", t:"Roles + admin console", n:"superadmin → admin → creator → guest ladder. /admin with feature switches, invite generator, role manager, waitlist viewer.", s:"done", done:true},
