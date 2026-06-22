@@ -62,6 +62,13 @@ const IcoClose = () => (
     <path d="M18 6 6 18M6 6l12 12" />
   </svg>
 );
+const IcoLightbulb = ({ on }: { on: boolean }) => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M9 18h6M10 22h4M12 2a7 7 0 0 1 5 11.9V17H7v-3.1A7 7 0 0 1 12 2z" />
+    {on && <path d="M12 6v2M6.3 6.3l1.4 1.4M17.7 6.3l-1.4 1.4" stroke="currentColor" strokeWidth="2" />}
+  </svg>
+);
+
 function CtrlBtn({ onClick, title, children }: {
   onClick: (e: React.MouseEvent) => void; title: string; children: React.ReactNode;
 }) {
@@ -78,6 +85,7 @@ export default function DashHero({ featuredVideo, bannerUrl }: Props) {
   const [isTheatre, setIsTheatre]     = useState(false);
   const [muted, setMuted]             = useState(true);
   const [isPaused, setIsPaused]       = useState(false);
+  const [lightsOut, setLightsOut]      = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration]       = useState(0);
   const iframeRef    = useRef<HTMLIFrameElement>(null);
@@ -158,9 +166,17 @@ export default function DashHero({ featuredVideo, bannerUrl }: Props) {
   const poster = featuredVideo.thumbnail ?? undefined;
 
   return (
+    <>
+      {/* Lights-out overlay — fixed, dims everything behind the theatre player */}
+      {lightsOut && isTheatre && (
+        <div
+          className="fixed inset-0 z-[51] bg-black/85 transition-opacity duration-300"
+          onClick={() => setLightsOut(false)}
+        />
+      )}
     <div ref={containerRef}
-      className={`group relative w-full overflow-hidden rounded-b-2xl transition-all duration-300 ${isTheatre ? "bg-black cursor-default" : "cursor-pointer"}`}
-      style={isTheatre ? { aspectRatio: "16/9", maxHeight: "80vh" } : { aspectRatio: "16/5", minHeight: 200 }}
+      className={`group relative w-full overflow-hidden rounded-b-2xl transition-all duration-300 ${isTheatre ? "bg-black cursor-default z-[52]" : "cursor-pointer"}`}
+      style={isTheatre ? { height: "min(56.25vw, 82vh)", width: "100%" } : { aspectRatio: "16/5", minHeight: 200 }}
       onClick={isTheatre ? () => togglePlayPause() : () => enterTheatre()}>
 
       {/* Single iframe — src never changes */}
@@ -263,16 +279,27 @@ export default function DashHero({ featuredVideo, bannerUrl }: Props) {
       )}
 
       {/* ── Controls: top-right ── */}
-      <div className="absolute top-3 right-3 z-20 flex items-center gap-2">
+      <div className="absolute top-3 right-3 z-20 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
         {!isTheatre && (<>
           <CtrlBtn onClick={toggleMute} title={muted ? "Unmute" : "Mute"}>
             {muted ? <IcoMuted /> : <IcoUnmuted />}
           </CtrlBtn>
           <CtrlBtn onClick={e => enterTheatre(e)} title="Theatre mode"><IcoTheatre /></CtrlBtn>
         </>)}
-        {isTheatre && <CtrlBtn onClick={exitTheatre} title="Exit theatre"><IcoClose /></CtrlBtn>}
+        {isTheatre && (
+          <div className={`flex items-center gap-2 transition-opacity duration-200 ${lightsOut ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}>
+            <CtrlBtn
+              onClick={e => { e.stopPropagation(); setLightsOut(v => !v); }}
+              title={lightsOut ? "Lights on" : "Lights off"}
+            >
+              <IcoLightbulb on={lightsOut} />
+            </CtrlBtn>
+            <CtrlBtn onClick={exitTheatre} title="Exit theatre"><IcoClose /></CtrlBtn>
+          </div>
+        )}
       </div>
 
     </div>
+    </>
   );
 }
