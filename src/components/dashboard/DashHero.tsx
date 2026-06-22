@@ -13,9 +13,11 @@ type Props = { featuredVideo: FeaturedVideo | null; bannerUrl?: string | null; v
 
 const SDK_URL = "https://embed.cloudflarestream.com/embed/sdk.latest.js";
 
-function iframeSrc(id: string, poster?: string) {
+function iframeSrc(id: string, poster?: string, muted = true, startTime = 0) {
   const p = poster ? `&poster=${encodeURIComponent(poster)}` : "";
-  return `https://iframe.cloudflarestream.com/${id}?autoplay=true&muted=true&loop=true&controls=false&preload=auto${p}`;
+  const m = muted ? "&muted=true" : "";
+  const st = startTime > 2 ? `&startTime=${Math.floor(startTime)}` : "";
+  return `https://iframe.cloudflarestream.com/${id}?autoplay=true${m}&controls=false&preload=auto${p}${st}`;
 }
 
 function fmtTime(s: number) {
@@ -86,9 +88,10 @@ export default function DashHero({ featuredVideo, bannerUrl, videos }: Props) {
   const [isTheatre, setIsTheatre]     = useState(false);
   const [muted, setMuted]             = useState(true);
   const mutedRef = useRef(true); // tracks muted across player re-init
-  const [isPaused, setIsPaused]       = useState(false);
+    const [isPaused, setIsPaused]       = useState(false);
   const [lightsOut, setLightsOut]      = useState(false);
   const [vidIdx, setVidIdx]            = useState(0);
+  const [urlMuted, setUrlMuted]        = useState(true); // muted=true in iframe URL (needed for autoplay)
   const playlist = videos && videos.length > 1 ? videos : featuredVideo ? [featuredVideo] : [];
   const currentVideo = playlist[vidIdx] ?? featuredVideo;
   const [currentTime, setCurrentTime] = useState(0);
@@ -97,6 +100,7 @@ export default function DashHero({ featuredVideo, bannerUrl, videos }: Props) {
   const playerRef    = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const lastSavedRef  = useRef(0);
+  const resumeTimeRef  = useRef(0); // currentTime saved before iframe reload
 
   useEffect(() => {
     playerRef.current = null; // reset when video changes
@@ -170,9 +174,30 @@ export default function DashHero({ featuredVideo, bannerUrl, videos }: Props) {
     if (!s) { s = document.createElement("script") as HTMLScriptElement; s.src = SDK_URL; document.head.appendChild(s); }
     s.addEventListener("load", initPlayer, { once: true });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [vidIdx]);
+  }, [vidIdx, urlMuted]);
 
-  function applyMute(next: boolean) { setMuted(next); mutedRef.current = next; if (playerRef.current) playerRef.current.muted = next; }
+  function applyMute(next: boolean) {
+    setMuted(next);
+    mutedRef.current = next;
+    const p = playerRef.current;
+    if (next) {
+      // Muting via SDK always works.
+      if (p) p.muted = true;
+      return;
+    }
+    if (urlMuted) {
+      // First-ever unmute: the iframe was started with muted=true in the URL,
+      // so p.muted=false is silently ignored by the browser's autoplay policy.
+      // Reload the iframe WITHOUT muted=true (passing startTime to resume position).
+      // After this one reload, SDK mute/unmute works normally.
+      resumeTimeRef.current = p?.currentTime ?? 0;
+      playerRef.current = null; // let useEffect re-init the player
+      setUrlMuted(false);        // triggers useEffect re-run + iframe remount
+    } else {
+      // iframe URL already lacks muted=true — SDK set works fine now.
+      if (p) p.muted = false;
+    }
+  }
   function toggleMute(e: React.MouseEvent) { e.stopPropagation(); applyMute(!muted); }
   function togglePlayPause(e?: React.MouseEvent) {
     e?.stopPropagation();
@@ -247,8 +272,8 @@ export default function DashHero({ featuredVideo, bannerUrl, videos }: Props) {
       onClick={isTheatre ? () => togglePlayPause() : () => enterTheatre()}>
 
       {/* iframe remounts when video changes via key */}
-      <div key={currentVideo?.id} className="absolute inset-0 overflow-hidden">
-        <iframe ref={iframeRef} src={iframeSrc(currentVideo?.id ?? "", poster)}
+      <div key={`${currentVideo?.id}-${urlMuted}`} className="absolute inset-0 overflow-hidden">
+        <iframe ref={iframeRef} src={iframeSrc(currentVideo?.id ?? "", poster, urlMuted, resumeTimeRef.current)}
           allow="autoplay; fullscreen; picture-in-picture" allowFullScreen
           style={{
             position: "absolute", top: "50%", left: "50%",
