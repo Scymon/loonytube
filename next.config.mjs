@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   eslint: {
-    ignoreDuringBuilds: true,   // ← this is what Vercel needs
+    ignoreDuringBuilds: true,
   },
   images: {
     remotePatterns: [
@@ -9,4 +9,5 @@ const nextConfig = {
     ],
   },
 };
+
 export default nextConfig;
