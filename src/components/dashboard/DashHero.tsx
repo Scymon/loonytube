@@ -17,11 +17,15 @@ function iframeSrc(id: string, poster?: string) {
   return `https://iframe.cloudflarestream.com/${id}?autoplay=true&muted=true&loop=true&controls=false&preload=auto${p}`;
 }
 
+function fmtTime(s: number) {
+  if (!s || !isFinite(s)) return "0:00";
+  const m = Math.floor(s / 60);
+  return `${m}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
+}
+
 // ── Icons ─────────────────────────────────────────────────────────────────────
 const IcoPlay = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-    <polygon points="5,3 19,12 5,21" />
-  </svg>
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21" /></svg>
 );
 const IcoPause = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
@@ -29,9 +33,7 @@ const IcoPause = () => (
   </svg>
 );
 const IcoPlayBig = () => (
-  <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
-    <polygon points="5,3 19,12 5,21" />
-  </svg>
+  <svg width="36" height="36" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21" /></svg>
 );
 const IcoMuted = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -59,13 +61,12 @@ const IcoClose = () => (
     <path d="M18 6 6 18M6 6l12 12" />
   </svg>
 );
-
 function CtrlBtn({ onClick, title, children }: {
   onClick: (e: React.MouseEvent) => void; title: string; children: React.ReactNode;
 }) {
   return (
     <button type="button" onClick={onClick} title={title}
-      className="grid h-8 w-8 place-items-center rounded-full bg-black/60 text-white hover:bg-black/80 transition">
+      className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-black/60 text-white hover:bg-black/80 transition">
       {children}
     </button>
   );
@@ -73,9 +74,11 @@ function CtrlBtn({ onClick, title, children }: {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function DashHero({ featuredVideo, bannerUrl }: Props) {
-  const [isTheatre, setIsTheatre] = useState(false);
-  const [muted, setMuted]         = useState(true);
-  const [isPaused, setIsPaused]   = useState(false);
+  const [isTheatre, setIsTheatre]     = useState(false);
+  const [muted, setMuted]             = useState(true);
+  const [isPaused, setIsPaused]       = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration]       = useState(0);
   const iframeRef    = useRef<HTMLIFrameElement>(null);
   const playerRef    = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -85,8 +88,11 @@ export default function DashHero({ featuredVideo, bannerUrl }: Props) {
       if (iframeRef.current && (window as any).Stream && !playerRef.current) {
         const p = (window as any).Stream(iframeRef.current);
         playerRef.current = p;
-        p.addEventListener("play",  () => setIsPaused(false));
-        p.addEventListener("pause", () => setIsPaused(true));
+        p.addEventListener("play",           () => setIsPaused(false));
+        p.addEventListener("pause",          () => setIsPaused(true));
+        p.addEventListener("timeupdate",     () => setCurrentTime(p.currentTime ?? 0));
+        p.addEventListener("durationchange", () => setDuration(p.duration ?? 0));
+        p.addEventListener("loadedmetadata", () => setDuration(p.duration ?? 0));
       }
     }
     if ((window as any).Stream) { initPlayer(); return; }
@@ -103,6 +109,14 @@ export default function DashHero({ featuredVideo, bannerUrl }: Props) {
     if (isPaused) { playerRef.current?.play();  setIsPaused(false); }
     else          { playerRef.current?.pause(); setIsPaused(true);  }
   }
+  function seekTo(e: React.MouseEvent<HTMLDivElement>) {
+    e.stopPropagation();
+    if (!duration || !playerRef.current) return;
+    const r = e.currentTarget.getBoundingClientRect();
+    const t = Math.max(0, Math.min(((e.clientX - r.left) / r.width) * duration, duration));
+    playerRef.current.currentTime = t;
+    setCurrentTime(t);
+  }
   function enterTheatre(e?: React.MouseEvent) { e?.stopPropagation(); setIsTheatre(true);  applyMute(false); }
   function exitTheatre(e: React.MouseEvent)   { e.stopPropagation();  setIsTheatre(false); applyMute(true);  }
   function doFullscreen(e: React.MouseEvent) {
@@ -114,8 +128,7 @@ export default function DashHero({ featuredVideo, bannerUrl }: Props) {
   /* ── Empty state ── */
   if (!featuredVideo) {
     return (
-      <div className="relative w-full overflow-hidden rounded-b-2xl"
-        style={{ aspectRatio: "16/5", minHeight: 200 }}>
+      <div className="relative w-full overflow-hidden rounded-b-2xl" style={{ aspectRatio: "16/5", minHeight: 200 }}>
         {bannerUrl
           // eslint-disable-next-line @next/next/no-img-element
           ? <img src={bannerUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
@@ -129,6 +142,7 @@ export default function DashHero({ featuredVideo, bannerUrl }: Props) {
     );
   }
 
+  const pct = duration > 0 ? (currentTime / duration) * 100 : 0;
   const poster = featuredVideo.thumbnail ?? undefined;
 
   return (
@@ -137,16 +151,14 @@ export default function DashHero({ featuredVideo, bannerUrl }: Props) {
       style={isTheatre ? { aspectRatio: "16/9", maxHeight: "80vh" } : { aspectRatio: "16/5", minHeight: 200 }}
       onClick={isTheatre ? () => togglePlayPause() : () => enterTheatre()}>
 
-      {/* Single iframe — src never changes, video never restarts */}
+      {/* Single iframe — src never changes */}
       <div className="absolute inset-0 overflow-hidden">
-        <iframe ref={iframeRef}
-          src={iframeSrc(featuredVideo.id, poster)}
+        <iframe ref={iframeRef} src={iframeSrc(featuredVideo.id, poster)}
           allow="autoplay; fullscreen; picture-in-picture" allowFullScreen
           style={{
             position: "absolute", top: "50%", left: "50%",
-            transform: "translate(-50%,-50%)",
-            width: "100%",
-            height:   isTheatre ? "100%" : "56.25vw",
+            transform: "translate(-50%,-50%)", width: "100%",
+            height: isTheatre ? "100%" : "56.25vw",
             minWidth: isTheatre ? undefined : "177.78vh",
             minHeight: isTheatre ? undefined : "100%",
             border: "none", pointerEvents: "none",
@@ -164,28 +176,50 @@ export default function DashHero({ featuredVideo, bannerUrl }: Props) {
             <span className="rounded px-2 py-1 text-[11px] font-bold bg-loonred text-white">LIVE</span>
           )}
         </div>
-        <div className="absolute bottom-0 left-0 right-0 px-4 pb-4 pointer-events-none">
+        <div className="absolute bottom-2 left-0 right-0 px-4 pointer-events-none">
           <p className="text-xl font-bold text-white drop-shadow line-clamp-1">{featuredVideo.title}</p>
           <div className="mt-1 flex items-center gap-2">
             <Avatar name={featuredVideo.channelName} src={featuredVideo.channelAvatar} size={20} />
             <span className="text-sm font-semibold text-foam/90">{featuredVideo.channelName}</span>
           </div>
         </div>
+        {/* Thin progress bar — very bottom edge */}
+        <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-white/20 pointer-events-none z-10">
+          <div className="h-full bg-teal/90 transition-none" style={{ width: `${pct}%` }} />
+        </div>
       </>)}
 
-      {/* ── Theatre bottom overlay: hover-reveal title + controls ── */}
+      {/* ── Theatre hover overlay: title + playhead + controls ── */}
       {isTheatre && (
         <div className="absolute bottom-0 left-0 right-0 pointer-events-none
-          bg-gradient-to-t from-black/80 via-black/30 to-transparent
-          px-4 pb-4 pt-20
+          bg-gradient-to-t from-black/85 via-black/40 to-transparent px-4 pb-4 pt-24
           opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+
+          {/* Title + channel */}
           <p className="text-lg font-bold text-white drop-shadow line-clamp-1">{featuredVideo.title}</p>
           <div className="mt-1 flex items-center gap-2">
             <Avatar name={featuredVideo.channelName} src={featuredVideo.channelAvatar} size={20} />
             <span className="text-sm font-semibold text-foam/90">{featuredVideo.channelName}</span>
           </div>
-          {/* Control bar */}
-          <div className="mt-3 flex items-center gap-2 pointer-events-auto">
+
+          {/* Playhead row: seekbar + time */}
+          <div className="mt-3 flex items-center gap-3 pointer-events-auto">
+            {/* Seekable track */}
+            <div className="relative h-1.5 flex-1 cursor-pointer" onClick={seekTo}>
+              <div className="absolute inset-0 rounded-full bg-white/30" />
+              <div className="absolute left-0 top-0 h-full rounded-full bg-white transition-none"
+                style={{ width: `${pct}%` }} />
+              {/* Scrub thumb */}
+              <div className="absolute top-1/2 h-3.5 w-3.5 -translate-y-1/2 rounded-full bg-white shadow-md"
+                style={{ left: `calc(${pct}% - 7px)` }} />
+            </div>
+            <span className="shrink-0 text-xs tabular-nums text-white/70">
+              {fmtTime(currentTime)} / {fmtTime(duration)}
+            </span>
+          </div>
+
+          {/* Buttons row */}
+          <div className="mt-2 flex items-center gap-2 pointer-events-auto">
             <CtrlBtn onClick={togglePlayPause} title={isPaused ? "Play" : "Pause"}>
               {isPaused ? <IcoPlay /> : <IcoPause />}
             </CtrlBtn>
@@ -215,9 +249,7 @@ export default function DashHero({ featuredVideo, bannerUrl }: Props) {
           </CtrlBtn>
           <CtrlBtn onClick={e => enterTheatre(e)} title="Theatre mode"><IcoTheatre /></CtrlBtn>
         </>)}
-        {isTheatre && (
-          <CtrlBtn onClick={exitTheatre} title="Exit theatre"><IcoClose /></CtrlBtn>
-        )}
+        {isTheatre && <CtrlBtn onClick={exitTheatre} title="Exit theatre"><IcoClose /></CtrlBtn>}
       </div>
 
     </div>
