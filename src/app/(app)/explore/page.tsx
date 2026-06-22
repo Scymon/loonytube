@@ -23,8 +23,9 @@ export default async function ExplorePage() {
   const { data: heroRows } = await supabase
     .from("videos").select("id, title, thumbnail, duration, views, created_at, owner, category")
     .eq("status", "ready").eq("visibility", "public")
-    .order("views", { ascending: false }).limit(1);
-  const heroRow = (heroRows ?? [])[0] as VRow | undefined;
+    .order("views", { ascending: false }).limit(5);
+  const heroRows5 = (heroRows ?? []) as VRow[];
+  const heroRow = heroRows5[0] as VRow | undefined;
 
   // All public ready videos for grid + category shelves (latest 48)
   const { data: vRows } = await supabase
@@ -49,6 +50,13 @@ export default async function ExplorePage() {
     channelAvatar: prof(heroRow.owner)?.avatar_url ?? null,
   } : null;
 
+  const featuredVideos: FeaturedVideo[] = heroRows5.map(v => ({
+    id: v.id, title: v.title, thumbnail: v.thumbnail,
+    channelName: prof(v.owner)?.full_name || prof(v.owner)?.username || "Channel",
+    channelHandle: prof(v.owner)?.username || "",
+    channelAvatar: prof(v.owner)?.avatar_url ?? null,
+    isLive: false,
+  }));
   const exploreVideos: ExploreVideo[] = allVideos
     .filter(v => v.id !== heroRow?.id)
     .map(v => ({
@@ -111,6 +119,7 @@ export default async function ExplorePage() {
   return (
     <ExploreShell
       featuredVideo={featuredVideo}
+      heroVideos={featuredVideos}
       videos={exploreVideos}
       posts={explorePosts}
       articles={exploreArticles}

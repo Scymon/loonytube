@@ -6,6 +6,7 @@ import DashSchedule from "@/components/dashboard/DashSchedule";
 import LikedSection, { type LikedGroup } from "@/components/dashboard/LikedSection";
 import SavedSection from "@/components/dashboard/SavedSection";
 import PlaylistsSection from "@/components/dashboard/PlaylistsSection";
+import WatchHistorySection from "@/components/dashboard/WatchHistorySection";
 
 export const dynamic = "force-dynamic";
 
@@ -46,9 +47,9 @@ export default async function DashboardPage() {
     .limit(50);
   const followeeIds = (followRows ?? []).map((r: { followee: string }) => r.followee);
 
-  let featuredVideo: FeaturedVideo | null = null;
+  let featuredVideos: FeaturedVideo[] = [];
   if (followeeIds.length) {
-    const { data: heroVideos } = await supabase
+    const { data: heroRows } = await supabase
       .from("videos")
       .select("id, title, thumbnail, owner")
       .in("owner", followeeIds)
@@ -56,23 +57,25 @@ export default async function DashboardPage() {
       .eq("visibility", "public")
       .order("created_at", { ascending: false })
       .limit(10);
-    if (heroVideos?.length) {
-      const pick = (heroVideos as HeroRow[])[
-        Math.floor(Math.random() * heroVideos.length)
-      ];
-      const { data: cp } = await supabase
+    if (heroRows?.length) {
+      const ownerIds = [...new Set((heroRows as HeroRow[]).map(v => v.owner))];
+      const { data: heroProfs } = await supabase
         .from("profiles").select("id, username, full_name, avatar_url")
-        .eq("id", pick.owner).maybeSingle();
-      const p = cp as ProfRow | null;
-      featuredVideo = {
-        id: pick.id, title: pick.title, thumbnail: pick.thumbnail,
-        channelName: p?.full_name || p?.username || "Unknown",
-        channelHandle: p?.username ?? "",
-        channelAvatar: p?.avatar_url ?? null,
-        isLive: false,
-      };
+        .in("id", ownerIds);
+      const hp = new Map((heroProfs ?? []).map((p: ProfRow) => [p.id, p]));
+      featuredVideos = (heroRows as HeroRow[]).map(v => {
+        const p = hp.get(v.owner);
+        return {
+          id: v.id, title: v.title, thumbnail: v.thumbnail,
+          channelName: p?.full_name || p?.username || "Unknown",
+          channelHandle: p?.username ?? "",
+          channelAvatar: p?.avatar_url ?? null,
+          isLive: false,
+        };
+      });
     }
   }
+  let featuredVideo: FeaturedVideo | null = featuredVideos[0] ?? null;
 
   // Liked video IDs (newest first, cap 40)
   const { data: likedRows } = await supabase
@@ -120,17 +123,20 @@ export default async function DashboardPage() {
     }
   }
 
-  // Fallback hero: first liked video if no followed-channel content
-  if (!featuredVideo && likedGroups.length) {
-    const g = likedGroups[0];
-    const v = g.videos[0];
-    if (v) {
-      featuredVideo = {
-        id: v.id, title: v.title, thumbnail: v.thumbnail,
-        channelName: g.channelName, channelHandle: g.channelHandle,
-        channelAvatar: g.channelAvatar, isLive: false,
-      };
+  // Fallback hero: liked videos if no followed-channel content
+  if (!featuredVideos.length) {
+    for (const g of likedGroups) {
+      for (const v of g.videos) {
+        featuredVideos.push({
+          id: v.id, title: v.title, thumbnail: v.thumbnail,
+          channelName: g.channelName, channelHandle: g.channelHandle,
+          channelAvatar: g.channelAvatar, isLive: false,
+        });
+        if (featuredVideos.length >= 10) break;
+      }
+      if (featuredVideos.length >= 10) break;
     }
+    featuredVideo = featuredVideos[0] ?? null;
   }
 
   // Date label for schedule header
@@ -139,9 +145,9 @@ export default async function DashboardPage() {
   });
 
   return (
-    <div className="pb-24">
+    <div className="-mt-6 pb-24">
       {/* Hero — shows live from followed channels; falls back to profile banner */}
-      <DashHero featuredVideo={featuredVideo} bannerUrl={(profile as any)?.banner_url ?? null} />
+      <DashHero featuredVideo={featuredVideo} videos={featuredVideos} bannerUrl={(profile as any)?.banner_url ?? null} />
 
       {/* Profile summary bar */}
       <ProfileBar
@@ -158,6 +164,9 @@ export default async function DashboardPage() {
       <div className="px-4 sm:px-6 space-y-10 mt-8">
         {/* Schedule — populated when live-streams backend is wired */}
         <DashSchedule channels={[]} dateLabel={dateLabel} />
+
+        {/* Continue Watching — client component, loads own data */}
+        <WatchHistorySection />
 
         {/* Liked videos grouped by channel */}
         <LikedSection groups={likedGroups} />

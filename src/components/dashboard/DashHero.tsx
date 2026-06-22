@@ -9,7 +9,7 @@ export type FeaturedVideo = {
   channelName: string; channelHandle: string; channelAvatar: string | null;
   isLive?: boolean;
 };
-type Props = { featuredVideo: FeaturedVideo | null; bannerUrl?: string | null };
+type Props = { featuredVideo: FeaturedVideo | null; bannerUrl?: string | null; videos?: FeaturedVideo[] };
 
 const SDK_URL = "https://embed.cloudflarestream.com/embed/sdk.latest.js";
 
@@ -69,23 +69,28 @@ const IcoLightbulb = ({ on }: { on: boolean }) => (
   </svg>
 );
 
-function CtrlBtn({ onClick, title, children }: {
+function CtrlBtn({ onClick, title, children, disabled, className = "" }: {
   onClick: (e: React.MouseEvent) => void; title: string; children: React.ReactNode;
+  disabled?: boolean; className?: string;
 }) {
   return (
-    <button type="button" onClick={onClick} title={title}
-      className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-black/60 text-white hover:bg-black/80 transition">
+    <button type="button" onClick={onClick} title={title} disabled={disabled}
+      className={`grid h-8 w-8 shrink-0 place-items-center rounded-full bg-black/60 text-white hover:bg-black/80 transition ${className}`}>
       {children}
     </button>
   );
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
-export default function DashHero({ featuredVideo, bannerUrl }: Props) {
+export default function DashHero({ featuredVideo, bannerUrl, videos }: Props) {
   const [isTheatre, setIsTheatre]     = useState(false);
   const [muted, setMuted]             = useState(true);
+  const mutedRef = useRef(true); // tracks muted across player re-init
   const [isPaused, setIsPaused]       = useState(false);
   const [lightsOut, setLightsOut]      = useState(false);
+  const [vidIdx, setVidIdx]            = useState(0);
+  const playlist = videos && videos.length > 1 ? videos : featuredVideo ? [featuredVideo] : [];
+  const currentVideo = playlist[vidIdx] ?? featuredVideo;
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration]       = useState(0);
   const iframeRef    = useRef<HTMLIFrameElement>(null);
@@ -94,25 +99,36 @@ export default function DashHero({ featuredVideo, bannerUrl }: Props) {
   const lastSavedRef  = useRef(0);
 
   useEffect(() => {
+    playerRef.current = null; // reset when video changes
+    lastSavedRef.current = 0;
+    const vid = playlist[vidIdx]?.id ?? featuredVideo?.id ?? null;
     function initPlayer() {
       if (iframeRef.current && (window as any).Stream && !playerRef.current) {
         const p = (window as any).Stream(iframeRef.current);
         playerRef.current = p;
-        p.addEventListener("play",           () => setIsPaused(false));
-        p.addEventListener("pause",          () => setIsPaused(true));
-        p.addEventListener("timeupdate",     () => {
+        p.muted = mutedRef.current; // restore mute state across video changes
+        p.addEventListener("play",  () => setIsPaused(false));
+        p.addEventListener("pause", () => setIsPaused(true));
+        p.addEventListener("timeupdate", () => {
           const t = p.currentTime ?? 0;
           const dur = p.duration ?? 0;
           setCurrentTime(t);
           if (dur > 0) setDuration(dur);
           const sec = Math.floor(t);
-          if (featuredVideo && sec > 0 && sec !== lastSavedRef.current) {
+          if (vid && sec > 0 && sec >= lastSavedRef.current + 5) {
             lastSavedRef.current = sec;
-            localStorage.setItem(`loonytube:resume:${featuredVideo.id}`, String(sec));
+            localStorage.setItem(`loonytube:resume:${vid}`, String(sec));
           }
         });
         p.addEventListener("durationchange", () => { if (p.duration > 0) setDuration(p.duration); });
-        p.addEventListener("loadedmetadata", () => { if (p.duration > 0) setDuration(p.duration); });
+        p.addEventListener("loadedmetadata", () => {
+          if (p.duration > 0) setDuration(p.duration);
+          p.muted = mutedRef.current; // override iframe URL's muted=true
+          if (vid) {
+            const saved = localStorage.getItem(`loonytube:resume:${vid}`);
+            if (saved) { const t = parseFloat(saved); if (t > 2) p.currentTime = t; }
+          }
+        });
       }
     }
     if ((window as any).Stream) { initPlayer(); return; }
@@ -120,14 +136,23 @@ export default function DashHero({ featuredVideo, bannerUrl }: Props) {
     if (!s) { s = document.createElement("script") as HTMLScriptElement; s.src = SDK_URL; document.head.appendChild(s); }
     s.addEventListener("load", initPlayer, { once: true });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [vidIdx]);
 
-  function applyMute(next: boolean) { setMuted(next); if (playerRef.current) playerRef.current.muted = next; }
+  function applyMute(next: boolean) { setMuted(next); mutedRef.current = next; if (playerRef.current) playerRef.current.muted = next; }
   function toggleMute(e: React.MouseEvent) { e.stopPropagation(); applyMute(!muted); }
   function togglePlayPause(e?: React.MouseEvent) {
     e?.stopPropagation();
     if (isPaused) { playerRef.current?.play();  setIsPaused(false); }
     else          { playerRef.current?.pause(); setIsPaused(true);  }
+  }
+  function goPrev(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (currentTime > 3 && playerRef.current) {
+      playerRef.current.currentTime = 0;
+      setCurrentTime(0);
+    } else {
+      setVidIdx(i => Math.max(0, i - 1));
+    }
   }
   function seekTo(e: React.MouseEvent<HTMLDivElement>) {
     e.stopPropagation();
@@ -146,7 +171,7 @@ export default function DashHero({ featuredVideo, bannerUrl }: Props) {
   }
 
   /* ── Empty state ── */
-  if (!featuredVideo) {
+  if (!currentVideo) {
     return (
       <div className="relative w-full overflow-hidden rounded-b-2xl" style={{ aspectRatio: "16/5", minHeight: 200 }}>
         {bannerUrl
@@ -163,7 +188,7 @@ export default function DashHero({ featuredVideo, bannerUrl }: Props) {
   }
 
   const pct = duration > 0 ? (currentTime / duration) * 100 : 0;
-  const poster = featuredVideo.thumbnail ?? undefined;
+  const poster = currentVideo?.thumbnail ?? undefined;
 
   return (
     <>
@@ -179,9 +204,9 @@ export default function DashHero({ featuredVideo, bannerUrl }: Props) {
       style={isTheatre ? { height: "min(56.25vw, 82vh)", width: "100%" } : { aspectRatio: "16/5", minHeight: 200 }}
       onClick={isTheatre ? () => togglePlayPause() : () => enterTheatre()}>
 
-      {/* Single iframe — src never changes */}
-      <div className="absolute inset-0 overflow-hidden">
-        <iframe ref={iframeRef} src={iframeSrc(featuredVideo.id, poster)}
+      {/* iframe remounts when video changes via key */}
+      <div key={currentVideo?.id} className="absolute inset-0 overflow-hidden">
+        <iframe ref={iframeRef} src={iframeSrc(currentVideo?.id ?? "", poster)}
           allow="autoplay; fullscreen; picture-in-picture" allowFullScreen
           style={{
             position: "absolute", top: "50%", left: "50%",
@@ -201,7 +226,7 @@ export default function DashHero({ featuredVideo, bannerUrl }: Props) {
           <span className="rounded-full bg-teal/90 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-ink">
             Now Playing
           </span>
-          {featuredVideo.isLive && (
+          {currentVideo?.isLive && (
             <span className="rounded px-2 py-1 text-[11px] font-bold bg-loonred text-white">LIVE</span>
           )}
         </div>
@@ -210,10 +235,10 @@ export default function DashHero({ featuredVideo, bannerUrl }: Props) {
             className="block text-xl font-bold text-white drop-shadow line-clamp-1 hover:underline w-fit">
             {featuredVideo.title}
           </Link>
-          <Link href={`/${featuredVideo.channelHandle}`} onClick={e => e.stopPropagation()}
+          <Link href={`/${currentVideo?.channelHandle ?? ""}`} onClick={e => e.stopPropagation()}
             className="mt-1 flex items-center gap-2 w-fit">
-            <Avatar name={featuredVideo.channelName} src={featuredVideo.channelAvatar} size={20} />
-            <span className="text-sm font-semibold text-foam/90 hover:underline">{featuredVideo.channelName}</span>
+            <Avatar name={currentVideo?.channelName ?? ""} src={currentVideo?.channelAvatar ?? null} size={20} />
+            <span className="text-sm font-semibold text-foam/90 hover:underline">{currentVideo?.channelName}</span>
           </Link>
         </div>
         {/* Thin progress bar — very bottom edge */}
@@ -229,14 +254,14 @@ export default function DashHero({ featuredVideo, bannerUrl }: Props) {
           opacity-0 group-hover:opacity-100 transition-opacity duration-200">
 
           {/* Title + channel */}
-          <Link href={`/watch/${featuredVideo.id}`} onClick={e => e.stopPropagation()}
+          <Link href={`/watch/${currentVideo?.id ?? ""}`} onClick={e => e.stopPropagation()}
             className="block text-lg font-bold text-white drop-shadow line-clamp-1 hover:underline w-fit pointer-events-auto">
-            {featuredVideo.title}
+            {currentVideo?.title}
           </Link>
-          <Link href={`/${featuredVideo.channelHandle}`} onClick={e => e.stopPropagation()}
+          <Link href={`/${currentVideo?.channelHandle ?? ""}`} onClick={e => e.stopPropagation()}
             className="mt-1 flex items-center gap-2 w-fit pointer-events-auto">
-            <Avatar name={featuredVideo.channelName} src={featuredVideo.channelAvatar} size={20} />
-            <span className="text-sm font-semibold text-foam/90 hover:underline">{featuredVideo.channelName}</span>
+            <Avatar name={currentVideo?.channelName ?? ""} src={currentVideo?.channelAvatar ?? null} size={20} />
+            <span className="text-sm font-semibold text-foam/90 hover:underline">{currentVideo?.channelName}</span>
           </Link>
 
           {/* Playhead row: seekbar + time */}
@@ -257,9 +282,23 @@ export default function DashHero({ featuredVideo, bannerUrl }: Props) {
 
           {/* Buttons row */}
           <div className="mt-2 flex items-center gap-2 pointer-events-auto">
+            {playlist.length > 1 && (
+              <CtrlBtn onClick={goPrev}
+                title={currentTime > 3 ? "Restart" : "Previous"} disabled={vidIdx === 0 && currentTime <= 3}
+                className={vidIdx === 0 && currentTime <= 3 ? "opacity-30 cursor-not-allowed" : ""}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 20 9 12l10-8v16zM5 19V5"/></svg>
+              </CtrlBtn>
+            )}
             <CtrlBtn onClick={togglePlayPause} title={isPaused ? "Play" : "Pause"}>
               {isPaused ? <IcoPlay /> : <IcoPause />}
             </CtrlBtn>
+            {playlist.length > 1 && (
+              <CtrlBtn onClick={e => { e.stopPropagation(); setVidIdx(i => Math.min(playlist.length - 1, i + 1)); }}
+                title="Next" disabled={vidIdx === playlist.length - 1}
+                className={vidIdx === playlist.length - 1 ? "opacity-30 cursor-not-allowed" : ""}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 4l10 8-10 8V4zM19 5v14"/></svg>
+              </CtrlBtn>
+            )}
             <CtrlBtn onClick={toggleMute} title={muted ? "Unmute" : "Mute"}>
               {muted ? <IcoMuted /> : <IcoUnmuted />}
             </CtrlBtn>

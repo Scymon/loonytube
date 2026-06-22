@@ -26,13 +26,14 @@ export type ExploreTab = "videos" | "posts" | "articles";
 
 type Props = {
   featuredVideo: FeaturedVideo | null;
+  heroVideos?: FeaturedVideo[];
   videos: ExploreVideo[];
   posts: ExplorePost[];
   articles: ExploreArticle[];
   role: string | null;
 };
 
-export default function ExploreShell({ featuredVideo, videos, posts, articles, role }: Props) {
+export default function ExploreShell({ featuredVideo, heroVideos, videos, posts, articles, role }: Props) {
   const [activeTab, setActiveTab] = useState<ExploreTab>("videos");
 
   return (
@@ -49,7 +50,7 @@ export default function ExploreShell({ featuredVideo, videos, posts, articles, r
       {activeTab === "videos" && (
         <>
           <div className="-mt-[60px]">
-            <DashHero featuredVideo={featuredVideo} />
+            <DashHero featuredVideo={featuredVideo} videos={heroVideos} />
           </div>
           <div className="pt-4"><ExploreVideos videos={videos} /></div>
         </>
