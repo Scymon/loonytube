@@ -108,7 +108,7 @@ export default async function ChannelPage({
     user
       ? supabase
           .from("follows")
-          .select("follower")
+          .select("follower, notif_level")
           .eq("follower", user.id)
           .eq("followee", profile.id)
           .maybeSingle()
@@ -116,6 +116,7 @@ export default async function ChannelPage({
   ]);
 
   const isFollowing = !!followRow.data;
+  const notifLevel  = (followRow.data as any)?.notif_level ?? "all";
   const isOwnChannel = user?.id === profile.id;
 
   // Public ready videos — newest first, max 24
@@ -166,7 +167,7 @@ export default async function ChannelPage({
       </div>
 
       {/* Avatar + header row */}
-      <div className="-mt-12 flex flex-wrap items-end justify-between gap-4 pb-5">
+      <div className="-mt-12 relative z-10 flex flex-wrap items-end justify-between gap-4 pb-5">
         <div className="flex items-end gap-4">
           <div
             className="rounded-full"
@@ -196,6 +197,7 @@ export default async function ChannelPage({
               targetId={profile.id}
               signedIn={!!user}
               initialFollowing={isFollowing}
+              initialNotifLevel={notifLevel}
               variant="solid"
             />
           )}

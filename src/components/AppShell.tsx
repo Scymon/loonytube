@@ -6,7 +6,7 @@ import Nav from "@/components/Nav";
 import Ribbon from "@/components/Ribbon";
 import CreateModal from "@/components/create/CreateModal";
 
-export default function AppShell({ children }: { children: React.ReactNode }) {
+export default function AppShell({ children, fullWidth = true }: { children: React.ReactNode; fullWidth?: boolean }) {
   const [open, setOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
 
@@ -41,7 +41,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <main className={isMessages
         ? "flex-1 min-h-0 overflow-hidden"
         : `px-4 py-6 pb-24 transition-[padding] duration-200 sm:px-6 md:pb-6 ${pad}`
-      }>{children}</main>
+      }>{fullWidth ? children : <div className="mx-auto w-full max-w-[1440px]">{children}</div>}</main>
       <Suspense fallback={null}><CreateModal /></Suspense>
     </div>
   );

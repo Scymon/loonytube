@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
-type Settings = { invite_only: boolean; signups_enabled: boolean; uploads_enabled: boolean };
+type Settings = { invite_only: boolean; signups_enabled: boolean; uploads_enabled: boolean; full_width: boolean };
 
 function Toggle({ on, disabled, onChange }: { on: boolean; disabled?: boolean; onChange: () => void }) {
   return (
@@ -32,6 +32,7 @@ export default function AdminSwitches({ initial, canInviteOnly }: { initial: Set
     { key: "invite_only", label: "Invite-only onboarding", desc: "New users must redeem an invite code to onboard. SuperAdmin only.", locked: !canInviteOnly },
     { key: "signups_enabled", label: "Signups enabled", desc: "Allow new account creation." },
     { key: "uploads_enabled", label: "Uploads enabled", desc: "Allow new video uploads platform-wide." },
+    { key: "full_width", label: "Full-width layout", desc: "Content stretches edge-to-edge. Off = capped at 1440 px (readable width).", locked: !canInviteOnly },
   ];
 
   return (

@@ -1,22 +1,20 @@
 "use client";
 
 import { Stream } from "@cloudflare/stream-react";
-import { useEffect, useRef, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { useRef, useState } from "react";
+import { useVideoProgress } from "@/hooks/useVideoProgress";
 
 export default function StreamPlayer({ uid, token }: { uid: string; token?: string | null }) {
-  const supabase = createClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const streamRef = useRef<any>(null);
+  const streamRef = useRef<any>(null); // eslint-disable-line @typescript-eslint/no-explicit-any
   const [portrait, setPortrait] = useState(false);
+  const { resumeTime, ready, onTimeUpdate } = useVideoProgress(uid);
 
-  useEffect(() => {
-    // Count a view (SECURITY DEFINER RPC, callable by anyone).
-    supabase.rpc("increment_views", { vid: uid });
-  }, [uid, supabase]);
+  function handleTimeUpdate() {
+    const t   = streamRef.current?.currentTime ?? 0;
+    const dur = streamRef.current?.duration    ?? 0;
+    onTimeUpdate(t, dur);
+  }
 
-  // Detect orientation once dimensions are known, so vertical videos get a
-  // bounded portrait frame instead of a frame as tall as the video itself.
   function detectOrientation() {
     const p = streamRef.current;
     const w = p?.videoWidth ?? 0;
@@ -31,19 +29,21 @@ export default function StreamPlayer({ uid, token }: { uid: string; token?: stri
           portrait ? "aspect-[9/16] h-[80vh] max-w-full" : "aspect-video w-full max-h-[80vh]"
         }`}
       >
-        {/* The library's responsive mode sizes the frame to the video's native
-            aspect (overflowing for verticals). We neutralize its wrapper
-            (!static !p-0) and let the absolutely-positioned iframe fill OUR
-            bounded box instead; the player letterboxes to fit. */}
-        <Stream
-          src={token || uid}
-          controls
-          responsive
-          streamRef={streamRef}
-          onLoadedMetaData={detectOrientation}
-          letterboxColor="#000000"
-          className="!static !p-0"
-        />
+        {ready ? (
+          <Stream
+            src={token || uid}
+            controls
+            responsive
+            streamRef={streamRef}
+            onLoadedMetaData={detectOrientation}
+            onTimeUpdate={handleTimeUpdate}
+            letterboxColor="#000000"
+            startTime={resumeTime ?? undefined}
+            className="!static !p-0"
+          />
+        ) : (
+          <div className="absolute inset-0 animate-pulse bg-black/60" />
+        )}
       </div>
     </div>
   );

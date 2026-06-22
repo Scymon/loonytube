@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import HeroFeature, { type HeroVideo } from "@/components/home/HeroFeature";
+import DashHero, { type FeaturedVideo } from "@/components/dashboard/DashHero";
 import VideoRow, { type FeedVideo } from "@/components/home/VideoRow";
 import PostCard, { type CardPost } from "@/components/home/PostCard";
 import ComingSoon from "@/components/home/ComingSoon";
@@ -29,8 +29,9 @@ export default async function Home() {
     .eq("status", "ready")
     .eq("visibility", "public")
     .order("views", { ascending: false })
-    .limit(1);
-  const heroRow = (heroRows ?? [])[0] as Row | undefined;
+    .limit(5);
+  const heroRows5 = (heroRows ?? []) as Row[];
+  const heroRow = heroRows5[0] as Row | undefined;
 
   // Feed = newest ready videos (excluding the hero).
   const { data: feedRows } = await supabase
@@ -51,13 +52,28 @@ export default async function Home() {
       .select("id, username, full_name, avatar_url")
       .in("id", ids);
     for (const p of profs ?? [])
-      who.set(p.id, { name: p.full_name || p.username || "someone", avatar: p.avatar_url ?? null });
+      who.set(p.id, { name: p.full_name || p.username || "someone", avatar: p.avatar_url ?? null, handle: p.username ?? "" });
   }
-  const chan = (owner: string) => who.get(owner) ?? { name: "someone", avatar: null };
+  const chan = (owner: string) => who.get(owner) ?? { name: "someone", avatar: null, handle: "" };
 
-  const hero: HeroVideo | null = heroRow
-    ? { ...heroRow, channel: chan(heroRow.owner).name, avatar: chan(heroRow.owner).avatar }
-    : null;
+  const featuredVideo: FeaturedVideo | null = heroRow ? {
+    id: heroRow.id,
+    title: heroRow.title,
+    thumbnail: heroRow.thumbnail,
+    channelName: chan(heroRow.owner).name,
+    channelHandle: chan(heroRow.owner).handle,
+    channelAvatar: chan(heroRow.owner).avatar,
+    isLive: false,
+  } : null;
+  const featuredVideos: FeaturedVideo[] = heroRows5.map((v) => ({
+    id: v.id,
+    title: v.title,
+    thumbnail: v.thumbnail,
+    channelName: chan(v.owner).name,
+    channelHandle: chan(v.owner).handle,
+    channelAvatar: chan(v.owner).avatar,
+    isLive: false,
+  }));
   const feedVideos: FeedVideo[] = feed.map((v) => ({
     ...v,
     channel: chan(v.owner).name,
@@ -145,9 +161,9 @@ export default async function Home() {
   const realShelves = [...byCat.entries()].slice(0, 3).map(([title, videos]) => ({ title, videos }));
 
   return (
-    <div className="mx-auto max-w-[1440px]">
-      {hero ? (
-        <HeroFeature video={hero} />
+    <div className="-mt-6">
+      {featuredVideo ? (
+        <DashHero featuredVideo={featuredVideo} videos={featuredVideos} />
       ) : (
         <div className="rounded-2xl border border-edge bg-surface py-20 text-center">
           <p className="text-xl text-foam">The lake is quiet.</p>
