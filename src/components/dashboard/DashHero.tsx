@@ -103,41 +103,68 @@ export default function DashHero({ featuredVideo, bannerUrl, videos }: Props) {
     lastSavedRef.current = 0;
     const vid = playlist[vidIdx]?.id ?? featuredVideo?.id ?? null;
     function initPlayer() {
-      if (iframeRef.current && (window as any).Stream && !playerRef.current) {
-        const p = (window as any).Stream(iframeRef.current);
-        playerRef.current = p;
-        p.muted = mutedRef.current; // restore mute state across video changes
-        p.addEventListener("play",  () => { setIsPaused(false); p.muted = mutedRef.current; });
-        p.addEventListener("pause", () => setIsPaused(true));
-        p.addEventListener("ended", () => setVidIdx(i => (i + 1) % playlist.length));
-        p.addEventListener("timeupdate", () => {
-          const t = p.currentTime ?? 0;
-          const dur = p.duration ?? 0;
-          setCurrentTime(t);
-          if (dur > 0) setDuration(dur);
-          const sec = Math.floor(t);
-          if (vid && sec > 0 && sec >= lastSavedRef.current + 5) {
-            lastSavedRef.current = sec;
-            localStorage.setItem(`loonytube:resume:${vid}`, String(sec));
-          }
-        });
-        p.addEventListener("durationchange", () => { if (p.duration > 0) setDuration(p.duration); });
-        p.addEventListener("loadedmetadata", () => {
-          if (p.duration > 0) setDuration(p.duration);
-          p.muted = mutedRef.current; // override iframe URL's muted=true
-          if (vid) {
-            const saved = localStorage.getItem(`loonytube:resume:${vid}`);
-            if (saved) {
-              const t = parseFloat(saved);
-              if (t > 2) {
-                p.currentTime = t;
-                setTimeout(() => { if (Math.abs(p.currentTime - t) > 2) p.currentTime = t; }, 400);
-              }
-            }
-          }
-        });
+  if (iframeRef.current && (window as any).Stream && !playerRef.current) {
+    const p = (window as any).Stream(iframeRef.current);
+    playerRef.current = p;
+
+    // Restore mute state
+    p.muted = mutedRef.current;
+
+    // ── Core event listeners ─────────────────────────────────────
+    p.addEventListener("play", () => {
+      setIsPaused(false);
+      p.muted = mutedRef.current;
+    });
+
+    p.addEventListener("pause", () => setIsPaused(true));
+
+    p.addEventListener("ended", () => {
+      setVidIdx(i => (i + 1) % playlist.length);
+    });
+
+    p.addEventListener("timeupdate", () => {
+      const t = p.currentTime ?? 0;
+      const dur = p.duration ?? 0;
+      setCurrentTime(t);
+      if (dur > 0) setDuration(dur);
+
+      const sec = Math.floor(t);
+      if (vid && sec > 0 && sec >= lastSavedRef.current + 5) {
+        lastSavedRef.current = sec;
+        localStorage.setItem(`loonytube:resume:${vid}`, String(sec));
       }
-    }
+    });
+
+    p.addEventListener("durationchange", () => {
+      if (p.duration > 0) setDuration(p.duration);
+    });
+
+    p.addEventListener("seeked", () => {
+      if (p.paused) setIsPaused(true);
+    });
+
+    // ── Resume logic (safer version) ─────────────────────────────
+    p.addEventListener("loadedmetadata", () => {
+      if (p.duration > 0) setDuration(p.duration);
+      p.muted = mutedRef.current;
+
+      if (vid) {
+        const saved = localStorage.getItem(`loonytube:resume:${vid}`);
+        if (saved) {
+          const t = parseFloat(saved);
+          if (t > 2) {
+            p.currentTime = t;
+            setTimeout(() => {
+              if (playerRef.current && Math.abs(playerRef.current.currentTime - t) > 1.5) {
+                playerRef.current.currentTime = t;
+              }
+            }, 450);
+          }
+        }
+      }
+    });
+  }
+}
     if ((window as any).Stream) { initPlayer(); return; }
     let s = document.querySelector(`script[src="${SDK_URL}"]`) as HTMLScriptElement | null;
     if (!s) { s = document.createElement("script") as HTMLScriptElement; s.src = SDK_URL; document.head.appendChild(s); }
@@ -149,8 +176,16 @@ export default function DashHero({ featuredVideo, bannerUrl, videos }: Props) {
   function toggleMute(e: React.MouseEvent) { e.stopPropagation(); applyMute(!muted); }
   function togglePlayPause(e?: React.MouseEvent) {
     e?.stopPropagation();
-    if (isPaused) { playerRef.current?.play();  setIsPaused(false); }
-    else          { playerRef.current?.pause(); setIsPaused(true);  }
+    const p = playerRef.current;
+    if (!p) return;
+
+    if (isPaused) {
+      p.play().catch(() => {});
+      setIsPaused(false);
+    } else {
+      p.pause();
+      setIsPaused(true);
+    }
   }
   function goPrev(e: React.MouseEvent) {
     e.stopPropagation();
