@@ -139,7 +139,7 @@ export default async function DashboardPage() {
   });
 
   return (
-    <div className="mx-auto max-w-[1440px] pb-24">
+    <div className="pb-24">
       {/* Hero — shows live from followed channels; falls back to profile banner */}
       <DashHero featuredVideo={featuredVideo} bannerUrl={(profile as any)?.banner_url ?? null} />
 
