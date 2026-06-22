@@ -405,6 +405,7 @@ export default function ArticleComposer() {
   const [dragOver, setDragOver]         = useState<"cover" | "body" | null>(null);
   const [dropIdx, setDropIdx]           = useState<number | null>(null);
   const [menuOpen, setMenuOpen]         = useState(false);
+  const [fullscreen, setFullscreen]     = useState(false);
 
   const coverRef       = useRef<HTMLInputElement>(null);
   const imageRef       = useRef<HTMLInputElement>(null);
@@ -735,8 +736,82 @@ export default function ArticleComposer() {
   const words = countWords(blocks);
 
   // ── Editor ─────────────────────────────────────────────────────────────────
+  const cMenuBar = (
+    <div className="flex items-center gap-0.5 rounded-full border border-edge bg-ink/95 px-2 py-1 shadow-xl backdrop-blur-sm">
+          {BLOCK_TYPES.map(({ type, icon, label }) => (
+            <button key={type} onClick={() => { addBlock(type); setMenuOpen(false); }}
+              title={label} disabled={uploading}
+              className="flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-bold text-mist/60 transition hover:bg-edge/40 hover:text-foam disabled:opacity-30">
+              {icon}
+            </button>
+          ))}
+          <span className="mx-1.5 h-3 w-px bg-edge/40" />
+          <button
+            onClick={() => setFullscreen((f) => !f)}
+            title={fullscreen ? "Exit fullscreen" : "Fullscreen"}
+            className="flex h-7 w-7 items-center justify-center rounded-full text-mist/60 transition hover:bg-edge/40 hover:text-foam"
+          >
+            {fullscreen ? (
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/>
+                <path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/>
+              </svg>
+            ) : (
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 8V5a2 2 0 0 1 2-2h3"/><path d="M16 3h3a2 2 0 0 1 2 2v3"/>
+                <path d="M21 16v3a2 2 0 0 1-2 2h-3"/><path d="M8 21H5a2 2 0 0 1-2-2v-3"/>
+              </svg>
+            )}
+          </button>
+          <div className="relative">
+            <button onClick={() => setMenuOpen((o) => !o)} title="More"
+              className="flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold text-mist/40 transition hover:bg-edge/40 hover:text-foam">
+              •••
+            </button>
+            {menuOpen && (
+              <div className="absolute bottom-full right-0 mb-2 min-w-[160px] overflow-hidden rounded-xl border border-edge bg-ink/95 py-1 shadow-xl backdrop-blur-sm"
+                onMouseLeave={() => setMenuOpen(false)}>
+                <p className="px-3 pt-1 pb-0.5 text-[10px] font-semibold uppercase tracking-wider text-mist/40">Editor</p>
+                {uploading && (
+                  <div className="px-3 py-2 text-xs text-mist">Uploading…</div>
+                )}
+                <button onClick={() => { setBlocks([{ id: rid(), type: "text", value: "" }]); setMenuOpen(false); }}
+                  className="w-full px-3 py-2 text-left text-xs text-mist transition hover:bg-edge/40 hover:text-loonred">
+                  Clear body
+                </button>
+                <button onClick={() => { saveDraft(); setMenuOpen(false); }}
+                  className="w-full px-3 py-2 text-left text-xs text-mist transition hover:bg-edge/40 hover:text-foam">
+                  Save draft
+                </button>
+              </div>
+            )}
+          </div>
+    </div>
+  );
+
   return (
-    <div className="space-y-5">
+    <div className={fullscreen ? "fixed inset-0 z-[200] bg-panel flex flex-col overflow-hidden" : ""}>
+      {fullscreen && (
+        <div className="flex shrink-0 items-center justify-between border-b border-edge/40 px-5 py-3 md:px-10">
+          <button
+            onClick={() => setFullscreen(false)}
+            className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm text-mist transition hover:bg-edge/60 hover:text-foam"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/>
+              <path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/>
+            </svg>
+            Exit fullscreen
+          </button>
+          <button onClick={publish} disabled={busy || uploading}
+            className="rounded-[10px] px-5 py-2 text-sm font-bold text-ink disabled:opacity-50"
+            style={{ backgroundImage: "linear-gradient(180deg,#3ad6bd,#3e9fe6)" }}>
+            {busy ? "Publishing…" : "Publish"}
+          </button>
+        </div>
+      )}
+      <div className={fullscreen ? "flex-1 overflow-y-auto px-5 py-6 md:px-16 lg:px-28" : ""}>
+      <div className="space-y-5">
 
       {/* Draft banner */}
       {hasDraft && (
@@ -931,47 +1006,17 @@ export default function ArticleComposer() {
         )}
       </div>
 
-      {/* Floating cMenu toolbar */}
-      <div className="sticky bottom-0 z-10 flex justify-center pt-4 pb-1">
-        <div className="flex items-center gap-0.5 rounded-full border border-edge bg-ink/95 px-2 py-1 shadow-xl backdrop-blur-sm">
-          {BLOCK_TYPES.map(({ type, icon, label }) => (
-            <button key={type} onClick={() => { addBlock(type); setMenuOpen(false); }}
-              title={label} disabled={uploading}
-              className="flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-bold text-mist/60 transition hover:bg-edge/40 hover:text-foam disabled:opacity-30">
-              {icon}
-            </button>
-          ))}
-          <span className="mx-1.5 h-3 w-px bg-edge/40" />
-          <div className="relative">
-            <button onClick={() => setMenuOpen((o) => !o)} title="More"
-              className="flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold text-mist/40 transition hover:bg-edge/40 hover:text-foam">
-              •••
-            </button>
-            {menuOpen && (
-              <div className="absolute bottom-full right-0 mb-2 min-w-[160px] overflow-hidden rounded-xl border border-edge bg-ink/95 py-1 shadow-xl backdrop-blur-sm"
-                onMouseLeave={() => setMenuOpen(false)}>
-                <p className="px-3 pt-1 pb-0.5 text-[10px] font-semibold uppercase tracking-wider text-mist/40">Editor</p>
-                {uploading && (
-                  <div className="px-3 py-2 text-xs text-mist">Uploading…</div>
-                )}
-                <button onClick={() => { setBlocks([{ id: rid(), type: "text", value: "" }]); setMenuOpen(false); }}
-                  className="w-full px-3 py-2 text-left text-xs text-mist transition hover:bg-edge/40 hover:text-loonred">
-                  Clear body
-                </button>
-                <button onClick={() => { saveDraft(); setMenuOpen(false); }}
-                  className="w-full px-3 py-2 text-left text-xs text-mist transition hover:bg-edge/40 hover:text-foam">
-                  Save draft
-                </button>
-              </div>
-            )}
-          </div>
+      {/* Floating cMenu toolbar — sticky in normal mode */}
+      {!fullscreen && (
+        <div className="sticky bottom-0 z-10 flex justify-center pt-4 pb-1">
+          {cMenuBar}
         </div>
-      </div>
+      )}
 
       {err && <p className="text-sm text-loonred">{err}</p>}
 
       {/* Footer */}
-      <div className="flex items-center justify-between border-t border-edge/30 pt-4">
+      {!fullscreen && <div className="flex items-center justify-between border-t border-edge/30 pt-4">
         <div className="flex items-center gap-4 text-xs text-mist/50">
           <span>{words.toLocaleString()} words · {readingTime(words)}</span>
           {draftSaved
@@ -984,7 +1029,15 @@ export default function ArticleComposer() {
           style={{ backgroundImage: "linear-gradient(180deg,#3ad6bd,#3e9fe6)" }}>
           {busy ? "Publishing…" : "Publish"}
         </button>
+      </div>}
+    </div>
       </div>
+      {/* Floating cMenu toolbar — pinned at bottom in fullscreen */}
+      {fullscreen && (
+        <div className="shrink-0 flex justify-center py-3 bg-panel border-t border-edge/20">
+          {cMenuBar}
+        </div>
+      )}
     </div>
   );
 }
