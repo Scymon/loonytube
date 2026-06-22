@@ -152,12 +152,42 @@ export default function ChannelHero({
     else document.exitFullscreen();
   }
 
-  /* ── No video: static banner ── */
+  /* ── No video: banner + channel identity (no player) ── */
   if (!video) {
+    const bannerStyle = profile.banner_url
+      ? { backgroundImage: `url(${profile.banner_url})`, backgroundSize: "cover", backgroundPosition: "center" }
+      : { background: BANNER_FALLBACK };
     return (
-      <div className="relative w-full overflow-hidden rounded-b-2xl" style={{ minHeight: 144 }}
-        style={profile.banner_url ? { backgroundImage: `url(${profile.banner_url})`, backgroundSize: "cover", backgroundPosition: "center" } : { background: BANNER_FALLBACK }}>
+      <div className="relative w-full overflow-hidden rounded-b-2xl"
+        style={{ aspectRatio: "16/5", minHeight: 200, ...bannerStyle }}>
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/10" />
 
+        {/* Channel info */}
+        <div className="absolute bottom-3 left-4 flex items-center gap-3">
+          <Avatar name={displayName} src={profile.avatar_url} size={52} ring={true} />
+          <div>
+            <p className="text-lg font-bold text-white drop-shadow leading-tight">{displayName}</p>
+            <p className="text-xs text-foam/80">{nfmt(followerCount)} subscribers</p>
+          </div>
+        </div>
+
+        {/* Follow / Edit */}
+        <div className="absolute bottom-3 right-4" onClick={e => e.stopPropagation()}>
+          {isOwnChannel ? (
+            <a href="/studio/profile"
+              className="inline-flex rounded-full border border-white/30 bg-black/50 px-4 py-1.5 text-sm font-semibold text-white hover:bg-black/70 transition">
+              Edit channel
+            </a>
+          ) : (
+            <FollowUserButton
+              targetId={profile.id}
+              signedIn={signedIn}
+              initialFollowing={isFollowing}
+              initialNotifLevel={notifLevel}
+              variant="solid"
+            />
+          )}
+        </div>
       </div>
     );
   }
