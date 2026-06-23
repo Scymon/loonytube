@@ -161,6 +161,13 @@ export default function Nav({ onLogoClick }: { onLogoClick?: () => void }) {
               <circle cx="11" cy="11" r="7" /><path d="M21 21l-4-4" />
             </svg>
           </button>
+          {/* === Go Live button — placed on the Notification Bell side === */}
+          <Link
+            href="/studio/live"
+            className="flex items-center gap-1.5 rounded-full border border-edge px-3.5 py-1.5 text-sm font-semibold text-foam hover:border-loon hover:text-loon transition"
+          >
+            Go Live
+          </Link>
           <NotificationBell />
 
           {email ? (
