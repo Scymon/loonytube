@@ -129,12 +129,12 @@ export default function Nav({ onLogoClick }: { onLogoClick?: () => void }) {
           {onLogoClick ? (
             <button onClick={onLogoClick} aria-label="Open menu ribbon" className="transition hover:brightness-110 active:scale-95">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/loony-logo.png" alt="LoonyTube" className="h-9 w-9 rounded-[10px] object-cover" />
+              <img src="\loonytube-logo_x480.png" alt="LoonyTube" className="h-9 w-9 rounded-[10px] object-cover" />
             </button>
           ) : (
             <Link href="/" aria-label="LoonyTube home" className="transition hover:brightness-110">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/loony-logo.png" alt="LoonyTube" className="h-9 w-9 rounded-[10px] object-cover" />
+              <img src="\loonytube-logo_x480.png" alt="LoonyTube" className="h-9 w-9 rounded-[10px] object-cover" />
             </Link>
           )}
           {isStudio && <span className="ml-1 mr-1 text-lg font-bold tracking-tight text-foam">Studio</span>}
@@ -161,14 +161,27 @@ export default function Nav({ onLogoClick }: { onLogoClick?: () => void }) {
               <circle cx="11" cy="11" r="7" /><path d="M21 21l-4-4" />
             </svg>
           </button>
-          {/* === Go Live button — placed on the Notification Bell side === */}
-          <Link
-            href="/studio/live"
-            className="flex items-center gap-1.5 rounded-full border border-edge px-3.5 py-1.5 text-sm font-semibold text-foam hover:border-loon hover:text-loon transition"
+        {/* === Go Live button — placed on the Notification Bell side === */}
+        <Link
+          href="/studio/live"
+          className="flex h-10 w-10 items-center justify-center rounded-full border border-edge text-foam hover:border-loon hover:text-loon transition"
+          title="Go Live"
+        >
+          <svg 
+            width="20" 
+            height="20" 
+            viewBox="0 0 24 24" 
+            fill="none" 
+            stroke="currentColor" 
+            strokeWidth="2" 
+            strokeLinecap="round" 
+            strokeLinejoin="round"
           >
-            Go Live
-          </Link>
-          <NotificationBell />
+            <path d="M23 7l-7 5 7 5V7z" />
+            <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
+          </svg>
+        </Link>
+        <NotificationBell />
 
           {email ? (
             <div className="relative ml-1" ref={menuRef}>

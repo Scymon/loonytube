@@ -300,7 +300,7 @@ export default function DashHero({ featuredVideo, bannerUrl, videos }: Props) {
         <div className="absolute bottom-2 left-0 right-0 px-4">
           <Link href={`/watch/${featuredVideo?.id ?? ""}`} onClick={e => e.stopPropagation()}
             className="block text-xl font-bold text-white drop-shadow line-clamp-1 hover:underline w-fit">
-            {featuredVideo?.title}
+            {currentVideo?.title}
           </Link>
           <Link href={`/${currentVideo?.channelHandle ?? ""}`} onClick={e => e.stopPropagation()}
             className="mt-1 flex items-center gap-2 w-fit">
