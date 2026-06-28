@@ -37,8 +37,10 @@ function NavIcon({
   const inner = (
     <span
       className={`relative grid h-10 w-10 place-items-center rounded-full transition ${
-        active ? "text-sky" : "text-mist hover:bg-edge/60 hover:text-foam"
-      } ${k === "create" ? "border border-edge" : ""}`}
+        k === "create"
+          ? "border border-teal/60 text-teal shadow-[0_0_10px_rgba(45,212,180,0.35)] hover:bg-teal/10 hover:shadow-[0_0_18px_rgba(45,212,180,0.55)]"
+          : active ? "text-sky" : "text-mist hover:bg-edge/60 hover:text-foam"
+      }`}
     >
       <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <path d={ICONS[k]} />
