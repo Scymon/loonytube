@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { cfStreamToken } from "@/lib/cloudflare";
+import StreamPlayer from "@/components/StreamPlayer";
 import ProcessingWatcher from "@/components/ProcessingWatcher";
 import WatchLayout from "@/components/watch/WatchLayout";
 import type { SidebarProfile, SidebarVideo, TrendingTag } from "@/components/watch/WatchSidebar";
