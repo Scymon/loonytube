@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Avatar from "@/components/Avatar";
 import Link from "next/link";
+import { IcoFill, IcoAutoplay } from "@/components/watch/WatchIcons";
 
 export type FeaturedVideo = {
   id: string; title: string; thumbnail: string | null;
@@ -77,7 +78,7 @@ function CtrlBtn({ onClick, title, children, disabled, className = "" }: {
 }) {
   return (
     <button type="button" onClick={onClick} title={title} disabled={disabled}
-      className={`grid h-8 w-8 shrink-0 place-items-center rounded-full bg-black/60 text-white hover:bg-black/80 transition ${className}`}>
+      className={`grid h-8 w-8 shrink-0 place-items-center rounded-full text-white/70 transition-all duration-200 hover:text-teal hover:[filter:drop-shadow(0_0_6px_rgba(45,212,180,0.85))] hover:scale-105 disabled:opacity-30 ${className}`}>
       {children}
     </button>
   );
@@ -88,10 +89,39 @@ export default function DashHero({ featuredVideo, bannerUrl, videos }: Props) {
   const [isTheatre, setIsTheatre]     = useState(false);
   const [muted, setMuted]             = useState(true);
   const mutedRef = useRef(true); // tracks muted across player re-init
+  const autoplayRef = useRef(true); // tracks autoplay across player re-init
     const [isPaused, setIsPaused]       = useState(false);
   const [lightsOut, setLightsOut]      = useState(false);
   const [vidIdx, setVidIdx]            = useState(0);
   const [urlMuted, setUrlMuted]        = useState(true); // muted=true in iframe URL (needed for autoplay)
+  const [fill, setFill]               = useState(true);  // fill/crop by default (ambient feel)
+  const [autoplay, setAutoplay]       = useState(true);
+  useEffect(() => {
+    try {
+      if (localStorage.getItem("loonytube:fill") === "0") setFill(false);
+      if (localStorage.getItem("loonytube:autoplay") === "0") { setAutoplay(false); autoplayRef.current = false; }
+    } catch { /* noop */ }
+  }, []);
+  // Sync lights-out to <html> so Nav can dim without z-index hacks
+  useEffect(() => {
+    if (lightsOut && isTheatre) document.documentElement.classList.add('lt-lights-out');
+    else document.documentElement.classList.remove('lt-lights-out');
+    return () => document.documentElement.classList.remove('lt-lights-out');
+  }, [lightsOut, isTheatre]);
+
+  function toggleFill(e: React.MouseEvent) {
+    e.stopPropagation();
+    const next = !fill;
+    setFill(next);
+    try { localStorage.setItem("loonytube:fill", next ? "1" : "0"); } catch { /* noop */ }
+  }
+  function toggleAutoplay(e: React.MouseEvent) {
+    e.stopPropagation();
+    const next = !autoplay;
+    setAutoplay(next);
+    autoplayRef.current = next;
+    try { localStorage.setItem("loonytube:autoplay", next ? "1" : "0"); } catch { /* noop */ }
+  }
   const playlist = videos && videos.length > 1 ? videos : featuredVideo ? [featuredVideo] : [];
   const currentVideo = playlist[vidIdx] ?? featuredVideo;
   const [currentTime, setCurrentTime] = useState(0);
@@ -101,6 +131,32 @@ export default function DashHero({ featuredVideo, bannerUrl, videos }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const lastSavedRef  = useRef(0);
   const resumeTimeRef  = useRef(0); // currentTime saved before iframe reload
+  const [videoRatio, setVideoRatio]   = useState<number | null>(null);
+  const [containerRatio, setContainerRatio] = useState(16 / 9);
+
+  // Detect video aspect ratio from thumbnail
+  useEffect(() => {
+    const src = currentVideo?.thumbnail ?? null;
+    if (!src) return;
+    setVideoRatio(null);
+    const img = new Image();
+    img.onload = () => {
+      if (img.naturalWidth && img.naturalHeight)
+        setVideoRatio(img.naturalWidth / img.naturalHeight);
+    };
+    img.src = src;
+  }, [currentVideo?.thumbnail]);
+
+  // Track container dimensions for accurate fill scale
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const obs = new ResizeObserver(([e]) => {
+      const r = e.contentRect;
+      if (r.height > 0) setContainerRatio(r.width / r.height);
+    });
+    obs.observe(containerRef.current);
+    return () => obs.disconnect();
+  }, []);
   const resumePointRef = useRef(0); // resume target loaded from localStorage
 
   useEffect(() => {
@@ -125,6 +181,7 @@ export default function DashHero({ featuredVideo, bannerUrl, videos }: Props) {
     p.addEventListener("pause", () => setIsPaused(true));
 
     p.addEventListener("ended", () => {
+      if (!autoplayRef.current) return;
       setVidIdx(i => (i + 1) % playlist.length);
     });
 
@@ -260,6 +317,19 @@ export default function DashHero({ featuredVideo, bannerUrl, videos }: Props) {
     );
   }
 
+  const isPortrait = videoRatio !== null && videoRatio < 1;
+
+  // Fill: which axis has bars? And how much to scale to remove them (theatre only)
+  const fillDir: 'h' | 'v' | null = (() => {
+    if (!videoRatio) return null;
+    if (videoRatio < containerRatio - 0.05) return 'v';
+    if (videoRatio > containerRatio + 0.05) return 'h';
+    return null;
+  })();
+  const fillScale = (!fill || !isTheatre || isPortrait || !fillDir) ? 1
+    : fillDir === 'v' ? containerRatio / videoRatio
+    : videoRatio / containerRatio;
+
   const pct = duration > 0 ? (currentTime / duration) * 100 : 0;
   const poster = currentVideo?.thumbnail ?? undefined;
 
@@ -273,9 +343,30 @@ export default function DashHero({ featuredVideo, bannerUrl, videos }: Props) {
         />
       )}
     <div ref={containerRef}
-      className={`group relative w-full overflow-hidden rounded-2xl transition-all duration-300 ${isTheatre ? "bg-black cursor-default z-[52]" : "cursor-pointer"}`}
-      style={isTheatre ? { height: "min(56.25vw, 82vh)", width: "100%" } : { aspectRatio: "16/5", minHeight: 200 }}
+      className={[
+        "group relative overflow-hidden rounded-2xl transition-all duration-300",
+        isTheatre
+          ? `bg-black cursor-default z-[52]${isPortrait ? " mx-auto" : " w-full"}`
+          : "cursor-pointer w-full",
+      ].join(" ")}
+      style={
+        isTheatre
+          ? isPortrait
+            ? { height: "85svh", aspectRatio: String(videoRatio ?? 0.5625) }
+            : { height: "min(56.25vw, 82vh)", width: "100%" }
+          : { aspectRatio: "16/5", minHeight: 200 }
+      }
       onClick={isTheatre ? () => togglePlayPause() : () => enterTheatre()}>
+
+      {/* Blurred letterbox background - portrait videos in miniplayer banner */}
+      {!isTheatre && isPortrait && poster && (
+        <div className="absolute inset-0 overflow-hidden" aria-hidden="true">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={poster} alt="" aria-hidden="true"
+            className="absolute inset-0 h-full w-full scale-110 object-cover"
+            style={{ filter: "blur(24px) brightness(0.32) saturate(1.4)" }} />
+        </div>
+      )}
 
       {/* iframe remounts when video changes via key */}
       <div key={`${currentVideo?.id}-${urlMuted}`} className="absolute inset-0 overflow-hidden">
@@ -283,11 +374,13 @@ export default function DashHero({ featuredVideo, bannerUrl, videos }: Props) {
           allow="autoplay; fullscreen; picture-in-picture" allowFullScreen
           style={{
             position: "absolute", top: "50%", left: "50%",
-            transform: "translate(-50%,-50%)",
-            width: isTheatre ? "177.78vh" : "177.78vw",
-            height: isTheatre ? "100vh" : "56.25vw",
-            minWidth: "100%",
-            minHeight: "100%",
+            transform: isTheatre && fillScale !== 1
+              ? `translate(-50%,-50%) scale(${fillScale})`
+              : "translate(-50%,-50%)",
+            width: isTheatre ? "100%" : "177.78vw",
+            height: isTheatre ? "100%" : "56.25vw",
+            minWidth: isTheatre ? undefined : "100%",
+            minHeight: isTheatre ? undefined : "100%",
             border: "none", pointerEvents: "none",
           }} />
       </div>
@@ -376,6 +469,14 @@ export default function DashHero({ featuredVideo, bannerUrl, videos }: Props) {
               {muted ? <IcoMuted /> : <IcoUnmuted />}
             </CtrlBtn>
             <div className="flex-1" />
+            <CtrlBtn onClick={toggleAutoplay} title={autoplay ? "Autoplay on" : "Autoplay off"}>
+              <IcoAutoplay on={autoplay} />
+            </CtrlBtn>
+            {!isPortrait && (
+              <CtrlBtn onClick={toggleFill} title={fill ? "Letterbox" : "Fill"}>
+                <IcoFill on={fill} dir={fillDir} />
+              </CtrlBtn>
+            )}
             <CtrlBtn onClick={doFullscreen} title="Fullscreen"><IcoFullscreen /></CtrlBtn>
           </div>
         </div>

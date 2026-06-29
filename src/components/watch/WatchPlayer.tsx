@@ -30,7 +30,7 @@ function Btn({
       title={title}
       aria-label={title}
       disabled={disabled}
-      className="grid h-8 w-8 place-items-center rounded-full text-white/80 transition hover:bg-white/10 hover:text-white disabled:opacity-30 disabled:pointer-events-none"
+      className="grid h-8 w-8 place-items-center rounded-full text-white/70 transition-all duration-200 hover:text-teal hover:[filter:drop-shadow(0_0_6px_rgba(45,212,180,0.85))] hover:scale-105 disabled:opacity-30 disabled:pointer-events-none"
     >
       {children}
     </button>
@@ -150,11 +150,11 @@ export default function WatchPlayer({
   let containerStyle: React.CSSProperties;
   if (isTheatre) {
     containerStyle = isPortrait
-      ? { aspectRatio: String(videoRatio), maxHeight: "85svh", ...lightsOutZ }
+      ? { aspectRatio: String(videoRatio), height: "85svh", ...lightsOutZ }
       : { height: "min(56.25vw, 75vh)", ...lightsOutZ };
   } else {
     containerStyle = isPortrait
-      ? { aspectRatio: String(videoRatio), maxHeight: "calc(100svh - 80px)", borderRadius: "0.75rem" }
+      ? { aspectRatio: String(videoRatio), height: "calc(100svh - 80px)", borderRadius: "0.75rem" }
       : { aspectRatio: "16/9", maxHeight: "calc(100svh - 120px)", borderRadius: "0.75rem" };
   }
 
@@ -213,9 +213,6 @@ export default function WatchPlayer({
           allowFullScreen
           style={iframeStyle}
         />
-
-        {/* Click-to-pause: transparent layer above iframe, below controls */}
-        <div className="absolute inset-0 cursor-pointer" onClick={p.togglePlay} />
 
         {/* Click-to-pause: transparent layer above iframe, below controls */}
         <div className="absolute inset-0 cursor-pointer" onClick={p.togglePlay} />

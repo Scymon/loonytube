@@ -36,10 +36,10 @@ function NavIcon({
 }) {
   const inner = (
     <span
-      className={`relative grid h-10 w-10 place-items-center rounded-full transition ${
+      className={`relative grid h-10 w-10 place-items-center rounded-full transition-all duration-200 ${
         k === "create"
           ? "border border-teal/60 text-teal shadow-[0_0_10px_rgba(45,212,180,0.35)] hover:bg-teal/10 hover:shadow-[0_0_18px_rgba(45,212,180,0.55)]"
-          : active ? "text-sky" : "text-mist hover:bg-edge/60 hover:text-foam"
+          : active ? "text-sky" : "text-mist/70 hover:text-teal hover:[filter:drop-shadow(0_0_6px_rgba(45,212,180,0.85))] hover:scale-105"
       }`}
     >
       <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -158,7 +158,7 @@ export default function Nav({ onLogoClick }: { onLogoClick?: () => void }) {
 
         {/* right: search icon, bell, avatar */}
         <div className="flex items-center gap-1.5">
-          <button onClick={() => document.getElementById("nav-search")?.focus()} title="Search" aria-label="Search" className="grid h-10 w-10 place-items-center rounded-full text-mist hover:bg-edge/60 hover:text-foam">
+          <button onClick={() => document.getElementById("nav-search")?.focus()} title="Search" aria-label="Search" className="grid h-10 w-10 place-items-center rounded-full text-mist/70 transition-all duration-200 hover:text-teal hover:[filter:drop-shadow(0_0_6px_rgba(45,212,180,0.85))] hover:scale-105">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
               <circle cx="11" cy="11" r="7" /><path d="M21 21l-4-4" />
             </svg>
@@ -166,7 +166,7 @@ export default function Nav({ onLogoClick }: { onLogoClick?: () => void }) {
         {/* === Go Live button — placed on the Notification Bell side === */}
         <Link
           href="/studio/live"
-          className="flex h-10 w-10 items-center justify-center rounded-full border border-edge text-foam hover:border-loon hover:text-loon transition"
+          className="flex h-10 w-10 items-center justify-center rounded-full border border-edge text-mist/70 transition-all duration-200 hover:text-teal hover:border-teal/50 hover:[filter:drop-shadow(0_0_6px_rgba(45,212,180,0.85))] hover:scale-105"
           title="Go Live"
         >
           <svg 

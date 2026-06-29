@@ -9,12 +9,14 @@ import CreateModal from "@/components/create/CreateModal";
 export default function AppShell({ children, fullWidth = true }: { children: React.ReactNode; fullWidth?: boolean }) {
   const [open, setOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     try {
       setOpen(localStorage.getItem("lt-ribbon-open") === "1");
       setExpanded(localStorage.getItem("lt-ribbon-expanded") === "1");
     } catch {}
+    setMounted(true);
   }, []);
 
   function persist(o: boolean, e: boolean) {
@@ -40,7 +42,7 @@ export default function AppShell({ children, fullWidth = true }: { children: Rea
       />
       <main className={isMessages
         ? "flex-1 min-h-0 overflow-hidden"
-        : `px-4 py-6 pb-24 transition-[padding] duration-200 sm:px-6 md:pb-6 ${pad}`
+        : `px-4 py-6 pb-24 ${mounted ? "transition-[padding] duration-200" : ""} sm:px-6 md:pb-6 ${pad}`
       }>{fullWidth ? children : <div className="mx-auto w-full max-w-[1440px]">{children}</div>}</main>
       <Suspense fallback={null}><CreateModal /></Suspense>
     </div>

@@ -53,6 +53,7 @@ export default function WatchLayout({
   useEffect(() => {
     try {
       if (localStorage.getItem("loonytube:playerMode") === "theatre") setMode("theatre");
+      if (localStorage.getItem("loonytube:sidebar") === "0") setSidebarOpen(false);
     } catch { /* noop */ }
 
     try {
@@ -133,17 +134,17 @@ export default function WatchLayout({
       trendingTags={trendingTags}
       signedIn={signedIn}
       open={sidebarOpen}
-      onOpenChange={setSidebarOpen}
+      onOpenChange={(v) => { setSidebarOpen(v); try { localStorage.setItem("loonytube:sidebar", v ? "1" : "0"); } catch { /* noop */ } }}
     />
   );
 
   // ── Theatre: player full width, content + sidebar side-by-side below ────────
   if (isTheatre) {
     return (
-      <div className="flex flex-col px-4 sm:px-6">
+      <div className="flex flex-col pl-3 pr-2">
         {player}
         <div className="mt-4 flex min-h-0">
-          <div className="min-w-0 flex-1 pb-4">
+          <div className="min-w-0 flex-1 pb-4 pr-3">
             {meta}
             <div className="mt-8">
               <Comments videoId={videoId} />
@@ -157,8 +158,8 @@ export default function WatchLayout({
 
   // ── Page: player + meta + comments on left, sidebar on right ────────────────
   return (
-    <div className="flex min-h-0 w-full px-4 sm:px-6">
-      <div className="min-w-0 flex-1 pb-4 pt-3">
+    <div className="flex min-h-0 w-full pl-3 pr-2">
+      <div className="min-w-0 flex-1 pb-4 pt-3 pr-3">
         {player}
         {meta}
         <div className="mt-8">

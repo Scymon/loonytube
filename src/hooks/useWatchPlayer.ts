@@ -13,6 +13,11 @@ export function useWatchPlayer(uid: string, token?: string | null, onEnded?: () 
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [lightsOut, setLightsOut] = useState(false);
+  useEffect(() => {
+    if (lightsOut) document.documentElement.classList.add('lt-lights-out');
+    else document.documentElement.classList.remove('lt-lights-out');
+    return () => document.documentElement.classList.remove('lt-lights-out');
+  }, [lightsOut]);
   const [controlsVisible, setControlsVisible] = useState(true);
 
   const iframeRef = useRef<HTMLIFrameElement>(null);

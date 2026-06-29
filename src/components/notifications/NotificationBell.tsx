@@ -57,7 +57,7 @@ export default function NotificationBell() {
   return (
     <div className="relative" ref={ref}>
       <button onClick={toggle} title="Notifications" aria-label="Notifications"
-        className="relative grid h-10 w-10 place-items-center rounded-full text-mist hover:bg-edge/60 hover:text-foam">
+        className="relative grid h-10 w-10 place-items-center rounded-full text-mist/70 transition-all duration-200 hover:text-teal hover:[filter:drop-shadow(0_0_6px_rgba(45,212,180,0.85))] hover:scale-105">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
           <path d="M6 9a6 6 0 1112 0c0 5 2 6 2 6H4s2-1 2-6M10 21h4" />
         </svg>
