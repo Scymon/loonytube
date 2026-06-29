@@ -6,15 +6,15 @@
 <title>LoonyTube — Feature Dive</title>
 <style>
   :root{
-    --abyss:#06101a;      /* lake-night base */
-    --deep:#0c1a28;       /* panel */
-    --deeper:#0a1521;     /* row */
-    --edge:#1a3243;       /* hairline */
-    --ice:#74d4ec;        /* light-blue accent */
-    --teal:#2dd4b4;       /* teal accent */
-    --mist:#8ca6b8;       /* muted text */
-    --foam:#e8f3f8;       /* primary text */
-    --eye:#e05570;        /* loon-eye red — skip only */
+    --abyss:#06101a;
+    --deep:#0c1a28;
+    --deeper:#0a1521;
+    --edge:#1a3243;
+    --ice:#74d4ec;
+    --teal:#2dd4b4;
+    --mist:#8ca6b8;
+    --foam:#e8f3f8;
+    --eye:#e05570;
     --mono:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
     --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   }
@@ -29,7 +29,7 @@
     font-family:var(--sans);
     line-height:1.5;
     min-height:100vh;
-    padding:0 0 80px;
+    padding:0 0 120px;
   }
   .wrap{max-width:920px;margin:0 auto;padding:0 20px}
 
@@ -84,6 +84,11 @@
   .tag.done{color:var(--teal);border-color:var(--teal)}
   .tag.quick{color:var(--ice);border-color:var(--ice)}
   .tag.build{color:var(--mist);border-color:var(--edge)}
+  .tag.request{color:#a78bfa;border-color:#a78bfa}
+
+  /* ---- custom item delete ---- */
+  .del-btn{flex:none;background:none;border:none;color:var(--mist);cursor:pointer;font-size:16px;line-height:1;padding:2px 4px;margin-top:1px;border-radius:3px;transition:.15s;align-self:flex-start}
+  .del-btn:hover{color:var(--eye)}
 
   /* ---- skip zone ---- */
   .skip section{opacity:1}
@@ -94,6 +99,33 @@
   .skip-x{color:var(--eye);font-family:var(--mono);flex:none;font-weight:700}
   .skip-item .it-title{color:var(--mist);text-decoration:line-through;text-decoration-color:var(--eye);font-weight:600;font-size:15px}
   .skip-item .it-note{color:#5f7585;font-size:13px;margin-top:2px}
+
+  /* ---- add feature modal ---- */
+  .modal-overlay{position:fixed;inset:0;background:rgba(6,16,26,.85);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px)}
+  .modal{background:var(--deep);border:1px solid var(--edge);border-radius:8px;width:100%;max-width:520px;padding:28px;display:flex;flex-direction:column;gap:18px}
+  .modal h2{font-size:18px;font-weight:700;letter-spacing:-.01em}
+  .modal h2 span{color:var(--teal)}
+  .field{display:flex;flex-direction:column;gap:6px}
+  .field label{font-family:var(--mono);font-size:11px;letter-spacing:.1em;color:var(--mist)}
+  .field input,.field textarea,.field select{background:var(--abyss);border:1px solid var(--edge);border-radius:4px;color:var(--foam);font-family:var(--sans);font-size:14px;padding:9px 12px;width:100%;transition:.15s;outline:none}
+  .field input:focus,.field textarea:focus,.field select:focus{border-color:var(--teal)}
+  .field textarea{min-height:80px;resize:vertical;line-height:1.5}
+  .field-row{display:flex;gap:12px}
+  .field-row .field{flex:1}
+  .modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:4px}
+  .btn-cancel{font-family:var(--mono);font-size:12px;color:var(--mist);background:none;border:1px solid var(--edge);border-radius:4px;padding:8px 18px;cursor:pointer;transition:.15s}
+  .btn-cancel:hover{color:var(--foam);border-color:var(--mist)}
+  .btn-add{font-family:var(--mono);font-size:12px;color:var(--abyss);background:var(--teal);border:1px solid var(--teal);border-radius:4px;padding:8px 18px;cursor:pointer;font-weight:700;transition:.15s}
+  .btn-add:hover{background:var(--ice);border-color:var(--ice)}
+  .btn-add:disabled{opacity:.4;cursor:not-allowed}
+
+  /* ---- floating action button ---- */
+  .fab{position:fixed;bottom:28px;right:28px;z-index:50;display:flex;flex-direction:column;align-items:flex-end;gap:10px}
+  .fab-add{background:var(--teal);color:var(--abyss);border:none;border-radius:6px;padding:11px 18px;font-family:var(--mono);font-size:13px;font-weight:700;letter-spacing:.04em;cursor:pointer;box-shadow:0 4px 24px rgba(45,212,180,.35);transition:.15s;display:flex;align-items:center;gap:8px}
+  .fab-add:hover{background:var(--ice);box-shadow:0 4px 32px rgba(116,212,236,.4)}
+  .fab-save{background:var(--deep);color:var(--ice);border:1px solid var(--edge);border-radius:6px;padding:9px 16px;font-family:var(--mono);font-size:12px;cursor:pointer;box-shadow:0 2px 12px rgba(0,0,0,.4);transition:.15s;display:flex;align-items:center;gap:7px}
+  .fab-save:hover{border-color:var(--ice);background:var(--deeper)}
+  .fab-save.saving{color:var(--teal);border-color:var(--teal)}
 
   footer{margin-top:48px;padding-top:18px;border-top:1px solid var(--edge);font-family:var(--mono);font-size:11px;color:var(--mist);letter-spacing:.04em}
   .hidden{display:none !important}
@@ -120,14 +152,47 @@
   </div>
 
   <div id="board"></div>
-
   <div class="skip" id="skipZone"></div>
 
   <footer>LoonyTube · Loon Suite (LoonyTube · Loon Browser · LoonCMS · LoonOS) · Loonatic theme preview · built on Next.js + Supabase + Cloudflare Stream</footer>
 </div>
 
+<!-- Floating actions -->
+<div class="fab">
+  <button class="fab-save hidden" id="fabSave">💾 Save to file</button>
+  <button class="fab-add" id="fabAdd">＋ Add Feature</button>
+</div>
+
+<!-- Add feature modal -->
+<div class="modal-overlay hidden" id="addModal">
+  <div class="modal">
+    <h2>Add <span>Feature Request</span></h2>
+    <div class="field">
+      <label>Feature title</label>
+      <input type="text" id="addTitle" placeholder="e.g. Dark mode for Studio" maxlength="120" />
+    </div>
+    <div class="field">
+      <label>Description</label>
+      <textarea id="addNote" placeholder="What it does, why it matters, any constraints…"></textarea>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Effort</label>
+        <select id="addType">
+          <option value="quick">Quick win</option>
+          <option value="build">Build</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" id="addCancel">Cancel</button>
+      <button class="btn-add" id="addSubmit" disabled>Add Feature</button>
+    </div>
+  </div>
+</div>
+
 <script>
-// status: done | quick | build
+//<DATA_ARRAY_START>
 const DATA = [
   { depth:"0 ft — Surface", title:"Shipped — the core loop", note:"Already live and committed.", items:[
     {id:"s-auth", t:"Email / password auth", n:"Supabase Auth + profile auto-create trigger.", s:"done", done:true},
@@ -175,11 +240,11 @@ const DATA = [
     {id:"h-shorts-feed", t:"Shorts feed", n:"Full-screen vertical autoplay, swipe-to-next, infinite scroll.", s:"build"},
     {id:"h-shorts-player", t:"Vertical Shorts player", n:"Separate from the landscape player; tap/swipe controls.", s:"build"},
     {id:"h-timeline", t:"Unified timeline", n:"Interleave long video, shorts, posts; For-You vs Following tabs.", s:"build"},
-    {id:"h-sound", t:"\u201cUse this sound\u201d", n:"Reuse audio from a short. Use creator-supplied/royalty-free only (no licensed catalog).", s:"build"},
+    {id:"h-sound", t:"“Use this sound”", n:"Reuse audio from a short. Use creator-supplied/royalty-free only (no licensed catalog).", s:"build"},
   ]},
   { depth:"150 ft — Depths", title:"Phase 3 — Scale & Infra", note:"Don't over-engineer early — but leave room.", items:[
     {id:"p3-cache", t:"Feed / ranking cache", n:"Upstash/Redis once reads get heavy.", s:"build"},
-    {id:"p3-rank", t:"Isolate ranking logic", n:"One swappable function so reverse-chron \u2192 real ranking is easy later.", s:"quick"},
+    {id:"p3-rank", t:"Isolate ranking logic", n:"One swappable function so reverse-chron → real ranking is easy later.", s:"quick"},
     {id:"p3-pwa", t:"PWA support", n:"Installable, offline shell — before any native app.", s:"build"},
     {id:"p3-captions", t:"Captions / subtitles", n:"Cloudflare can auto-generate; allow manual upload/edit.", s:"build"},
   ]},
@@ -207,14 +272,18 @@ const DATA = [
     {id:"l-shop", t:"Shop / product tags", n:"In-feed commerce, affiliate.", s:"build"},
     {id:"l-api", t:"Public API", n:"Data + analytics access for developers.", s:"build"},
   ]},
+  { depth:"Requests", title:"Feature Requests", note:"Ideas and enhancements under consideration. Add your own with the button below — save to file to bake them in permanently.", items:[
+    {id:"fr-blur", t:"Blur letterbox background for portrait videos", n:"Admin toggle in app_settings. Scales + blurs the poster image to fill the black bars around portrait/vertical content. Low effort — CSS + one DB column + one AdminSwitches row.", s:"quick"},
+  ]},
 ];
+//<DATA_ARRAY_END>
 
 const SKIP = [
   { depth:"The Trench", title:"Won't Build — indie reality", note:"Consciously skipped. These are traps: enormous cost, legal exposure, or zero leverage for an indie. Differentiate on brand, community, and the hybrid feed instead.", items:[
     {t:"Licensed music catalog", n:"Licensing is legal + financial quicksand. Creator-supplied / royalty-free audio only."},
     {t:"AR effects house (Effect House)", n:"Years of dedicated graphics work. Not a wedge."},
     {t:"Content ID / auto copyright matching", n:"Enterprise-scale ML + legal apparatus."},
-    {t:"8K / HDR / 360\u00b0 / VR", n:"Delivery's already handled by Cloudflare; chasing premium formats buys nothing now."},
+    {t:"8K / HDR / 360° / VR", n:"Delivery's already handled by Cloudflare; chasing premium formats buys nothing now."},
     {t:"Native iOS / Android apps (initially)", n:"Ship a PWA first. Native only if it ever truly matters."},
     {t:"Embedded conversational AI (Grok-equivalent)", n:"Out of scope for a video/social platform."},
     {t:"Family Pairing / Kids app", n:"Heavy COPPA-style compliance. Not for v1."},
@@ -223,27 +292,43 @@ const SKIP = [
 ];
 
 const KEY = "loonytube-checklist-v1";
+const REQUESTS_KEY = "loonytube-requests-v1";
+
 let state = {};
 try { state = JSON.parse(localStorage.getItem(KEY)) || {}; } catch(e){ state = {}; }
-// seed shipped items as done on first run
 DATA.forEach(sec => sec.items.forEach(it => {
   if (it.done && !(it.id in state)) state[it.id] = true;
 }));
 
+let custom = [];
+try { custom = JSON.parse(localStorage.getItem(REQUESTS_KEY)) || []; } catch(e){ custom = []; }
+
 let filter = "all";
 const board = document.getElementById("board");
 const skipZone = document.getElementById("skipZone");
+const fabSave = document.getElementById("fabSave");
 
 function save(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){} }
+function saveCustom(){ try{ localStorage.setItem(REQUESTS_KEY, JSON.stringify(custom)); }catch(e){} }
 
-function tagHTML(s){
+function tagHTML(s, isCustom){
+  if(isCustom) return '<span class="tag request">Request</span>';
   const label = s==="done" ? "Done" : s==="quick" ? "Quick win" : "Build";
   return `<span class="tag ${s}">${label}</span>`;
 }
 
 function render(){
   board.innerHTML = "";
-  DATA.forEach(sec=>{
+
+  // Merge custom items into the Feature Requests section for rendering
+  const renderData = DATA.map((sec) => {
+    if(sec.title === "Feature Requests" && custom.length > 0){
+      return { ...sec, items: [...sec.items, ...custom.map(c => ({...c, _custom:true}))] };
+    }
+    return sec;
+  });
+
+  renderData.forEach(sec=>{
     const el = document.createElement("section");
     el.innerHTML = `
       <div class="sec-head">
@@ -252,10 +337,13 @@ function render(){
         ${sec.gate ? '<span class="gate">GATE</span>' : ''}
       </div>
       <div class="sec-note">${sec.note}</div>`;
+
+    let hasItems = false;
     sec.items.forEach(it=>{
       const done = !!state[it.id];
-      if (filter==="todo" && done) return;
-      if (filter==="done" && !done) return;
+      if(filter==="todo" && done) return;
+      if(filter==="done" && !done) return;
+      hasItems = true;
       const row = document.createElement("label");
       row.className = "item" + (done ? " is-done" : "");
       row.innerHTML = `
@@ -264,14 +352,16 @@ function render(){
           <div class="it-title">${it.t}</div>
           <div class="it-note">${it.n}</div>
         </div>
-        ${tagHTML(it.s)}`;
+        ${tagHTML(it.s, it._custom)}
+        ${it._custom ? `<button class="del-btn" data-custom-id="${it.id}" title="Remove">\xd7</button>` : ''}`;
       el.appendChild(row);
     });
-    board.appendChild(el);
+
+    if(hasItems || filter==="all") board.appendChild(el);
   });
-  // skip zone only under "all"
+
   skipZone.classList.toggle("hidden", filter!=="all");
-  if (filter==="all"){
+  if(filter==="all"){
     skipZone.innerHTML = "";
     SKIP.forEach(sec=>{
       const el = document.createElement("section");
@@ -284,7 +374,7 @@ function render(){
       sec.items.forEach(it=>{
         const row = document.createElement("div");
         row.className = "skip-item";
-        row.innerHTML = `<span class="skip-x">\u2715</span>
+        row.innerHTML = `<span class="skip-x">✕</span>
           <div class="it-body"><div class="it-title">${it.t}</div><div class="it-note">${it.n}</div></div>`;
         el.appendChild(row);
       });
@@ -297,12 +387,15 @@ function render(){
 function updateGauge(){
   let total=0, done=0;
   DATA.forEach(sec=>sec.items.forEach(it=>{ total++; if(state[it.id]) done++; }));
+  total += custom.length;
+  custom.forEach(it=>{ if(state[it.id]) done++; });
   const pct = total ? Math.round(done/total*100) : 0;
   document.getElementById("fill").style.width = pct+"%";
   document.getElementById("pct").textContent = pct+"%";
   document.getElementById("count").textContent = done+"/"+total;
 }
 
+// ---- board interactions ----
 board.addEventListener("change", e=>{
   if(!e.target.classList.contains("box")) return;
   state[e.target.dataset.id] = e.target.checked;
@@ -310,6 +403,18 @@ board.addEventListener("change", e=>{
   e.target.closest(".item").classList.toggle("is-done", e.target.checked);
   updateGauge();
   if(filter!=="all") render();
+});
+
+board.addEventListener("click", e=>{
+  const btn = e.target.closest(".del-btn");
+  if(!btn) return;
+  e.preventDefault();
+  const id = btn.dataset.customId;
+  if(!confirm("Remove this feature request?")) return;
+  custom = custom.filter(c => c.id !== id);
+  saveCustom();
+  updateSaveVisibility();
+  render();
 });
 
 document.querySelectorAll(".chip").forEach(c=>{
@@ -327,6 +432,104 @@ document.getElementById("reset").addEventListener("click", ()=>{
   save(); render();
 });
 
+// ---- add feature modal ----
+const modal = document.getElementById("addModal");
+const titleInput = document.getElementById("addTitle");
+const noteInput = document.getElementById("addNote");
+const typeSelect = document.getElementById("addType");
+const submitBtn = document.getElementById("addSubmit");
+
+document.getElementById("fabAdd").addEventListener("click", ()=>{
+  titleInput.value = ""; noteInput.value = ""; typeSelect.value = "quick";
+  submitBtn.disabled = true;
+  modal.classList.remove("hidden");
+  setTimeout(()=>titleInput.focus(), 50);
+});
+
+titleInput.addEventListener("input", ()=>{
+  submitBtn.disabled = titleInput.value.trim().length === 0;
+});
+
+document.getElementById("addCancel").addEventListener("click", ()=> modal.classList.add("hidden"));
+modal.addEventListener("click", e=>{ if(e.target === modal) modal.classList.add("hidden"); });
+document.addEventListener("keydown", e=>{ if(e.key==="Escape") modal.classList.add("hidden"); });
+
+document.getElementById("addSubmit").addEventListener("click", ()=>{
+  const t = titleInput.value.trim();
+  if(!t) return;
+  const id = "fr-" + Date.now();
+  const item = { id, t, n: noteInput.value.trim() || "No description.", s: typeSelect.value };
+  custom.push(item);
+  saveCustom();
+  modal.classList.add("hidden");
+  updateSaveVisibility();
+  render();
+  setTimeout(()=>{
+    const sections = document.querySelectorAll(".sec-title");
+    for(const s of sections){ if(s.textContent==="Feature Requests"){ s.closest("section").scrollIntoView({behavior:"smooth",block:"start"}); break; } }
+  }, 100);
+});
+
+// ---- save to file ----
+function updateSaveVisibility(){
+  fabSave.classList.toggle("hidden", custom.length === 0);
+}
+
+function buildHTML(){
+  const mergedData = JSON.parse(JSON.stringify(DATA));
+  const frSec = mergedData.find(s => s.title === "Feature Requests");
+  if(frSec && custom.length > 0){
+    custom.forEach(c => {
+      if(!frSec.items.find(x => x.id === c.id)) frSec.items.push(c);
+    });
+  }
+  const dataStr = JSON.stringify(mergedData, null, 2);
+  let html = "<!DOCTYPE html>\n" + document.documentElement.outerHTML;
+  const startMarker = "//<DATA_ARRAY_START>";
+  const endMarker = "//<DATA_ARRAY_END>";
+  const start = html.indexOf(startMarker);
+  const end = html.indexOf(endMarker) + endMarker.length;
+  if(start === -1 || end === -1){ alert("Marker not found — save failed."); return null; }
+  const newBlock = startMarker + "\nconst DATA = " + dataStr + ";\n" + endMarker;
+  return html.slice(0, start) + newBlock + html.slice(end);
+}
+
+fabSave.addEventListener("click", async ()=>{
+  const html = buildHTML();
+  if(!html) return;
+  const blob = new Blob([html], { type: "text/html" });
+  if(window.showSaveFilePicker){
+    try{
+      const fh = await window.showSaveFilePicker({
+        suggestedName: "featurelist.html",
+        types:[{ description:"HTML file", accept:{"text/html":[".html"]} }],
+      });
+      const writable = await fh.createWritable();
+      await writable.write(blob);
+      await writable.close();
+      fabSave.textContent = "✓ Saved";
+      fabSave.classList.add("saving");
+      custom = [];
+      saveCustom();
+      updateSaveVisibility();
+      setTimeout(()=>{ fabSave.textContent = "💾 Save to file"; fabSave.classList.remove("saving"); render(); }, 2000);
+    } catch(e){
+      if(e.name !== "AbortError") alert("Save failed: " + e.message);
+    }
+  } else {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "featurelist.html";
+    a.click();
+    URL.revokeObjectURL(a.href);
+    custom = [];
+    saveCustom();
+    updateSaveVisibility();
+    render();
+  }
+});
+
+updateSaveVisibility();
 render();
 </script>
 </body>

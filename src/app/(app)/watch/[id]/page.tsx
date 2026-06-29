@@ -1,72 +1,100 @@
 import { createClient } from "@/lib/supabase/server";
 import { cfStreamToken } from "@/lib/cloudflare";
-import StreamPlayer from "@/components/StreamPlayer";
-import LikeButton from "@/components/LikeButton";
-import Comments from "@/components/Comments";
 import ProcessingWatcher from "@/components/ProcessingWatcher";
+import WatchLayout from "@/components/watch/WatchLayout";
+import type { SidebarProfile, SidebarVideo, TrendingTag } from "@/components/watch/WatchSidebar";
 
 export const dynamic = "force-dynamic";
 
-export default async function Watch({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default async function Watch({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await createClient();
 
   const { data: video } = await supabase
     .from("videos")
-    .select("id, title, description, status, views, created_at, owner, visibility")
+    .select("id, title, description, status, views, created_at, owner, visibility, thumbnail")
     .eq("id", id)
     .maybeSingle();
 
   if (!video) {
-    return (
-      <p className="py-16 text-center text-gray-400">
-        Video not found — or still private while it processes.
-      </p>
-    );
+    return <p className="py-16 text-center text-mist">Video not found or still private.</p>;
   }
 
   if (video.status !== "ready") {
     return (
-      <div className="py-16 text-center text-gray-400">
+      <div className="py-16 text-center text-mist">
         <ProcessingWatcher videoId={id} />
-        <p className="text-xl">Processing on Cloudflare…</p>
-        <p className="mt-2 text-sm">This page refreshes automatically when it&apos;s ready.</p>
+        <p className="text-xl">Processing on Cloudflare...</p>
+        <p className="mt-2 text-sm">This page refreshes automatically when ready.</p>
       </div>
     );
   }
 
-  const { data: prof } = await supabase
+  const { data: { user: viewer } } = await supabase.auth.getUser();
+  const viewerId = viewer?.id ?? null;
+
+  const { data: channel } = await supabase
     .from("profiles")
-    .select("username")
+    .select("id, username, full_name, avatar_url")
     .eq("id", video.owner)
     .maybeSingle();
 
-  // Private videos require a short-lived signed token to play. We only reach here
-  // for videos the viewer is allowed to read (RLS), so minting is safe.
   const token = video.visibility === "private" ? await cfStreamToken(id) : null;
 
+  const { data: relatedRaw } = await supabase
+    .from("videos")
+    .select("id, title, thumbnail, views, created_at, duration")
+    .eq("owner", video.owner)
+    .eq("status", "ready")
+    .neq("id", id)
+    .order("created_at", { ascending: false })
+    .limit(10);
+  const relatedVideos: SidebarVideo[] = relatedRaw ?? [];
+
+  let followedIds: string[] = [];
+  let isFollowingChannel = false;
+  if (viewerId) {
+    const { data: follows } = await supabase
+      .from("follows").select("followee").eq("follower", viewerId);
+    followedIds = (follows ?? []).map((f: { followee: string }) => f.followee);
+    isFollowingChannel = followedIds.includes(video.owner);
+  }
+
+  const { data: suggestRaw } = await supabase
+    .from("profiles")
+    .select("id, username, full_name, avatar_url")
+    .neq("id", video.owner)
+    .limit(20);
+  const suggestedProfiles: SidebarProfile[] = (suggestRaw ?? [])
+    .filter((p: SidebarProfile) => p.id !== viewerId && !followedIds.includes(p.id))
+    .slice(0, 5);
+
+  const { data: tagRows } = await supabase.from("post_hashtags").select("tag").limit(200);
+  const tagMap: Record<string, number> = {};
+  for (const row of tagRows ?? []) tagMap[row.tag] = (tagMap[row.tag] ?? 0) + 1;
+  const trendingTags: TrendingTag[] = Object.entries(tagMap)
+    .sort((a, b) => b[1] - a[1]).slice(0, 8).map(([tag, count]) => ({ tag, count }));
+
   return (
-    <div className="mx-auto max-w-4xl">
-      <StreamPlayer uid={id} token={token} />
-      <div className="mt-4 flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-bold">{video.title}</h1>
-          <p className="mt-1 text-sm text-gray-400">
-            {prof?.username ?? "someone"} · {video.views} views
-          </p>
-        </div>
-        <LikeButton videoId={id} />
-      </div>
-      {video.description && (
-        <p className="mt-4 whitespace-pre-wrap rounded-lg border border-edge bg-panel p-4 text-sm text-gray-300">
-          {video.description}
-        </p>
-      )}
-      <Comments videoId={id} />
-    </div>
+    <WatchLayout
+      videoId={id}
+      token={token}
+      poster={video.thumbnail ?? undefined}
+      title={video.title}
+      description={video.description ?? null}
+      views={video.views ?? 0}
+      createdAt={video.created_at}
+      owner={video.owner}
+      channelUsername={channel?.username ?? null}
+      channelName={channel?.full_name ?? null}
+      channelAvatar={channel?.avatar_url ?? null}
+      signedInUserId={viewerId}
+      isFollowing={isFollowingChannel}
+      channelHandle={channel?.username ?? video.owner}
+      relatedVideos={relatedVideos}
+      suggestedProfiles={suggestedProfiles}
+      trendingTags={trendingTags}
+      signedIn={!!viewerId}
+    />
   );
 }
