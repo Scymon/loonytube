@@ -17,11 +17,15 @@ export function useVideoProgress(videoId: string | null) {
       if (user) {
         const { data } = await supabase
           .from("video_progress")
-          .select("progress_seconds")
+          .select("progress_seconds, duration_seconds")
           .eq("user_id", user.id)
           .eq("video_id", videoId)
           .maybeSingle();
-        if (data?.progress_seconds) { setResumeTime(data.progress_seconds); setReady(true); return; }
+        if (data?.progress_seconds) {
+          const isComplete = data.duration_seconds > 0 && data.progress_seconds / data.duration_seconds >= 0.92;
+          setResumeTime(isComplete ? 0 : data.progress_seconds);
+          setReady(true); return;
+        }
       }
       // localStorage fallback (anonymous / offline)
       const local = localStorage.getItem(`loonytube:resume:${videoId}`);
@@ -40,18 +44,18 @@ export function useVideoProgress(videoId: string | null) {
     if (sec <= 0 || sec < lastSavedRef.current + 10) return;
     lastSavedRef.current = sec;
 
-    // Always keep localStorage in sync (instant, works offline).
-    localStorage.setItem(`loonytube:resume:${videoId}`, String(sec));
+    const completed = durationSeconds > 0 && sec / durationSeconds >= 0.92;
+
+    // Reset to 0 on completion so next play starts from beginning.
+    localStorage.setItem(`loonytube:resume:${videoId}`, String(completed ? 0 : sec));
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const completed = durationSeconds > 0 && sec / durationSeconds >= 0.92;
-
-    // Upsert progress row.
+    // Upsert progress row; save 0 when done so next play restarts.
     await supabase.from("video_progress").upsert({
       user_id: user.id, video_id: videoId,
-      progress_seconds: sec,
+      progress_seconds: completed ? 0 : sec,
       duration_seconds: durationSeconds > 0 ? Math.floor(durationSeconds) : null,
       updated_at: new Date().toISOString(),
     }, { onConflict: "user_id,video_id" });
@@ -69,7 +73,7 @@ export function useVideoProgress(videoId: string | null) {
         .update({ progress_seconds: sec, completed })
         .eq("user_id", user.id).eq("video_id", videoId);
     }
-  }, [videoId]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [videoId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return { resumeTime, ready, onTimeUpdate };
 }
