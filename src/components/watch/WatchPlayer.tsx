@@ -4,7 +4,7 @@ import { useWatchPlayer, type PlayerMode } from "@/hooks/useWatchPlayer";
 import {
   IcoPlay, IcoPause, IcoMuted, IcoUnmuted,
   IcoTheatre, IcoExitTheatre, IcoFullscreen, IcoLightsOut,
-  IcoPrev, IcoNext, IcoAutoplay,
+  IcoPrev, IcoNext, IcoAutoplay, IcoFill,
 } from "./WatchIcons";
 
 function fmt(s: number) {
@@ -90,6 +90,31 @@ export default function WatchPlayer({
     } catch { /* noop */ }
   }, []);
 
+  const [fill, setFill] = useState(false);
+
+  useEffect(() => {
+    try {
+      if (localStorage.getItem("loonytube:fill") === "1") setFill(true);
+    } catch { /* noop */ }
+  }, []);
+
+  function toggleFill() {
+    const next = !fill;
+    setFill(next);
+    try { localStorage.setItem("loonytube:fill", next ? "1" : "0"); } catch { /* noop */ }
+  }
+
+  const [containerRatioActual, setContainerRatioActual] = useState(16 / 9);
+  useEffect(() => {
+    if (!p.containerRef.current) return;
+    const obs = new ResizeObserver(([e]) => {
+      const r = e.contentRect;
+      if (r.height > 0) setContainerRatioActual(r.width / r.height);
+    });
+    obs.observe(p.containerRef.current);
+    return () => obs.disconnect();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Tick countdown → fire onNext when it hits 0
   useEffect(() => {
     if (countdown === null) return;
@@ -130,7 +155,7 @@ export default function WatchPlayer({
   } else {
     containerStyle = isPortrait
       ? { aspectRatio: String(videoRatio), maxHeight: "calc(100svh - 80px)", borderRadius: "0.75rem" }
-      : { aspectRatio: "16/9", borderRadius: "0.75rem" };
+      : { aspectRatio: "16/9", maxHeight: "calc(100svh - 120px)", borderRadius: "0.75rem" };
   }
 
   // Portrait: shrink to content width and center; landscape: stretch full width
@@ -138,6 +163,28 @@ export default function WatchPlayer({
     "group relative overflow-hidden bg-black",
     isPortrait ? "mx-auto w-auto" : "w-full",
   ].join(" ");
+
+  // Which axis has bars? Drives icon appearance and fill scale.
+  const fillDir: 'h' | 'v' | null = (() => {
+    if (!videoRatio) return null;
+    if (videoRatio < containerRatioActual - 0.05) return 'v';
+    if (videoRatio > containerRatioActual + 0.05) return 'h';
+    return null;
+  })();
+
+  // CSS scale to zoom iframe so Cloudflare's bars are pushed out of the container.
+  const fillScale = (!fill || isPortrait || !fillDir) ? 1
+    : fillDir === 'v' ? containerRatioActual / (videoRatio ?? containerRatioActual)
+    : (videoRatio ?? containerRatioActual) / containerRatioActual;
+
+  const iframeStyle: React.CSSProperties = {
+    position: "absolute", top: "50%", left: "50%",
+    transform: fillScale !== 1
+      ? `translate(-50%,-50%) scale(${fillScale})`
+      : "translate(-50%,-50%)",
+    width: "100%", height: "100%",
+    border: "none", pointerEvents: "none",
+  };
 
   const src = p.iframeSrc + (poster ? `&poster=${encodeURIComponent(poster)}` : "");
 
@@ -164,17 +211,14 @@ export default function WatchPlayer({
           src={src}
           allow="autoplay; fullscreen; picture-in-picture"
           allowFullScreen
-          style={{
-            position: "absolute",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%,-50%)",
-            width: "100%",
-            height: "100%",
-            border: "none",
-            pointerEvents: "none",
-          }}
+          style={iframeStyle}
         />
+
+        {/* Click-to-pause: transparent layer above iframe, below controls */}
+        <div className="absolute inset-0 cursor-pointer" onClick={p.togglePlay} />
+
+        {/* Click-to-pause: transparent layer above iframe, below controls */}
+        <div className="absolute inset-0 cursor-pointer" onClick={p.togglePlay} />
 
         {/* Big centered play button when paused */}
         {p.isPaused && countdown === null && (
@@ -253,6 +297,11 @@ export default function WatchPlayer({
             <Btn onClick={toggleAutoplay} title={autoplay ? "Autoplay on" : "Autoplay off"}>
               <IcoAutoplay on={autoplay} />
             </Btn>
+            {!isPortrait && (
+              <Btn onClick={toggleFill} title={fill ? "Letterbox" : "Fill"}>
+                <IcoFill on={fill} dir={fillDir} />
+              </Btn>
+            )}
             {isTheatre ? (
               <>
                 <Btn

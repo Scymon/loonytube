@@ -86,3 +86,30 @@ export function IcoAutoplay({ on = true }: { on?: boolean }) {
     </svg>
   );
 }
+
+export const IcoFill = ({ on, dir }: { on: boolean; dir: 'h' | 'v' | null }) => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    {on ? (
+      // Fill active: solid inner frame + dashed outer frame
+      // Reads as: video is larger than container, being cropped
+      <>
+        <rect x="5" y="5" width="14" height="14" rx="1" />
+        <rect x="2" y="2" width="20" height="20" rx="2" strokeDasharray="3 2" />
+      </>
+    ) : dir === 'v' ? (
+      // Pillarboxing: narrow video, bars on sides
+      <>
+        <rect x="7" y="2" width="10" height="20" rx="1" />
+        <line x1="2" y1="2" x2="2" y2="22" />
+        <line x1="22" y1="2" x2="22" y2="22" />
+      </>
+    ) : (
+      // Letterboxing: wide video, bars top/bottom (default)
+      <>
+        <rect x="2" y="8" width="20" height="8" rx="1" />
+        <line x1="2" y1="2" x2="22" y2="2" />
+        <line x1="2" y1="22" x2="22" y2="22" />
+      </>
+    )}
+  </svg>
+);
