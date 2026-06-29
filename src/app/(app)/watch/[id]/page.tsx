@@ -10,6 +10,52 @@ export default async function Watch({ params }: { params: Promise<{ id: string }
   const { id } = await params;
   const supabase = await createClient();
 
+  // ============================================
+  // 1. Check if this is a LIVE stream first
+  // ============================================
+  const { data: live } = await supabase
+    .from("live_streams")
+    .select("id, title, description, status, started_at")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (live) {
+    if (live.status !== "live") {
+      return (
+        <div className="py-16 text-center text-gray-400">
+          <p className="text-xl">Stream is not live yet.</p>
+          <p className="mt-2 text-sm">Waiting for OBS to connect...</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="mx-auto max-w-5xl">
+        <div className="mb-3 flex items-center gap-3">
+          <div className="rounded bg-red-600 px-3 py-0.5 text-xs font-bold tracking-[2px] text-white">
+            LIVE
+          </div>
+          <h1 className="text-2xl font-bold">{live.title}</h1>
+        </div>
+
+        <StreamPlayer uid={id} />
+
+        {live.description && (
+          <p className="mt-4 whitespace-pre-wrap rounded-lg border border-edge bg-panel p-4 text-sm text-gray-300">
+            {live.description}
+          </p>
+        )}
+
+        <div className="mt-8 text-sm text-gray-400">
+          Live chat coming soon...
+        </div>
+      </div>
+    );
+  }
+
+  // ============================================
+  // 2. Normal video flow (your existing logic)
+  // ============================================
   const { data: video } = await supabase
     .from("videos")
     .select("id, title, description, status, views, created_at, owner, visibility, thumbnail")

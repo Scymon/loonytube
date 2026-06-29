@@ -16,7 +16,7 @@ export default function Logo({
     <span className="flex items-center gap-2.5">
       <span className={`overflow-hidden rounded-[10px] ${box}`}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/LoonyLogo-Dark480.png" alt="LoonyTube" className="h-full w-full object-cover" />
+        <img src="\loonytube-logo_x480.png" alt="LoonyTube" className="h-full w-full object-cover" />
       </span>
       {wordmark && (
         <span className={`font-extrabold tracking-tight text-foam ${text}`}>

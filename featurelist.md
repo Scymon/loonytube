@@ -1,6 +1,86 @@
 **LoonyTube Feature List – Categorized by Feature Group**  
 (Comprehensive reference as of mid-2026)
 
+---
+
+## ✅ Built & Deployed — LoonyTube (as of June 2026)
+
+### Authentication & Onboarding
+[x] Email/password signup and login
+[x] Invite-gate onboarding flow (invite code required)
+[x] Onboarding steps: interests, follow suggestions, done screen
+[x] Password reset via email
+[x] Session management (Supabase Auth)
+
+### Video Upload & Playback
+[x] Resumable video uploads via Cloudflare Stream (tus protocol, large file support)
+[x] Upload progress UI with processing toast notification
+[x] Cloudflare Stream player with adaptive bitrate
+[x] Video visibility controls (Public / Unlisted / Private)
+[x] Custom thumbnail picker from video frames
+[x] Video status polling (processing → ready)
+[x] Studio: content table, video management, scheduler
+
+### Posts & Articles
+[x] Short-form post composer (text, images, media)
+[x] Rich article composer with block-based editor (paragraph, H2, H3, blockquote, code, divider, table, video embed)
+[x] Article composer fullscreen writing mode — expands to fill viewport, toolbar pinned at bottom, exit/publish controls in header (June 2026)
+[x] Block type switcher per block — opens leftward on mobile to prevent viewport overflow (June 2026)
+[x] Cover image upload for articles
+[x] Article draft auto-save and restore
+[x] Image drag-and-drop and upload within article body
+[x] Word count and estimated read time
+[x] Article publish flow
+
+### Direct Messaging (Threads / DMs)
+[x] One-to-one DM conversations
+[x] Real-time messages via Supabase Realtime
+[x] Image and media sharing in DMs
+[x] X (Twitter) post embeds in DMs — server-side oEmbed proxy fixes CORS on production mobile (June 2026)
+[x] Mobile keyboard-safe layout — `fixed inset-0` anchoring prevents blank space when soft keyboard opens/dismisses (June 2026)
+[x] Threads sidebar with conversation list
+[x] Threads tab bar (DMs / Posts / Groups placeholders)
+
+### Notifications
+[x] Real-time notification bell
+[x] Notification list with per-type icons
+
+### Discovery & Feed
+[x] Home feed with video rows, article cards, post cards
+[x] Category shelf / interest-based browsing
+[x] Search with results (users, videos, posts)
+[x] Hashtag pages
+[x] Profile / channel pages with handle routing
+
+### Create Modal
+[x] Unified create modal (Video / Post / Article tabs, lazy-loaded)
+[x] URL-driven modal open state (`?compose=article` etc.)
+[x] Keyboard shortcut: Escape to close
+
+### Profile & Settings
+[x] Profile editor (avatar, bio, links)
+[x] Role badges (admin, creator, etc.)
+[x] Sign out
+
+### Studio
+[x] Studio shell with sidebar navigation
+[x] Content table (uploaded videos)
+[x] Posts table
+[x] Profile editor in studio
+[x] Scheduler page (UI)
+
+### Admin
+[x] Admin panel: role manager, invite manager, feature switches
+
+### Infrastructure
+[x] Next.js 14 App Router, TypeScript, Tailwind CSS
+[x] Supabase (auth, Postgres, realtime, storage)
+[x] Cloudflare Stream (video hosting and playback)
+[x] Vercel deployment — `main` → production (loonytube.tv), `dev` → staging preview
+[x] Server-side oEmbed proxy (`/api/oembed/x`) for X/Twitter embed CORS fix
+
+---
+
 ### 1. Account, Authentication & Profile
 [ ] Google account / single sign-on integration
 [ ] Channel creation, switching between multiple channels, and Brand Accounts

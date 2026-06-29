@@ -13,9 +13,11 @@ type Props = { featuredVideo: FeaturedVideo | null; bannerUrl?: string | null; v
 
 const SDK_URL = "https://embed.cloudflarestream.com/embed/sdk.latest.js";
 
-function iframeSrc(id: string, poster?: string) {
+function iframeSrc(id: string, poster?: string, muted = true, startTime = 0) {
   const p = poster ? `&poster=${encodeURIComponent(poster)}` : "";
-  return `https://iframe.cloudflarestream.com/${id}?autoplay=true&muted=true&loop=true&controls=false&preload=auto${p}`;
+  const m = muted ? "&muted=true" : "";
+  const st = startTime > 2 ? `&startTime=${Math.floor(startTime)}` : "";
+  return `https://iframe.cloudflarestream.com/${id}?autoplay=true${m}&controls=false&preload=auto${p}${st}`;
 }
 
 function fmtTime(s: number) {
@@ -86,9 +88,10 @@ export default function DashHero({ featuredVideo, bannerUrl, videos }: Props) {
   const [isTheatre, setIsTheatre]     = useState(false);
   const [muted, setMuted]             = useState(true);
   const mutedRef = useRef(true); // tracks muted across player re-init
-  const [isPaused, setIsPaused]       = useState(false);
+    const [isPaused, setIsPaused]       = useState(false);
   const [lightsOut, setLightsOut]      = useState(false);
   const [vidIdx, setVidIdx]            = useState(0);
+  const [urlMuted, setUrlMuted]        = useState(true); // muted=true in iframe URL (needed for autoplay)
   const playlist = videos && videos.length > 1 ? videos : featuredVideo ? [featuredVideo] : [];
   const currentVideo = playlist[vidIdx] ?? featuredVideo;
   const [currentTime, setCurrentTime] = useState(0);
@@ -97,60 +100,117 @@ export default function DashHero({ featuredVideo, bannerUrl, videos }: Props) {
   const playerRef    = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const lastSavedRef  = useRef(0);
+  const resumeTimeRef  = useRef(0); // currentTime saved before iframe reload
 
   useEffect(() => {
     playerRef.current = null; // reset when video changes
     lastSavedRef.current = 0;
     const vid = playlist[vidIdx]?.id ?? featuredVideo?.id ?? null;
     function initPlayer() {
-      if (iframeRef.current && (window as any).Stream && !playerRef.current) {
-        const p = (window as any).Stream(iframeRef.current);
-        playerRef.current = p;
-        p.muted = mutedRef.current; // restore mute state across video changes
-        p.addEventListener("play",  () => { setIsPaused(false); p.muted = mutedRef.current; });
-        p.addEventListener("pause", () => setIsPaused(true));
-        p.addEventListener("ended", () => setVidIdx(i => (i + 1) % playlist.length));
-        p.addEventListener("timeupdate", () => {
-          const t = p.currentTime ?? 0;
-          const dur = p.duration ?? 0;
-          setCurrentTime(t);
-          if (dur > 0) setDuration(dur);
-          const sec = Math.floor(t);
-          if (vid && sec > 0 && sec >= lastSavedRef.current + 5) {
-            lastSavedRef.current = sec;
-            localStorage.setItem(`loonytube:resume:${vid}`, String(sec));
-          }
-        });
-        p.addEventListener("durationchange", () => { if (p.duration > 0) setDuration(p.duration); });
-        p.addEventListener("loadedmetadata", () => {
-          if (p.duration > 0) setDuration(p.duration);
-          p.muted = mutedRef.current; // override iframe URL's muted=true
-          if (vid) {
-            const saved = localStorage.getItem(`loonytube:resume:${vid}`);
-            if (saved) {
-              const t = parseFloat(saved);
-              if (t > 2) {
-                p.currentTime = t;
-                setTimeout(() => { if (Math.abs(p.currentTime - t) > 2) p.currentTime = t; }, 400);
-              }
-            }
-          }
-        });
+  if (iframeRef.current && (window as any).Stream && !playerRef.current) {
+    const p = (window as any).Stream(iframeRef.current);
+    playerRef.current = p;
+
+    // Restore mute state
+    p.muted = mutedRef.current;
+
+    // ── Core event listeners ─────────────────────────────────────
+    p.addEventListener("play", () => {
+      setIsPaused(false);
+      p.muted = mutedRef.current;
+    });
+
+    p.addEventListener("pause", () => setIsPaused(true));
+
+    p.addEventListener("ended", () => {
+      setVidIdx(i => (i + 1) % playlist.length);
+    });
+
+    p.addEventListener("timeupdate", () => {
+      const t = p.currentTime ?? 0;
+      const dur = p.duration ?? 0;
+      setCurrentTime(t);
+      if (dur > 0) setDuration(dur);
+
+      const sec = Math.floor(t);
+      if (vid && sec > 0 && sec >= lastSavedRef.current + 5) {
+        lastSavedRef.current = sec;
+        localStorage.setItem(`loonytube:resume:${vid}`, String(sec));
       }
-    }
+    });
+
+    p.addEventListener("durationchange", () => {
+      if (p.duration > 0) setDuration(p.duration);
+    });
+
+    p.addEventListener("seeked", () => {
+      if (p.paused) setIsPaused(true);
+    });
+
+    // ── Resume logic (safer version) ─────────────────────────────
+    p.addEventListener("loadedmetadata", () => {
+      if (p.duration > 0) setDuration(p.duration);
+      p.muted = mutedRef.current;
+
+      if (vid) {
+        const saved = localStorage.getItem(`loonytube:resume:${vid}`);
+        if (saved) {
+          const t = parseFloat(saved);
+          if (t > 2) {
+            p.currentTime = t;
+            setTimeout(() => {
+              if (playerRef.current && Math.abs(playerRef.current.currentTime - t) > 1.5) {
+                playerRef.current.currentTime = t;
+              }
+            }, 450);
+          }
+        }
+      }
+    });
+  }
+}
     if ((window as any).Stream) { initPlayer(); return; }
     let s = document.querySelector(`script[src="${SDK_URL}"]`) as HTMLScriptElement | null;
     if (!s) { s = document.createElement("script") as HTMLScriptElement; s.src = SDK_URL; document.head.appendChild(s); }
     s.addEventListener("load", initPlayer, { once: true });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [vidIdx]);
+  }, [vidIdx, urlMuted]);
 
-  function applyMute(next: boolean) { setMuted(next); mutedRef.current = next; if (playerRef.current) playerRef.current.muted = next; }
+  function applyMute(next: boolean) {
+    setMuted(next);
+    mutedRef.current = next;
+    const p = playerRef.current;
+    if (next) {
+      // Muting via SDK always works.
+      if (p) p.muted = true;
+      return;
+    }
+    if (urlMuted) {
+      // First-ever unmute: the iframe was started with muted=true in the URL,
+      // so p.muted=false is silently ignored by the browser's autoplay policy.
+      // Reload the iframe WITHOUT muted=true (passing startTime to resume position).
+      // After this one reload, SDK mute/unmute works normally.
+      resumeTimeRef.current = p?.currentTime ?? 0;
+      playerRef.current = null; // let useEffect re-init the player
+      setUrlMuted(false);        // triggers useEffect re-run + iframe remount
+    } else {
+      // iframe URL already lacks muted=true — SDK set works fine now.
+      if (p) p.muted = false;
+    }
+  }
   function toggleMute(e: React.MouseEvent) { e.stopPropagation(); applyMute(!muted); }
   function togglePlayPause(e?: React.MouseEvent) {
     e?.stopPropagation();
-    if (isPaused) { playerRef.current?.play();  setIsPaused(false); }
-    else          { playerRef.current?.pause(); setIsPaused(true);  }
+    const p = playerRef.current;
+    if (!p) return;
+
+    if (isPaused) {
+      p.play().catch(() => {});
+      setIsPaused(false);
+    } else {
+      p.pause();
+      setIsPaused(true);
+    }
   }
   function goPrev(e: React.MouseEvent) {
     e.stopPropagation();
@@ -212,8 +272,8 @@ export default function DashHero({ featuredVideo, bannerUrl, videos }: Props) {
       onClick={isTheatre ? () => togglePlayPause() : () => enterTheatre()}>
 
       {/* iframe remounts when video changes via key */}
-      <div key={currentVideo?.id} className="absolute inset-0 overflow-hidden">
-        <iframe ref={iframeRef} src={iframeSrc(currentVideo?.id ?? "", poster)}
+      <div key={`${currentVideo?.id}-${urlMuted}`} className="absolute inset-0 overflow-hidden">
+        <iframe ref={iframeRef} src={iframeSrc(currentVideo?.id ?? "", poster, urlMuted, resumeTimeRef.current)}
           allow="autoplay; fullscreen; picture-in-picture" allowFullScreen
           style={{
             position: "absolute", top: "50%", left: "50%",
@@ -240,7 +300,7 @@ export default function DashHero({ featuredVideo, bannerUrl, videos }: Props) {
         <div className="absolute bottom-2 left-0 right-0 px-4">
           <Link href={`/watch/${featuredVideo?.id ?? ""}`} onClick={e => e.stopPropagation()}
             className="block text-xl font-bold text-white drop-shadow line-clamp-1 hover:underline w-fit">
-            {featuredVideo?.title}
+            {currentVideo?.title}
           </Link>
           <Link href={`/${currentVideo?.channelHandle ?? ""}`} onClick={e => e.stopPropagation()}
             className="mt-1 flex items-center gap-2 w-fit">
