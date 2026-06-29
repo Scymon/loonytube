@@ -161,7 +161,7 @@ export default async function Home() {
   const realShelves = [...byCat.entries()].slice(0, 3).map(([title, videos]) => ({ title, videos }));
 
   return (
-    <div className="-mt-6">
+    <div>
       {featuredVideo ? (
         <DashHero featuredVideo={featuredVideo} videos={featuredVideos} />
       ) : (

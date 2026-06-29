@@ -101,10 +101,12 @@ export default function DashHero({ featuredVideo, bannerUrl, videos }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const lastSavedRef  = useRef(0);
   const resumeTimeRef  = useRef(0); // currentTime saved before iframe reload
+  const resumePointRef = useRef(0); // resume target loaded from localStorage
 
   useEffect(() => {
     playerRef.current = null; // reset when video changes
     lastSavedRef.current = 0;
+    resumePointRef.current = 0;
     const vid = playlist[vidIdx]?.id ?? featuredVideo?.id ?? null;
     function initPlayer() {
   if (iframeRef.current && (window as any).Stream && !playerRef.current) {
@@ -133,9 +135,10 @@ export default function DashHero({ featuredVideo, bannerUrl, videos }: Props) {
       if (dur > 0) setDuration(dur);
 
       const sec = Math.floor(t);
+      const done = dur > 0 && sec / dur >= 0.92;
       if (vid && sec > 0 && sec >= lastSavedRef.current + 5) {
         lastSavedRef.current = sec;
-        localStorage.setItem(`loonytube:resume:${vid}`, String(sec));
+        localStorage.setItem(`loonytube:resume:${vid}`, String(done ? 0 : sec));
       }
     });
 
@@ -156,6 +159,7 @@ export default function DashHero({ featuredVideo, bannerUrl, videos }: Props) {
         const saved = localStorage.getItem(`loonytube:resume:${vid}`);
         if (saved) {
           const t = parseFloat(saved);
+          resumePointRef.current = t > 2 ? t : 0;
           if (t > 2) {
             p.currentTime = t;
             setTimeout(() => {
@@ -190,7 +194,9 @@ export default function DashHero({ featuredVideo, bannerUrl, videos }: Props) {
       // so p.muted=false is silently ignored by the browser's autoplay policy.
       // Reload the iframe WITHOUT muted=true (passing startTime to resume position).
       // After this one reload, SDK mute/unmute works normally.
-      resumeTimeRef.current = p?.currentTime ?? 0;
+      const liveTime = playerRef.current?.currentTime ?? 0;
+      resumeTimeRef.current = liveTime > 2 ? liveTime : resumePointRef.current;
+      resumePointRef.current = resumeTimeRef.current; // keep in sync after remount
       playerRef.current = null; // let useEffect re-init the player
       setUrlMuted(false);        // triggers useEffect re-run + iframe remount
     } else {
@@ -240,7 +246,7 @@ export default function DashHero({ featuredVideo, bannerUrl, videos }: Props) {
   /* ── Empty state ── */
   if (!currentVideo) {
     return (
-      <div className="relative w-full overflow-hidden rounded-b-2xl" style={{ aspectRatio: "16/5", minHeight: 200 }}>
+      <div className="relative w-full overflow-hidden rounded-2xl" style={{ aspectRatio: "16/5", minHeight: 200 }}>
         {bannerUrl
           // eslint-disable-next-line @next/next/no-img-element
           ? <img src={bannerUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
@@ -267,7 +273,7 @@ export default function DashHero({ featuredVideo, bannerUrl, videos }: Props) {
         />
       )}
     <div ref={containerRef}
-      className={`group relative w-full overflow-hidden rounded-b-2xl transition-all duration-300 ${isTheatre ? "bg-black cursor-default z-[52]" : "cursor-pointer"}`}
+      className={`group relative w-full overflow-hidden rounded-2xl transition-all duration-300 ${isTheatre ? "bg-black cursor-default z-[52]" : "cursor-pointer"}`}
       style={isTheatre ? { height: "min(56.25vw, 82vh)", width: "100%" } : { aspectRatio: "16/5", minHeight: 200 }}
       onClick={isTheatre ? () => togglePlayPause() : () => enterTheatre()}>
 

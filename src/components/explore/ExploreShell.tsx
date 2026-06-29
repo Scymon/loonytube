@@ -37,7 +37,7 @@ export default function ExploreShell({ featuredVideo, heroVideos, videos, posts,
   const [activeTab, setActiveTab] = useState<ExploreTab>("videos");
 
   return (
-    <div className="-mt-6">
+    <div>
       {/* Tab bar — sticky under nav.
           pointer-events-none on the full-width wrapper so the transparent area
           never blocks clicks on the hero controls beneath it.
