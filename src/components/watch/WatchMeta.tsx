@@ -41,7 +41,25 @@ export default function WatchMeta({
   signedInUserId, isFollowing,
 }: Props) {
   const [expanded, setExpanded] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const isOwn = signedInUserId === owner;
+
+  async function handleDownload() {
+    setDownloading(true);
+    try {
+      const r = await fetch(`/api/videos/${videoId}/download`, { method: "POST" });
+      const { url, error } = await r.json();
+      if (!url) { alert(error ?? "Download is being prepared — try again in a moment."); return; }
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "";
+      a.target = "_blank";
+      a.rel = "noopener";
+      a.click();
+    } finally {
+      setDownloading(false);
+    }
+  }
 
   const descShort =
     description && description.length > 200
@@ -115,6 +133,20 @@ export default function WatchMeta({
             </svg>
             Share
           </button>
+          {isOwn && (
+            <button
+              type="button"
+              title="Download your video"
+              onClick={handleDownload}
+              disabled={downloading}
+              className="flex items-center gap-1.5 rounded-full border border-edge px-3 py-1.5 text-sm text-mist transition hover:border-foam/40 hover:text-foam disabled:opacity-50"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />
+              </svg>
+              {downloading ? "Preparing…" : "Download"}
+            </button>
+          )}
         </div>
       </div>
 

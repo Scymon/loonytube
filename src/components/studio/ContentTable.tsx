@@ -47,6 +47,7 @@ export default function ContentTable({ initial }: { initial: Row[] }) {
   const [rows, setRows] = useState<Row[]>(initial);
   const [edit, setEdit] = useState<Row | null>(null);
   const [busy, setBusy] = useState(false);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [thumbBusy, setThumbBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -172,6 +173,23 @@ export default function ContentTable({ initial }: { initial: Row[] }) {
     if (!error) setRows((rs) => rs.filter((r) => r.id !== id));
   }
 
+  async function handleDownload(id: string) {
+    setDownloadingId(id);
+    try {
+      const r = await fetch(`/api/videos/${id}/download`, { method: "POST" });
+      const { url, error } = await r.json();
+      if (!url) { alert(error ?? "Download is being prepared — try again in a moment."); return; }
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "";
+      a.target = "_blank";
+      a.rel = "noopener";
+      a.click();
+    } finally {
+      setDownloadingId(null);
+    }
+  }
+
   if (rows.length === 0) {
     return (
       <p className="rounded-xl border border-edge bg-surface px-4 py-10 text-center text-sm text-mist">
@@ -229,6 +247,16 @@ export default function ContentTable({ initial }: { initial: Row[] }) {
                   <div className="flex items-center justify-end gap-3 whitespace-nowrap">
                     <button onClick={() => openEdit(r)} className="font-semibold text-teal hover:underline">Edit</button>
                     <Link href={`/watch/${r.id}`} className="text-mist hover:text-foam">View</Link>
+                    {r.status === "ready" && (
+                      <button
+                        onClick={() => handleDownload(r.id)}
+                        disabled={downloadingId === r.id}
+                        className="text-mist hover:text-sky disabled:opacity-50"
+                        title="Download video"
+                      >
+                        {downloadingId === r.id ? "…" : "Download"}
+                      </button>
+                    )}
                     <button onClick={() => remove(r.id)} className="text-mist hover:text-loonred">Delete</button>
                   </div>
                 </td>

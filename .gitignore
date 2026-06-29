@@ -5,6 +5,7 @@ node_modules
 *.log
 next-env.d.ts
 app.code-workspace
+*.bundle
 
 # TypeScript incremental build cache
 tsconfig.tsbuildinfo

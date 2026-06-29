@@ -94,31 +94,48 @@ export default function WatchLayout({
       return;
     }
 
-    // 2. Preemptively refill if approaching the end
-    if (!refillInFlight.current && queuePos >= queue.length - 2) {
-      refillInFlight.current = true;
-      const exclude = queue.slice(-50).join(",");
-      fetch(`/api/queue/refill?context=${queueContext}&exclude=${exclude}`)
-        .then(r => r.json())
-        .then(({ ids }: { ids: string[] }) => {
-          if (ids?.length) {
-            setQueue(prev => {
-              const merged = [...prev, ...ids.filter(id => !prev.includes(id))];
-              try { localStorage.setItem("loonytube:queue", JSON.stringify(merged)); } catch { /* noop */ }
-              return merged;
-            });
-          }
-        })
-        .catch(() => { /* ignore */ })
-        .finally(() => { refillInFlight.current = false; });
-    }
-
-    // 3. Auto-queue (may already have new items from the refill above)
     const next = queuePos + 1;
+
+    // 2. We have a queued item — go immediately, then preemptively refill if close to the end
     if (queue[next]) {
       try { localStorage.setItem("loonytube:queuePos", String(next)); } catch { /* noop */ }
       router.push(`/watch/${queue[next]}`);
+      if (!refillInFlight.current && next >= queue.length - 2) {
+        refillInFlight.current = true;
+        const exclude = queue.slice(-50).join(",");
+        fetch(`/api/queue/refill?context=${queueContext}&exclude=${exclude}`)
+          .then(r => r.json())
+          .then(({ ids }: { ids: string[] }) => {
+            if (ids?.length) {
+              setQueue(prev => {
+                const merged = [...prev, ...ids.filter(id => !prev.includes(id))];
+                try { localStorage.setItem("loonytube:queue", JSON.stringify(merged)); } catch { /* noop */ }
+                return merged;
+              });
+            }
+          })
+          .catch(() => { /* ignore */ })
+          .finally(() => { refillInFlight.current = false; });
+      }
+      return;
     }
+
+    // 3. At the end of the queue — await a refill then navigate to first new item
+    if (refillInFlight.current) return; // already fetching, avoid double-fire
+    refillInFlight.current = true;
+    try {
+      const exclude = queue.slice(-50).join(",");
+      const r = await fetch(`/api/queue/refill?context=${queueContext}&exclude=${exclude}`);
+      const { ids }: { ids: string[] } = await r.json();
+      if (ids?.length) {
+        const merged = [...queue, ...ids.filter(id => !queue.includes(id))];
+        setQueue(merged);
+        try { localStorage.setItem("loonytube:queue", JSON.stringify(merged)); } catch { /* noop */ }
+        try { localStorage.setItem("loonytube:queuePos", String(next)); } catch { /* noop */ }
+        router.push(`/watch/${merged[next]}`);
+      }
+    } catch { /* ignore */ }
+    finally { refillInFlight.current = false; }
   }
 
   function handlePrev() {
@@ -131,8 +148,8 @@ export default function WatchLayout({
     }
   }
 
-  // Always show next — user queue, auto-queue, or we'll refill
-  const hasNext = userQueue.length > 0 || queuePos < queue.length - 1;
+  // Always true — refill guarantees infinite content
+  const hasNext = true;
 
   const player = (
     <WatchPlayer
