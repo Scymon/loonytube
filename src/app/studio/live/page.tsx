@@ -223,7 +223,7 @@ export default function GoLivePage() {
         <div className="mb-1.5 flex items-center justify-between text-xs uppercase tracking-widest text-gray-400">
           <span>WHIP URL</span>
           <button
-            onClick={() => copyToClipboard(result.whipUrl, "whip")}
+            onClick={() => copyToClipboard(result.whipUrl!, "whip")}
             className="rounded border border-edge px-3 py-0.5 text-[10px] hover:border-loon hover:text-loon"
           >
             {copied === "whip" ? "COPIED!" : "COPY"}
