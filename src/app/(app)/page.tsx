@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import HeroFeature, { type HeroVideo } from "@/components/home/HeroFeature";
+import DashHero, { type FeaturedVideo } from "@/components/dashboard/DashHero";
 import VideoRow, { type FeedVideo } from "@/components/home/VideoRow";
 import PostCard, { type CardPost } from "@/components/home/PostCard";
 import ComingSoon from "@/components/home/ComingSoon";
 import RealShelf, { type ShelfVideo } from "@/components/home/RealShelf";
+import ArticleCard, { type CardArticle } from "@/components/home/ArticleCard";
 
 export const dynamic = "force-dynamic";
 
@@ -28,8 +29,9 @@ export default async function Home() {
     .eq("status", "ready")
     .eq("visibility", "public")
     .order("views", { ascending: false })
-    .limit(1);
-  const heroRow = (heroRows ?? [])[0] as Row | undefined;
+    .limit(5);
+  const heroRows5 = (heroRows ?? []) as Row[];
+  const heroRow = heroRows5[0] as Row | undefined;
 
   // Feed = newest ready videos (excluding the hero).
   const { data: feedRows } = await supabase
@@ -43,20 +45,35 @@ export default async function Home() {
 
   // Batch-resolve creator names/avatars (decoupled query — avoids the FK-embed bug).
   const ids = [...new Set([heroRow?.owner, ...feed.map((v) => v.owner)].filter(Boolean) as string[])];
-  const who = new Map<string, { name: string; avatar: string | null }>();
+  const who = new Map<string, { name: string; avatar: string | null; handle: string }>();
   if (ids.length) {
     const { data: profs } = await supabase
       .from("profiles")
       .select("id, username, full_name, avatar_url")
       .in("id", ids);
     for (const p of profs ?? [])
-      who.set(p.id, { name: p.full_name || p.username || "someone", avatar: p.avatar_url ?? null });
+      who.set(p.id, { name: p.full_name || p.username || "someone", avatar: p.avatar_url ?? null, handle: p.username ?? "" });
   }
-  const chan = (owner: string) => who.get(owner) ?? { name: "someone", avatar: null };
+  const chan = (owner: string) => who.get(owner) ?? { name: "someone", avatar: null, handle: "" };
 
-  const hero: HeroVideo | null = heroRow
-    ? { ...heroRow, channel: chan(heroRow.owner).name, avatar: chan(heroRow.owner).avatar }
-    : null;
+  const featuredVideo: FeaturedVideo | null = heroRow ? {
+    id: heroRow.id,
+    title: heroRow.title,
+    thumbnail: heroRow.thumbnail,
+    channelName: chan(heroRow.owner).name,
+    channelHandle: chan(heroRow.owner).handle,
+    channelAvatar: chan(heroRow.owner).avatar,
+    isLive: false,
+  } : null;
+  const featuredVideos: FeaturedVideo[] = heroRows5.map((v) => ({
+    id: v.id,
+    title: v.title,
+    thumbnail: v.thumbnail,
+    channelName: chan(v.owner).name,
+    channelHandle: chan(v.owner).handle,
+    channelAvatar: chan(v.owner).avatar,
+    isLive: false,
+  }));
   const feedVideos: FeedVideo[] = feed.map((v) => ({
     ...v,
     channel: chan(v.owner).name,
@@ -95,6 +112,37 @@ export default async function Home() {
     };
   }
 
+  // Latest published article.
+  const { data: latestArticle } = await supabase
+    .from("articles")
+    .select("id, owner, title, cover_url, blocks, created_at")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  let articleCard: CardArticle | null = null;
+  if (latestArticle) {
+    const { data: aa } = await supabase
+      .from("profiles")
+      .select("username, full_name, avatar_url")
+      .eq("id", latestArticle.owner)
+      .maybeSingle();
+    const secs = Math.max(1, Math.floor((Date.now() - new Date(latestArticle.created_at).getTime()) / 1000));
+    const agoLabel = secs < 3600 ? `${Math.floor(secs / 60) || 1}m` : secs < 86400 ? `${Math.floor(secs / 3600)}h` : `${Math.floor(secs / 86400)}d`;
+    const wordCount = ((latestArticle.blocks ?? []) as { value?: string }[])
+      .reduce((n, b) => n + (b.value ?? "").split(/\s+/).filter(Boolean).length, 0);
+    articleCard = {
+      id: latestArticle.id,
+      title: latestArticle.title,
+      cover_url: latestArticle.cover_url ?? null,
+      author: aa?.full_name || aa?.username || "someone",
+      handle: aa?.username || "user",
+      avatar: aa?.avatar_url ?? null,
+      agoLabel,
+      readMinutes: Math.max(1, Math.round(wordCount / 200)),
+    };
+  }
+
   // Real category shelves (from videos.category). Empty -> "coming soon".
   const { data: catRows } = await supabase
     .from("videos")
@@ -113,9 +161,9 @@ export default async function Home() {
   const realShelves = [...byCat.entries()].slice(0, 3).map(([title, videos]) => ({ title, videos }));
 
   return (
-    <div className="mx-auto max-w-[1440px]">
-      {hero ? (
-        <HeroFeature video={hero} />
+    <div className="-mt-6">
+      {featuredVideo ? (
+        <DashHero featuredVideo={featuredVideo} videos={featuredVideos} />
       ) : (
         <div className="rounded-2xl border border-edge bg-surface py-20 text-center">
           <p className="text-xl text-foam">The lake is quiet.</p>
@@ -130,6 +178,7 @@ export default async function Home() {
         <div className="space-y-6">
           {feedVideos[0] && <VideoRow video={feedVideos[0]} />}
           {postCard ? <PostCard post={postCard} /> : <ComingSoon label="No posts yet — start the conversation" />}
+          {articleCard && <ArticleCard article={articleCard} />}
           {feedVideos.slice(1).map((v) => (
             <VideoRow key={v.id} video={v} />
           ))}

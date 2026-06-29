@@ -78,6 +78,7 @@ export default function Nav({ onLogoClick }: { onLogoClick?: () => void }) {
   const [email, setEmail] = useState<string | null>(null);
   const [name, setName] = useState<string | null>(null);
   const [avatar, setAvatar] = useState<string | null>(null);
+  const [username, setUsername] = useState<string | null>(null);
   const [role, setRole] = useState<string | null>(null);
   const [menu, setMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -93,6 +94,7 @@ export default function Nav({ onLogoClick }: { onLogoClick?: () => void }) {
           .maybeSingle();
         setName(p?.full_name || p?.username || data.user.email || null);
         setAvatar(p?.avatar_url ?? null);
+        setUsername(p?.username ?? null);
         setRole(p?.role ?? null);
       }
     });
@@ -121,7 +123,8 @@ export default function Nav({ onLogoClick }: { onLogoClick?: () => void }) {
   const isStudio = pathname.startsWith("/studio");
 
   return (
-    <header className="sticky top-0 z-50 border-b border-edge bg-panel/90 backdrop-blur">
+    <>
+      <header className="sticky top-0 z-50 border-b border-edge bg-panel/90 backdrop-blur">
       <div className="flex w-full items-center justify-between px-4 py-2.5 sm:px-6">
         {/* left: logo + icon rail */}
         <div className="flex items-center gap-1 sm:gap-2">
@@ -139,10 +142,10 @@ export default function Nav({ onLogoClick }: { onLogoClick?: () => void }) {
           {isStudio && <span className="ml-1 mr-1 text-lg font-bold tracking-tight text-foam">Studio</span>}
           <nav className="ml-1 hidden items-center gap-1 md:flex">
             <NavIcon k="home" href="/" label="Home" active={is("/")} />
-            <NavIcon k="explore" label="Explore" soon />
+            <NavIcon k="explore" href="/explore" label="Explore" active={pathname.startsWith("/explore")} />
             <NavIcon k="create" label="Create" onClick={() => openCreate()} active={pathname === "/create"} />
-            <NavIcon k="chat" href="/messages" label="Messages" active={pathname.startsWith("/messages")} />
-            <NavIcon k="profile" label="Profile" soon />
+            <NavIcon k="chat" href="/threads" label="Messages" active={pathname.startsWith("/messages")} />
+            <NavIcon k="profile" href="/dashboard" label="Dashboard" active={pathname.startsWith("/dashboard")} />
           </nav>
         </div>
 
@@ -169,13 +172,17 @@ export default function Nav({ onLogoClick }: { onLogoClick?: () => void }) {
               </button>
               {menu && (
                 <div className="absolute right-0 mt-2 w-56 overflow-hidden rounded-xl border border-edge bg-panel shadow-xl">
-                  <div className="border-b border-edge px-4 py-3">
-                    <p className="truncate text-sm font-semibold text-foam">{name}</p>
-                    <p className="truncate text-xs text-mist">{email}</p>
-                  </div>
+                  <Link href={username ? `/@${username}` : "/dashboard"} onClick={() => setMenu(false)}
+                    className="block border-b border-edge px-4 py-3 hover:bg-edge/40 transition">
+                    <p className="truncate text-sm font-semibold text-teal">{name}</p>
+                    <p className="truncate text-xs text-mist">@{username ?? email}</p>
+                  </Link>
                   <button onClick={() => { setMenu(false); openCreate("video"); }} className="block w-full px-4 py-2.5 text-left text-sm text-foam hover:bg-edge/60">
                     Upload a video
                   </button>
+                  <Link href="/dashboard" onClick={() => setMenu(false)} className="block px-4 py-2.5 text-sm text-foam hover:bg-edge/60">
+                    My Dashboard
+                  </Link>
                   <Link href="/studio" onClick={() => setMenu(false)} className="block px-4 py-2.5 text-sm text-foam hover:bg-edge/60">
                     Creator Studio
                   </Link>
@@ -204,5 +211,38 @@ export default function Nav({ onLogoClick }: { onLogoClick?: () => void }) {
         </div>
       </div>
     </header>
+
+      {/* ── Mobile bottom nav — hidden inside conversations & on md+ ── */}
+      {!(pathname.startsWith("/messages/") || pathname.startsWith("/threads/dms/")) && (
+      <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden border-t border-edge bg-panel/95 backdrop-blur-md">
+        <div className="relative flex items-center justify-around px-2 pt-2 pb-[env(safe-area-inset-bottom,8px)]">
+          <Link href="/" aria-label="Home" className={`flex flex-col items-center gap-0.5 px-2 py-1 ${is("/") ? "text-sky" : "text-mist"}`}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d={ICONS.home} /></svg>
+            <span className="text-[10px] font-medium">Home</span>
+          </Link>
+          <Link href="/explore" aria-label="Explore" className={`flex flex-col items-center gap-0.5 px-2 py-1 ${pathname.startsWith("/explore") ? "text-sky" : "text-mist"}`}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d={ICONS.explore} /></svg>
+            <span className="text-[10px] font-medium">Explore</span>
+          </Link>
+          <div className="w-14" aria-hidden="true" />
+          <Link href="/threads" aria-label="Threads" className={`flex flex-col items-center gap-0.5 px-2 py-1 ${pathname.startsWith("/threads") || pathname.startsWith("/messages") ? "text-sky" : "text-mist"}`}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d={ICONS.chat} /></svg>
+            <span className="text-[10px] font-medium">Threads</span>
+          </Link>
+          <Link href="/dashboard" aria-label="Dashboard" className={`flex flex-col items-center gap-0.5 px-2 py-1 ${pathname.startsWith("/dashboard") ? "text-sky" : "text-mist"}`}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d={ICONS.profile} /></svg>
+            <span className="text-[10px] font-medium">Dashboard</span>
+          </Link>
+          <button type="button" onClick={() => openCreate()} aria-label="Create"
+            className="absolute left-1/2 -translate-x-1/2 -top-5 flex flex-col items-center gap-0.5">
+            <span className="grid h-11 w-11 place-items-center rounded-full border border-teal/60 bg-teal/10 text-teal shadow-[0_0_12px_rgba(58,214,189,0.2)]">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={ICONS.create} /></svg>
+            </span>
+            <span className="text-[10px] font-medium text-teal">Create</span>
+          </button>
+        </div>
+      </nav>
+      )}
+    </>
   );
 }

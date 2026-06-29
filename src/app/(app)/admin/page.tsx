@@ -18,7 +18,7 @@ export default async function AdminPage() {
   const isSuper = role === "superadmin";
 
   const { data: settings } = await supabase
-    .from("app_settings").select("invite_only, signups_enabled, uploads_enabled").eq("id", 1).maybeSingle();
+    .from("app_settings").select("invite_only, signups_enabled, uploads_enabled, full_width").eq("id", 1).maybeSingle();
   const { data: invites } = await supabase
     .from("invites").select("code, note, redeemed_by, redeemed_at, created_at, expires_at").order("created_at", { ascending: false }).limit(50);
   const { data: waitlist } = await supabase
@@ -36,7 +36,7 @@ export default async function AdminPage() {
       <p className="mt-1 text-sm text-mist">Signed in as <span className="font-semibold capitalize text-foam">{role}</span>.</p>
 
       <h2 className="mt-8 mb-3 text-lg font-bold">Feature switches</h2>
-      <AdminSwitches initial={settings ?? { invite_only: false, signups_enabled: true, uploads_enabled: true }} canInviteOnly={isSuper} />
+      <AdminSwitches initial={settings ?? { invite_only: false, signups_enabled: true, uploads_enabled: true, full_width: true }} canInviteOnly={isSuper} />
 
       <h2 className="mt-8 mb-3 text-lg font-bold">Invites</h2>
       <InviteManager initial={(invites ?? []) as Invite[]} uid={user.id} />

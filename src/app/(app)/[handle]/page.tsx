@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import Avatar from "@/components/Avatar";
 import FollowUserButton from "@/components/discovery/FollowUserButton";
 import VideoRow, { type FeedVideo } from "@/components/home/VideoRow";
-import { nfmt } from "@/lib/format";
+import ChannelHero from "@/components/channel/ChannelHero";
 
 export const dynamic = "force-dynamic";
 
@@ -108,7 +108,7 @@ export default async function ChannelPage({
     user
       ? supabase
           .from("follows")
-          .select("follower")
+          .select("follower, notif_level")
           .eq("follower", user.id)
           .eq("followee", profile.id)
           .maybeSingle()
@@ -116,6 +116,7 @@ export default async function ChannelPage({
   ]);
 
   const isFollowing = !!followRow.data;
+  const notifLevel  = (followRow.data as any)?.notif_level ?? "all";
   const isOwnChannel = user?.id === profile.id;
 
   // Public ready videos — newest first, max 24
@@ -146,61 +147,18 @@ export default async function ChannelPage({
 
   return (
     <div className="-mt-6">
-      {/* Banner */}
-      <div
-        className="relative -mx-5 h-36 overflow-hidden sm:h-48 lg:-mx-8"
-        style={
-          profile.banner_url
-            ? undefined
-            : { background: BANNER_FALLBACK }
-        }
-      >
-        {profile.banner_url && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={profile.banner_url}
-            alt=""
-            className="h-full w-full object-cover"
-          />
-        )}
-      </div>
+      {/* Hero — autoplaying channel video or static banner */}
+      <ChannelHero
+        video={feedVideos.length > 0 ? { id: feedVideos[0].id, title: feedVideos[0].title ?? "", thumbnail: feedVideos[0].thumbnail } : null}
+        profile={profile}
+        followerCount={followerCount ?? 0}
+        isOwnChannel={isOwnChannel}
+        isFollowing={isFollowing}
+        notifLevel={notifLevel}
+        signedIn={!!user}
+      />
 
-      {/* Avatar + header row */}
-      <div className="-mt-12 flex flex-wrap items-end justify-between gap-4 pb-5">
-        <div className="flex items-end gap-4">
-          <div
-            className="rounded-full"
-            style={{ boxShadow: "0 0 0 4px #0d0d0f" }}
-          >
-            <Avatar name={displayName} src={profile.avatar_url} size={96} />
-          </div>
-          <div className="pb-1">
-            <h1 className="text-2xl font-bold text-foam">{displayName}</h1>
-            <p className="text-sm text-mist">
-              @{profile.username} ·{" "}
-              {nfmt(followerCount ?? 0)} followers
-            </p>
-          </div>
-        </div>
-
-        <div className="pb-1">
-          {isOwnChannel ? (
-            <a
-              href="/studio/profile"
-              className="inline-flex rounded-full border border-edge px-5 py-2 text-sm font-semibold text-foam transition hover:bg-edge/40"
-            >
-              Edit channel
-            </a>
-          ) : (
-            <FollowUserButton
-              targetId={profile.id}
-              signedIn={!!user}
-              initialFollowing={isFollowing}
-              variant="solid"
-            />
-          )}
-        </div>
-      </div>
+      <p className="mt-3 mb-1 text-sm text-mist">@{profile.username}</p>
 
       {/* Bio + social links */}
       {hasMeta && (

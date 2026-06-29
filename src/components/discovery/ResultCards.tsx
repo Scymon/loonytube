@@ -67,11 +67,13 @@ export function PeopleRow({
 }: { name: string; handle: string; avatar: string | null; sub?: string; action?: ReactNode }) {
   return (
     <div className="flex items-center gap-3">
-      <Avatar name={name} src={avatar} size={40} />
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold text-foam">{name}</p>
-        <p className="truncate text-xs text-mist">{sub ?? `@${handle}`}</p>
-      </div>
+      <Link href={`/${handle}`} className="flex min-w-0 flex-1 items-center gap-3 hover:opacity-80 transition-opacity">
+        <Avatar name={name} src={avatar} size={40} />
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold text-foam">{name}</p>
+          <p className="truncate text-xs text-mist">{sub ?? `@${handle}`}</p>
+        </div>
+      </Link>
       {action}
     </div>
   );
