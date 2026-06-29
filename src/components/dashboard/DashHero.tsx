@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import PlayerContextMenu from "@/components/PlayerContextMenu";
 import Avatar from "@/components/Avatar";
 import Link from "next/link";
 import { IcoFill, IcoAutoplay } from "@/components/watch/WatchIcons";
@@ -88,6 +89,8 @@ function CtrlBtn({ onClick, title, children, disabled, className = "" }: {
 export default function DashHero({ featuredVideo, bannerUrl, videos }: Props) {
   const [isTheatre, setIsTheatre]     = useState(false);
   const [muted, setMuted]             = useState(true);
+  const [volume, setVolumeState]       = useState(1);
+  const volumeRef = useRef(1);
   const mutedRef = useRef(true); // tracks muted across player re-init
   const autoplayRef = useRef(true); // tracks autoplay across player re-init
     const [isPaused, setIsPaused]       = useState(false);
@@ -96,10 +99,25 @@ export default function DashHero({ featuredVideo, bannerUrl, videos }: Props) {
   const [urlMuted, setUrlMuted]        = useState(true); // muted=true in iframe URL (needed for autoplay)
   const [fill, setFill]               = useState(true);  // fill/crop by default (ambient feel)
   const [autoplay, setAutoplay]       = useState(true);
+  const [loop, setLoopState]           = useState(false);
+  const [playbackRate, setRateState]   = useState(1);
+  const [ctxPos, setCtxPos]            = useState<{ x: number; y: number } | null>(null);
   useEffect(() => {
     try {
       if (localStorage.getItem("loonytube:fill") === "0") setFill(false);
       if (localStorage.getItem("loonytube:autoplay") === "0") { setAutoplay(false); autoplayRef.current = false; }
+      const savedVol = localStorage.getItem("loonytube:volume");
+      if (savedVol !== null) {
+        const v = Math.max(0, Math.min(1, parseFloat(savedVol)));
+        if (isFinite(v)) { setVolumeState(v); volumeRef.current = v; }
+      }
+      const savedLoop = localStorage.getItem("loonytube:loop");
+      if (savedLoop === "1") setLoopState(true);
+      const savedRate = localStorage.getItem("loonytube:rate");
+      if (savedRate !== null) {
+        const r = parseFloat(savedRate);
+        if (isFinite(r) && r > 0) setRateState(r);
+      }
     } catch { /* noop */ }
   }, []);
   // Sync lights-out to <html> so Nav can dim without z-index hacks
@@ -169,8 +187,10 @@ export default function DashHero({ featuredVideo, bannerUrl, videos }: Props) {
     const p = (window as any).Stream(iframeRef.current);
     playerRef.current = p;
 
-    // Restore mute state
+    // Restore mute state + loop + playback rate
     p.muted = mutedRef.current;
+    try { const r = localStorage.getItem("loonytube:rate"); if (r) { const v = parseFloat(r); if (isFinite(v) && v > 0) p.playbackRate = v; } } catch { /* noop */ }
+    try { if (localStorage.getItem("loonytube:loop") === "1") p.loop = true; } catch { /* noop */ }
 
     // ── Core event listeners ─────────────────────────────────────
     p.addEventListener("play", () => {
@@ -258,9 +278,44 @@ export default function DashHero({ featuredVideo, bannerUrl, videos }: Props) {
       setUrlMuted(false);        // triggers useEffect re-run + iframe remount
     } else {
       // iframe URL already lacks muted=true — SDK set works fine now.
-      if (p) p.muted = false;
+      if (p) {
+        p.muted = false;
+        // Restore volume (in case it was 0 or needs applying after iframe reload)
+        const v = volumeRef.current > 0 ? volumeRef.current : 0.7;
+        p.volume = v;
+        setVolumeState(v);
+        volumeRef.current = v;
+      }
     }
   }
+
+  function setVolume(v: number) {
+    const clamped = Math.max(0, Math.min(1, v));
+    setVolumeState(clamped);
+    volumeRef.current = clamped;
+    const p = playerRef.current;
+    if (p) p.volume = clamped;
+    if (clamped === 0 && !muted) applyMute(true);
+    else if (clamped > 0 && muted) applyMute(false);
+    try { localStorage.setItem("loonytube:volume", String(clamped)); } catch { /* noop */ }
+  }
+
+  function toggleLoop(e?: React.MouseEvent) {
+    e?.stopPropagation();
+    const p = playerRef.current;
+    const next = !loop;
+    setLoopState(next);
+    if (p) p.loop = next;
+    try { localStorage.setItem("loonytube:loop", next ? "1" : "0"); } catch { /* noop */ }
+  }
+
+  function setPlaybackRate(r: number) {
+    const p = playerRef.current;
+    setRateState(r);
+    if (p) p.playbackRate = r;
+    try { localStorage.setItem("loonytube:rate", String(r)); } catch { /* noop */ }
+  }
+
   function toggleMute(e: React.MouseEvent) { e.stopPropagation(); applyMute(!muted); }
   function togglePlayPause(e?: React.MouseEvent) {
     e?.stopPropagation();
@@ -327,8 +382,8 @@ export default function DashHero({ featuredVideo, bannerUrl, videos }: Props) {
     return null;
   })();
   const fillScale = (!fill || !isTheatre || isPortrait || !fillDir) ? 1
-    : fillDir === 'v' ? containerRatio / videoRatio
-    : videoRatio / containerRatio;
+    : fillDir === 'v' ? containerRatio / videoRatio!
+    : videoRatio! / containerRatio;
 
   const pct = duration > 0 ? (currentTime / duration) * 100 : 0;
   const poster = currentVideo?.thumbnail ?? undefined;
@@ -356,7 +411,8 @@ export default function DashHero({ featuredVideo, bannerUrl, videos }: Props) {
             : { height: "min(56.25vw, 82vh)", width: "100%" }
           : { aspectRatio: "16/5", minHeight: 200 }
       }
-      onClick={isTheatre ? () => togglePlayPause() : () => enterTheatre()}>
+      onClick={isTheatre ? () => togglePlayPause() : () => enterTheatre()}
+      onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setCtxPos({ x: e.clientX, y: e.clientY }); }}>
 
       {/* Blurred letterbox background - portrait videos in miniplayer banner */}
       {!isTheatre && isPortrait && poster && (
@@ -397,7 +453,7 @@ export default function DashHero({ featuredVideo, bannerUrl, videos }: Props) {
           )}
         </div>
         <div className="absolute bottom-2 left-0 right-0 px-4">
-          <Link href={`/watch/${featuredVideo?.id ?? ""}`} onClick={e => e.stopPropagation()}
+          <Link href={`/watch/${currentVideo?.id ?? ""}`} onClick={e => e.stopPropagation()}
             className="block text-xl font-bold text-white drop-shadow line-clamp-1 hover:underline w-fit">
             {currentVideo?.title}
           </Link>
@@ -465,9 +521,21 @@ export default function DashHero({ featuredVideo, bannerUrl, videos }: Props) {
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 4l10 8-10 8V4zM19 5v14"/></svg>
               </CtrlBtn>
             )}
-            <CtrlBtn onClick={toggleMute} title={muted ? "Unmute" : "Mute"}>
-              {muted ? <IcoMuted /> : <IcoUnmuted />}
-            </CtrlBtn>
+            <div className="group/vol flex items-center">
+              <CtrlBtn onClick={toggleMute} title={muted ? "Unmute" : "Mute"}>
+                {(muted || volume === 0) ? <IcoMuted /> : <IcoUnmuted />}
+              </CtrlBtn>
+              <div className="w-0 overflow-hidden transition-all duration-200 group-hover/vol:w-20">
+                <input
+                  type="range" min={0} max={1} step={0.02}
+                  value={muted ? 0 : volume}
+                  onChange={e => setVolume(parseFloat(e.target.value))}
+                  onClick={e => e.stopPropagation()}
+                  className="w-20 cursor-pointer accent-teal"
+                  aria-label="Volume"
+                />
+              </div>
+            </div>
             <div className="flex-1" />
             <CtrlBtn onClick={toggleAutoplay} title={autoplay ? "Autoplay on" : "Autoplay off"}>
               <IcoAutoplay on={autoplay} />
@@ -494,9 +562,21 @@ export default function DashHero({ featuredVideo, bannerUrl, videos }: Props) {
       {/* ── Controls: top-right ── */}
       <div className="absolute top-3 right-3 z-20 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
         {!isTheatre && (<>
-          <CtrlBtn onClick={toggleMute} title={muted ? "Unmute" : "Mute"}>
-            {muted ? <IcoMuted /> : <IcoUnmuted />}
-          </CtrlBtn>
+          <div className="group/vol2 flex items-center gap-0">
+            <CtrlBtn onClick={toggleMute} title={muted ? "Unmute" : "Mute"}>
+              {(muted || volume === 0) ? <IcoMuted /> : <IcoUnmuted />}
+            </CtrlBtn>
+            <div className="w-0 overflow-hidden transition-all duration-200 group-hover/vol2:w-20">
+              <input
+                type="range" min={0} max={1} step={0.02}
+                value={muted ? 0 : volume}
+                onChange={e => setVolume(parseFloat(e.target.value))}
+                onClick={e => e.stopPropagation()}
+                className="w-20 cursor-pointer accent-teal"
+                aria-label="Volume"
+              />
+            </div>
+          </div>
           <CtrlBtn onClick={e => enterTheatre(e)} title="Theatre mode"><IcoTheatre /></CtrlBtn>
         </>)}
         {isTheatre && (
@@ -513,6 +593,20 @@ export default function DashHero({ featuredVideo, bannerUrl, videos }: Props) {
       </div>
 
     </div>
+
+    {ctxPos && (
+      <PlayerContextMenu
+        x={ctxPos.x}
+        y={ctxPos.y}
+        onClose={() => setCtxPos(null)}
+        loop={loop}
+        onToggleLoop={toggleLoop}
+        playbackRate={playbackRate}
+        onSetRate={setPlaybackRate}
+        currentTime={currentTime}
+        videoId={currentVideo?.id ?? ""}
+      />
+    )}
     </>
   );
 }

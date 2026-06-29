@@ -73,5 +73,15 @@ export function usePlayQueue() {
     });
   }, []);
 
-  return { queue, addToQueue, removeFromQueue, clearQueue, shiftQueue, moveUp, moveDown };
+  // Insert at front of queue (Play Next)
+  const addToQueueNext = useCallback((item: QueueItem) => {
+    setQueue(prev => {
+      const filtered = prev.filter(v => v.id !== item.id);
+      const next = [item, ...filtered];
+      save(next);
+      return next;
+    });
+  }, []);
+
+  return { queue, addToQueue, addToQueueNext, removeFromQueue, clearQueue, shiftQueue, moveUp, moveDown };
 }

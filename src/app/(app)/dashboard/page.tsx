@@ -144,6 +144,32 @@ export default async function DashboardPage() {
     weekday: "short", month: "short", day: "numeric",
   });
 
+  // Playlists
+  const { data: playlistRows } = await supabase
+    .from("playlists")
+    .select("id, title, visibility")
+    .eq("owner", user.id)
+    .order("created_at", { ascending: false })
+    .limit(10);
+
+  // Thumbnail + count per playlist
+  const playlistCards = await Promise.all((playlistRows ?? []).map(async (pl) => {
+    const { count } = await supabase
+      .from("playlist_items")
+      .select("*", { count: "exact", head: true })
+      .eq("playlist_id", pl.id);
+    const { data: fi } = await supabase
+      .from("playlist_items").select("video_id")
+      .eq("playlist_id", pl.id).order("position", { ascending: true }).limit(1);
+    let thumbnail: string | null = null;
+    if (fi?.[0]?.video_id) {
+      const { data: vid } = await supabase
+        .from("videos").select("thumbnail").eq("id", fi[0].video_id).maybeSingle();
+      thumbnail = vid?.thumbnail ?? null;
+    }
+    return { id: pl.id, title: pl.title, videoCount: count ?? 0, thumbnail };
+  }));
+
   return (
     <div className="-mt-6 pb-24">
       {/* Hero — shows live from followed channels; falls back to profile banner */}
@@ -158,7 +184,7 @@ export default async function DashboardPage() {
         }}
         followingCount={followingCount ?? 0}
         savedCount={0}
-        playlistCount={0}
+        playlistCount={playlistCards.length}
       />
 
       <div className="px-4 sm:px-6 space-y-10 mt-8">
@@ -175,7 +201,7 @@ export default async function DashboardPage() {
         <SavedSection groups={[]} />
 
         {/* My Playlists */}
-        <PlaylistsSection playlists={[]} />
+        <PlaylistsSection playlists={playlistCards} />
       </div>
     </div>
   );

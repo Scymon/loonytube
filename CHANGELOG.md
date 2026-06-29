@@ -9,7 +9,29 @@ Entries are milestone deliveries, newest first. Each lists the delivery zip(s) a
 - **Public channel page** (`/@handle`). Surfaces banner/avatar/bio/socials; gives follow-notifications, the "People you might like" rail, and a profile **Message** button real destinations. *(keystone — unblocks several pending links)*
 - **Step 3 — Comment unification + Repost/Quote.** Converge video comments onto `posts` nodes (one universal Comment node), add `host_type`/`host_id`, add a `reposts` table, and wire repost/quote actions + the feed/thread union. *(carries a migration)*
 - **Monetization tier system.** Platform-level toggle (off / tiers_active / legacy). Two competing models in featurelist §10a: recurring tiers ($2 commenter / $5 creator) vs freemium + one-time creator activation ($5). Stripe integration, role-sync webhook, Studio monetization settings. *No migration until model is chosen.*
-- Then: **Articles**, scheduled-release enforcement, explore, live streaming.
+
+---
+
+## [0.16] Watch page overhaul + Playlists + Infinite queue + Live streaming — 2026-06-29
+_No migration required_
+
+### Added
+- **Watch page overhaul** (`WatchLayout`, `WatchPlayer`, `WatchMeta`, `WatchSidebar`, `WatchIcons`) — full rewrite of the watch experience. Theatre mode with lights-out, fill/crop toggle, and persistent mode preference. Portrait video detection from poster thumbnail with height-capped container. Prev/Next navigation with double-tap-to-go-back behaviour. Autoplay countdown (5 s). Sidebar open/collapsed state persisted via `localStorage`.
+- **Volume slider** — added to both `WatchPlayer` and `DashHero`.
+- **Infinite queue** (`/api/queue/refill`) — returns up to 20 video IDs. Context-aware: `home` serves subscriptions first then trending; `profile` serves liked videos first; all others get shuffled trending. Exclude list (last 50 played) prevents re-serving recently watched content. `WatchLayout` prefetches when within 2 videos of the end.
+- **Playlist system** — `PlaylistModal`, `/api/playlists` (GET/POST), `/api/playlists/[id]/items` (POST), `PlaylistClient`, `/playlist/[id]/page.tsx`. Users can create playlists, add videos, and play a playlist from its page. Playlist items feed directly into the play queue via `usePlayQueue`.
+- **`usePlayQueue` hook** — shared queue state backed by `localStorage`. Supports addToQueue, addToQueueNext, shiftQueue, moveUp/Down, clearQueue.
+- **Live streaming** — `/studio/live` creation page, `/api/live/create` route, `StreamPlayer` component, `LiveStreamsTable` in Studio. Live streams are routed through the watch page by ID; active streams show a LIVE badge and the Cloudflare Stream player.
+- **`PlayerContextMenu`** — right-click context menu on the video player.
+
+### Changed
+- **DashHero playlist mode** — ambient overlay title link now correctly points to the currently playing video (`currentVideo?.id`) in both ambient and theatre modes.
+- **Controls auto-hide** — fixed on unpause and mouse-leave in `WatchPlayer` and `DashHero`.
+- **Video progress reset** — resets to 0 on completion so the next play always restarts from the beginning.
+- **`resumePointRef` sync** — synced on unmute so theatre mode always resumes from the correct position.
+- **Teal glow** applied consistently to all nav icons including the notification bell; lights-out overlay correctly dims the nav bar.
+- **StreamPlayer import** — fixed missing import on live stream watch page and live stream routing.
+- **Ribbon playlists section** — replaced "Playlists coming soon." stub with a link to the live Playlists page.
 
 ---
 

@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import PlayerContextMenu from "@/components/PlayerContextMenu";
 import { useWatchPlayer, type PlayerMode } from "@/hooks/useWatchPlayer";
 import {
   IcoPlay, IcoPause, IcoMuted, IcoUnmuted,
@@ -58,6 +59,8 @@ export default function WatchPlayer({
   const [countdown, setCountdown] = useState<number | null>(null);
   // Detected from the poster thumbnail; null = unknown (treat as landscape)
   const [videoRatio, setVideoRatio] = useState<number | null>(null);
+
+  const [ctxPos, setCtxPos] = useState<{ x: number; y: number } | null>(null);
 
   const autoplayRef = useRef(true);
   autoplayRef.current = autoplay;
@@ -151,7 +154,7 @@ export default function WatchPlayer({
   if (isTheatre) {
     containerStyle = isPortrait
       ? { aspectRatio: String(videoRatio), height: "85svh", ...lightsOutZ }
-      : { height: "min(56.25vw, 75vh)", ...lightsOutZ };
+      : { height: "min(56.25vw, calc(100svh - 57px))", ...lightsOutZ };
   } else {
     containerStyle = isPortrait
       ? { aspectRatio: String(videoRatio), height: "calc(100svh - 80px)", borderRadius: "0.75rem" }
@@ -204,6 +207,7 @@ export default function WatchPlayer({
         className={containerClass}
         style={containerStyle}
         onMouseMove={p.showControls}
+        onMouseLeave={p.hideControls}
       >
         {/* Cloudflare Stream iframe */}
         <iframe
@@ -215,7 +219,11 @@ export default function WatchPlayer({
         />
 
         {/* Click-to-pause: transparent layer above iframe, below controls */}
-        <div className="absolute inset-0 cursor-pointer" onClick={p.togglePlay} />
+        <div
+          className="absolute inset-0 cursor-pointer"
+          onClick={p.togglePlay}
+          onContextMenu={e => { e.preventDefault(); setCtxPos({ x: e.clientX, y: e.clientY }); }}
+        />
 
         {/* Big centered play button when paused */}
         {p.isPaused && countdown === null && (
@@ -282,9 +290,20 @@ export default function WatchPlayer({
             <Btn onClick={onNext ?? (() => {})} title="Next video" disabled={!onNext}>
               <IcoNext />
             </Btn>
-            <Btn onClick={p.toggleMute} title={p.muted ? "Unmute" : "Mute"}>
-              {p.muted ? <IcoMuted /> : <IcoUnmuted />}
-            </Btn>
+            <div className="group/vol flex items-center">
+              <Btn onClick={p.toggleMute} title={p.muted ? "Unmute" : "Mute"}>
+                {(p.muted || p.volume === 0) ? <IcoMuted /> : <IcoUnmuted />}
+              </Btn>
+              <div className="w-0 overflow-hidden transition-all duration-200 group-hover/vol:w-20">
+                <input
+                  type="range" min={0} max={1} step={0.02}
+                  value={p.muted ? 0 : p.volume}
+                  onChange={e => p.setVolume(parseFloat(e.target.value))}
+                  className="w-20 cursor-pointer accent-teal"
+                  aria-label="Volume"
+                />
+              </div>
+            </div>
             <span className="ml-1 shrink-0 text-xs tabular-nums text-white/60">
               {fmt(p.currentTime)} / {fmt(p.duration)}
             </span>
@@ -322,6 +341,19 @@ export default function WatchPlayer({
           </div>
         </div>
       </div>
+      {ctxPos && (
+        <PlayerContextMenu
+          x={ctxPos.x}
+          y={ctxPos.y}
+          onClose={() => setCtxPos(null)}
+          loop={p.loop}
+          onToggleLoop={p.toggleLoop}
+          playbackRate={p.playbackRate}
+          onSetRate={p.setPlaybackRate}
+          currentTime={p.currentTime}
+          videoId={uid}
+        />
+      )}
     </>
   );
 }

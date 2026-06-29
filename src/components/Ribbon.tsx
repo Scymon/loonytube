@@ -223,7 +223,7 @@ export default function Ribbon({
             : <p className="px-3 py-2 text-xs text-mist/70">{signedIn ? "No subscriptions yet." : "Sign in to see subscriptions."}</p>}
         </div>
       )}
-      {visible.playlists && (<div><Header>Playlists</Header><p className="px-3 py-2 text-xs text-mist/70">Playlists coming soon.</p></div>)}
+      {visible.playlists && (<div><Header>Playlists</Header><p className="px-3 py-2 text-xs text-mist/70">Your playlists appear on the <a href="/playlist" className="text-teal hover:underline">Playlists page</a>.</p></div>)}
       {visible.groups    && (<div><Header>Groups</Header>   <p className="px-3 py-2 text-xs text-mist/70">Groups coming soon.</p></div>)}
     </nav>
   );

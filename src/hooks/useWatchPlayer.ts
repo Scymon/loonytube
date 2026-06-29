@@ -19,20 +19,31 @@ export function useWatchPlayer(uid: string, token?: string | null, onEnded?: () 
     return () => document.documentElement.classList.remove('lt-lights-out');
   }, [lightsOut]);
   const [controlsVisible, setControlsVisible] = useState(true);
+  const [volume, setVolumeState] = useState(1);
+  const [loop, setLoopState]           = useState(false);
+  const [playbackRate, setRateState]   = useState(1);
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const playerRef = useRef<unknown>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const lastSavedRef = useRef(0);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isPausedRef = useRef(true);
 
   // auto-hide controls after 3s of no mouse movement
   function showControls() {
     setControlsVisible(true);
     if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
     hideTimerRef.current = setTimeout(() => {
-      if (!isPaused) setControlsVisible(false);
+      if (!isPausedRef.current) setControlsVisible(false);
     }, 3000);
+  }
+
+  function hideControls() {
+    if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+    hideTimerRef.current = setTimeout(() => {
+      if (!isPausedRef.current) setControlsVisible(false);
+    }, 600);
   }
 
   useEffect(() => {
@@ -42,9 +53,14 @@ export function useWatchPlayer(uid: string, token?: string | null, onEnded?: () 
   }, []);
 
   useEffect(() => {
+    isPausedRef.current = isPaused;
     if (isPaused) {
       setControlsVisible(true);
       if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+    } else {
+      // Just started playing — auto-hide controls after 3s
+      if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+      hideTimerRef.current = setTimeout(() => setControlsVisible(false), 3000);
     }
   }, [isPaused]);
 
@@ -92,6 +108,23 @@ export function useWatchPlayer(uid: string, token?: string | null, onEnded?: () 
             }
           }
         } catch { /* noop */ }
+        // Restore volume, muted, loop, playback rate from localStorage
+        try {
+          const savedVol = localStorage.getItem("loonytube:volume");
+          if (savedVol !== null) {
+            const v = Math.max(0, Math.min(1, parseFloat(savedVol)));
+            if (isFinite(v)) { p.volume = v; setVolumeState(v); }
+          }
+          const savedMuted = localStorage.getItem("loonytube:muted");
+          if (savedMuted === "1") { p.muted = true; setMuted(true); }
+          const savedLoop = localStorage.getItem("loonytube:loop");
+          if (savedLoop === "1") { p.loop = true; setLoopState(true); }
+          const savedRate = localStorage.getItem("loonytube:rate");
+          if (savedRate !== null) {
+            const r = parseFloat(savedRate);
+            if (isFinite(r) && r > 0) { p.playbackRate = r; setRateState(r); }
+          }
+        } catch { /* noop */ }
       });
     }
 
@@ -115,12 +148,53 @@ export function useWatchPlayer(uid: string, token?: string | null, onEnded?: () 
     else p.pause();
   }
 
-  function toggleMute() {
+  function toggleLoop() {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const p = playerRef.current as any;
+    const next = !loop;
+    setLoopState(next);
+    if (p) p.loop = next;
+    try { localStorage.setItem("loonytube:loop", next ? "1" : "0"); } catch { /* noop */ }
+  }
+
+  function setPlaybackRate(r: number) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const p = playerRef.current as any;
+    setRateState(r);
+    if (p) p.playbackRate = r;
+    try { localStorage.setItem("loonytube:rate", String(r)); } catch { /* noop */ }
+  }
+
+    function toggleMute() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const p = playerRef.current as any;
     const next = !muted;
     setMuted(next);
-    if (p) p.muted = next;
+    if (p) {
+      p.muted = next;
+      // If unmuting with volume at 0, restore to a sensible level
+      if (!next) {
+        setVolumeState(prev => {
+          const restored = prev > 0 ? prev : 0.7;
+          if (p) p.volume = restored;
+          try { localStorage.setItem("loonytube:volume", String(restored)); } catch { /* noop */ }
+          return restored;
+        });
+      }
+    }
+    try { localStorage.setItem("loonytube:muted", next ? "1" : "0"); } catch { /* noop */ }
+  }
+
+  function setVolume(v: number) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const p = playerRef.current as any;
+    const clamped = Math.max(0, Math.min(1, v));
+    setVolumeState(clamped);
+    if (p) p.volume = clamped;
+    if (clamped === 0 && !muted) { setMuted(true); if (p) p.muted = true; }
+    else if (clamped > 0 && muted) { setMuted(false); if (p) p.muted = false; }
+    try { localStorage.setItem("loonytube:volume", String(clamped)); } catch { /* noop */ }
+    try { localStorage.setItem("loonytube:muted", clamped === 0 ? "1" : "0"); } catch { /* noop */ }
   }
 
   function seekTo(e: React.MouseEvent<HTMLDivElement>) {
@@ -155,11 +229,14 @@ export function useWatchPlayer(uid: string, token?: string | null, onEnded?: () 
   }?controls=false&preload=auto`;
 
   return {
-    isPaused, muted, currentTime, duration, pct,
+    isPaused, muted, volume, currentTime, duration, pct,
+    loop, playbackRate,
     lightsOut, setLightsOut,
-    controlsVisible, showControls,
+    controlsVisible, showControls, hideControls,
     iframeRef, containerRef,
     iframeSrc,
-    togglePlay, toggleMute, seekTo, seekToTime, doFullscreen,
+    togglePlay, toggleMute, setVolume,
+    toggleLoop, setPlaybackRate,
+    seekTo, seekToTime, doFullscreen,
   };
 }
