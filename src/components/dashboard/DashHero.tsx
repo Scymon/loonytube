@@ -96,6 +96,7 @@ export default function DashHero({ featuredVideo, bannerUrl, videos }: Props) {
     const [isPaused, setIsPaused]       = useState(false);
   const [lightsOut, setLightsOut]      = useState(false);
   const [vidIdx, setVidIdx]            = useState(0);
+  const [channelIdx, setChannelIdx]    = useState(0);
   const [urlMuted, setUrlMuted]        = useState(true); // muted=true in iframe URL (needed for autoplay)
   const [fill, setFill]               = useState(true);  // fill/crop by default (ambient feel)
   const [autoplay, setAutoplay]       = useState(true);
@@ -141,7 +142,19 @@ export default function DashHero({ featuredVideo, bannerUrl, videos }: Props) {
     try { localStorage.setItem("loonytube:autoplay", next ? "1" : "0"); } catch { /* noop */ }
   }
   const playlist = videos && videos.length > 1 ? videos : featuredVideo ? [featuredVideo] : [];
-  const currentVideo = playlist[vidIdx] ?? featuredVideo;
+
+  // Group by channelHandle for ↑/↓ channel surfing, ←/→ video within channel
+  const groupedChannels = (() => {
+    const map = new Map<string, { name: string; handle: string; avatar: string | null; videos: FeaturedVideo[] }>();
+    for (const v of playlist) {
+      const key = v.channelHandle || v.id;
+      if (!map.has(key)) map.set(key, { name: v.channelName, handle: v.channelHandle, avatar: v.channelAvatar, videos: [] });
+      map.get(key)!.videos.push(v);
+    }
+    return [...map.values()];
+  })();
+  const currentChannelVideos = groupedChannels[channelIdx]?.videos ?? playlist;
+  const currentVideo = currentChannelVideos[vidIdx] ?? featuredVideo;
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration]       = useState(0);
   const iframeRef    = useRef<HTMLIFrameElement>(null);
@@ -175,13 +188,59 @@ export default function DashHero({ featuredVideo, bannerUrl, videos }: Props) {
     obs.observe(containerRef.current);
     return () => obs.disconnect();
   }, []);
+
+  // Keyboard navigation: ref holds latest state so the listener never goes stale
+  const kbRef = useRef({ ci: 0, vi: 0, ct: 0, isPaused: false, gcLen: 0, ccvLen: 0 });
+  kbRef.current = { ci: channelIdx, vi: vidIdx, ct: currentTime, isPaused, gcLen: groupedChannels.length, ccvLen: currentChannelVideos.length };
+
+  // Reset vidIdx when channel changes
+  useEffect(() => { setVidIdx(0); }, [channelIdx]);
+
+  // Arrow keys: ←/→ = prev/next video within channel  |  ↑/↓ = prev/next channel
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const tgt = e.target as HTMLElement;
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(tgt.tagName) || tgt.isContentEditable) return;
+      const { ci, vi, ct, isPaused: paused, gcLen, ccvLen } = kbRef.current;
+      switch (e.key) {
+        case 'ArrowRight':
+          e.preventDefault();
+          if (vi < ccvLen - 1) setVidIdx(vi + 1);
+          break;
+        case 'ArrowLeft':
+          e.preventDefault();
+          if (ct > 3 && playerRef.current) { playerRef.current.currentTime = 0; setCurrentTime(0); }
+          else if (vi > 0) setVidIdx(vi - 1);
+          break;
+        case 'ArrowDown':
+          e.preventDefault();
+          if (ci < gcLen - 1) setChannelIdx(ci + 1);
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          if (ci > 0) setChannelIdx(ci - 1);
+          break;
+        case ' ': case 'k': {
+          if (e.key === ' ') e.preventDefault();
+          const p = playerRef.current;
+          if (!p) break;
+          if (paused) p.play().catch(() => {}); else p.pause();
+          break;
+        }
+      }
+    }
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const resumePointRef = useRef(0); // resume target loaded from localStorage
 
   useEffect(() => {
     playerRef.current = null; // reset when video changes
     lastSavedRef.current = 0;
     resumePointRef.current = 0;
-    const vid = playlist[vidIdx]?.id ?? featuredVideo?.id ?? null;
+    const vid = currentVideo?.id ?? null;
     function initPlayer() {
   if (iframeRef.current && (window as any).Stream && !playerRef.current) {
     const p = (window as any).Stream(iframeRef.current);
@@ -255,7 +314,7 @@ export default function DashHero({ featuredVideo, bannerUrl, videos }: Props) {
     if (!s) { s = document.createElement("script") as HTMLScriptElement; s.src = SDK_URL; document.head.appendChild(s); }
     s.addEventListener("load", initPlayer, { once: true });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [vidIdx, urlMuted]);
+  }, [channelIdx, vidIdx, urlMuted]);
 
   function applyMute(next: boolean) {
     setMuted(next);

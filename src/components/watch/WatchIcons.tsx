@@ -113,3 +113,19 @@ export const IcoFill = ({ on, dir }: { on: boolean; dir: 'h' | 'v' | null }) => 
     )}
   </svg>
 );
+
+// Miniplayer: outer rect + small inner rect in bottom-right corner
+export const IcoMini = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="2" y="3" width="20" height="15" rx="2" />
+    <rect x="13" y="11" width="7" height="5" rx="1" strokeWidth="1.5" />
+  </svg>
+);
+
+// Expand / restore from mini: arrows pointing outward to corners
+export const IcoExpand = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+  </svg>
+);
+

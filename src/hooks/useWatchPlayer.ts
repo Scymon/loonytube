@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 
 const SDK_URL = "https://embed.cloudflarestream.com/embed/sdk.latest.js";
 
-export type PlayerMode = "page" | "theatre";
+export type PlayerMode = "page" | "theatre" | "mini";
 
 export function useWatchPlayer(uid: string, token?: string | null, onEnded?: () => void) {
   const onEndedRef = useRef(onEnded);
@@ -22,6 +22,8 @@ export function useWatchPlayer(uid: string, token?: string | null, onEnded?: () 
   const [volume, setVolumeState] = useState(1);
   const [loop, setLoopState]           = useState(false);
   const [playbackRate, setRateState]   = useState(1);
+  const [qualities, setQualitiesState]   = useState<string[]>([]);
+  const [quality,   setQualityState]     = useState("auto");
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const playerRef = useRef<unknown>(null);
@@ -125,6 +127,21 @@ export function useWatchPlayer(uid: string, token?: string | null, onEnded?: () 
             if (isFinite(r) && r > 0) { p.playbackRate = r; setRateState(r); }
           }
         } catch { /* noop */ }
+        // Detect available quality levels
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const qs: string[] = ((p as any).qualities ?? []).map((q: unknown) =>
+            typeof q === "string" ? q
+            : (typeof q === "object" && q && "height" in q) ? `${(q as { height: number }).height}p`
+            : String(q)
+          );
+          if (qs.length) {
+            setQualitiesState(["Auto", ...qs]);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const cur = (p as any).quality;
+            setQualityState(typeof cur === "string" ? cur : "Auto");
+          }
+        } catch { /* noop */ }
       });
     }
 
@@ -223,6 +240,13 @@ export function useWatchPlayer(uid: string, token?: string | null, onEnded?: () 
     }
   }
 
+  function setQuality(q: string) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const p = playerRef.current as any;
+    setQualityState(q);
+    try { if (p) p.quality = q === "Auto" ? undefined : q; } catch { /* noop */ }
+  }
+
   const pct = duration > 0 ? (currentTime / duration) * 100 : 0;
   const iframeSrc = `https://iframe.cloudflarestream.com/${
     token || uid
@@ -231,6 +255,7 @@ export function useWatchPlayer(uid: string, token?: string | null, onEnded?: () 
   return {
     isPaused, muted, volume, currentTime, duration, pct,
     loop, playbackRate,
+    qualities, quality, setQuality,
     lightsOut, setLightsOut,
     controlsVisible, showControls, hideControls,
     iframeRef, containerRef,

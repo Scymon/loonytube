@@ -48,6 +48,7 @@ export default function WatchLayout({
   const [queue, setQueue] = useState<string[]>([]);
   const [queuePos, setQueuePos] = useState(0);
   const [queueContext, setQueueContext] = useState("home");
+  const [channelIdx, setChannelIdx] = useState(0);
   const refillInFlight = useRef(false);
   const isTheatre = mode === "theatre";
   const { queue: userQueue, shiftQueue } = usePlayQueue();
@@ -148,6 +149,22 @@ export default function WatchLayout({
     }
   }
 
+  function handleChannelUp() {
+    if (!suggestedProfiles.length) return;
+    const idx = Math.max(0, channelIdx - 1);
+    setChannelIdx(idx);
+    const p = suggestedProfiles[idx];
+    if (p?.username) router.push(`/${p.username}`);
+  }
+
+  function handleChannelDown() {
+    if (!suggestedProfiles.length) return;
+    const idx = Math.min(suggestedProfiles.length - 1, channelIdx + 1);
+    setChannelIdx(idx);
+    const p = suggestedProfiles[idx];
+    if (p?.username) router.push(`/${p.username}`);
+  }
+
   // Always true — refill guarantees infinite content
   const hasNext = true;
 
@@ -156,10 +173,13 @@ export default function WatchLayout({
       uid={videoId}
       token={token}
       poster={poster}
+      description={description}
       mode={mode}
       onModeChange={handleModeChange}
       onNext={handleNext}
       onPrev={handlePrev}
+      onChannelUp={handleChannelUp}
+      onChannelDown={handleChannelDown}
     />
   );
 
@@ -209,10 +229,23 @@ export default function WatchLayout({
     );
   }
 
-  // ── Page: player + meta + comments on left, sidebar on right ────────────────
+  // ── Page (and mini): player + meta + comments on left, sidebar on right ───────
+  const isMini = mode === "mini";
   return (
     <div className="flex min-h-0 w-full pl-3 pr-2">
       <div className="min-w-0 flex-1 pb-4 pt-3 pr-3">
+        {/* Mini mode: show placeholder where the player was */}
+        {isMini && (
+          <div className="relative mb-3 flex w-full items-center justify-center overflow-hidden rounded-xl border border-edge bg-panel" style={{ aspectRatio: "16/9" }}>
+            <button
+              onClick={() => handleModeChange("page")}
+              className="text-sm text-mist hover:text-white transition-colors"
+            >
+              ▶ Playing in miniplayer — click to restore
+            </button>
+          </div>
+        )}
+        {/* Player always rendered so iframe never unmounts */}
         {player}
         {meta}
         <div className="mt-8">
