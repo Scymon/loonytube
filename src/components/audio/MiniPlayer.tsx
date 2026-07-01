@@ -57,7 +57,8 @@ export default function MiniPlayer() {
     >
 
       {/* Scrubber bar — inset past sidebar (+ video slot when docked) */}
-      <div className="group relative h-1 cursor-pointer bg-edge/50 hover:h-1.5 transition-all duration-100"
+      {/* Outer div is h-4 for a large touch target; inner track is the visible 4px bar */}
+      <div className="group relative h-4 cursor-pointer flex items-end"
         style={{
           marginLeft: videoDocked ? "0px" : "var(--sidebar-w, 0px)",
         }}
@@ -72,11 +73,14 @@ export default function MiniPlayer() {
           const frac = r.width > 0 ? Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) : 0;
           if (videoDocked) seekVideoFraction(frac); else seekFraction(frac);
         }}>
-        <div className="h-full bg-teal transition-[width] duration-100" style={{ width: `${pct}%` }} />
-        {/* Thumb */}
-        <div className="absolute top-1/2 -translate-y-1/2 h-3 w-3 rounded-full bg-teal shadow-md
-          opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
-          style={{ left: `${pct}%`, transform: "translate(-50%, -50%)" }} />
+        {/* Visible track — stays 4px tall; outer div provides the tall touch target */}
+        <div className="relative w-full h-1 bg-edge/50 group-hover:h-1.5 transition-all duration-100">
+          <div className="h-full bg-teal transition-[width] duration-100" style={{ width: `${pct}%` }} />
+          {/* Thumb */}
+          <div className="absolute top-1/2 -translate-y-1/2 h-3 w-3 rounded-full bg-teal shadow-md
+            opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
+            style={{ left: `${pct}%`, transform: "translate(-50%, -50%)" }} />
+        </div>
       </div>
 
       <div className="flex items-center gap-3 px-4 py-2.5 transition-[padding-left] duration-200"

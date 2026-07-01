@@ -99,6 +99,8 @@ export default function WatchPlayer({
   const speedBtnRef   = useRef<HTMLButtonElement | null>(null);
   const qualityBtnRef = useRef<HTMLButtonElement | null>(null);
 
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+
   // OSD
   const osdIdRef = useRef(0);
   const [osdMsg, setOsdMsg] = useState<OSDMessage | null>(null);
@@ -532,6 +534,19 @@ export default function WatchPlayer({
           </Btn>
         )}
 
+        {/* Keyboard shortcuts reference */}
+        <button
+          type="button"
+          title="Keyboard shortcuts"
+          aria-label="Keyboard shortcuts"
+          onClick={() => setShortcutsOpen(v => !v)}
+          className="grid h-8 w-8 place-items-center rounded-full text-white/70 transition-all duration-200 hover:text-teal hover:[filter:drop-shadow(0_0_6px_rgba(45,212,180,0.85))] hover:scale-105"
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 8a2 2 0 0 1 2 2c0 1.5-2 2-2 3m0 4h.01" />
+          </svg>
+        </button>
         <Btn onClick={p.doFullscreen} title="Fullscreen">
           <IcoFullscreen />
         </Btn>
@@ -575,6 +590,51 @@ export default function WatchPlayer({
   );
 
 
+
+  // ── Keyboard shortcuts reference panel ──────────────────────────────────────
+  const shortcutRows: [string, string][] = [
+    ["Space / K", "Play / Pause"],
+    ["J", "Back 10 seconds"],
+    ["L", "Forward 10 seconds"],
+    ["←  →", "Previous / next video"],
+    ["↑  ↓", "Previous / next channel"],
+    ["Ctrl + ←  →", "Seek ±10 seconds"],
+    ["Ctrl + ↑  ↓", "Volume ±10%"],
+    ["M", "Mute / Unmute"],
+    ["F", "Fullscreen"],
+    ["T", "Theatre mode"],
+    [",  .", "Speed down / up"],
+    ["0 – 9", "Jump to 0%–90% of video"],
+  ];
+
+  const shortcutsPanel = shortcutsOpen && (
+    <div
+      className="absolute bottom-14 right-3 z-50 w-72 rounded-2xl border border-edge bg-black/90 backdrop-blur-sm shadow-2xl overflow-hidden"
+      onClick={e => e.stopPropagation()}
+    >
+      <div className="flex items-center justify-between px-4 py-3 border-b border-edge/60">
+        <span className="text-xs font-bold uppercase tracking-wider text-mist/70">Keyboard Shortcuts</span>
+        <button
+          type="button"
+          onClick={() => setShortcutsOpen(false)}
+          className="grid h-5 w-5 place-items-center rounded-full text-white/50 hover:text-white transition-colors"
+        >
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <path d="M18 6 6 18M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <div className="divide-y divide-edge/40">
+        {shortcutRows.map(([key, desc]) => (
+          <div key={key} className="flex items-center justify-between gap-3 px-4 py-2">
+            <code className="shrink-0 rounded bg-edge/60 px-1.5 py-0.5 text-[11px] font-mono text-teal">{key}</code>
+            <span className="text-right text-xs text-mist/80">{desc}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
   return (
     <>
       {/* Lights-out backdrop */}
@@ -611,6 +671,9 @@ export default function WatchPlayer({
 
         {/* OSD flash */}
         <PlayerOSD message={osdMsg} />
+
+        {/* Keyboard shortcuts panel */}
+        {!isMini && !isMiniFloat && shortcutsPanel}
 
         {/* Big centered play button when paused (not mini) */}
         {p.isPaused && countdown === null && !isMini && !isMiniFloat && (

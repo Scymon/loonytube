@@ -42,10 +42,12 @@ export default function WatchMeta({
 }: Props) {
   const [expanded, setExpanded] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
   const isOwn = signedInUserId === owner;
 
   async function handleDownload() {
     setDownloading(true);
+    setDownloadError(null);
     try {
       const r = await fetch(`/api/videos/${videoId}/download`, { method: "POST" });
       let body = await r.json();
@@ -62,7 +64,7 @@ export default function WatchMeta({
       }
 
       if (!body.url) {
-        alert("Download is being prepared — please try again in a moment.");
+        setDownloadError("Download is being prepared — try again in a moment.");
         return;
       }
       const a = document.createElement("a");
@@ -149,18 +151,23 @@ export default function WatchMeta({
             Share
           </button>
           {isOwn && (
-            <button
-              type="button"
-              title="Download your video"
-              onClick={handleDownload}
-              disabled={downloading}
-              className="flex items-center gap-1.5 rounded-full border border-edge px-3 py-1.5 text-sm text-mist transition hover:border-foam/40 hover:text-foam disabled:opacity-50"
-            >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />
-              </svg>
-              {downloading ? "Preparing…" : "Download"}
-            </button>
+            <div className="flex flex-col items-end gap-1">
+              <button
+                type="button"
+                title="Download your video"
+                onClick={handleDownload}
+                disabled={downloading}
+                className="flex items-center gap-1.5 rounded-full border border-edge px-3 py-1.5 text-sm text-mist transition hover:border-foam/40 hover:text-foam disabled:opacity-50"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />
+                </svg>
+                {downloading ? "Preparing…" : "Download"}
+              </button>
+              {downloadError && (
+                <p className="text-xs text-loonred">{downloadError}</p>
+              )}
+            </div>
           )}
         </div>
       </div>

@@ -35,9 +35,34 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
 
   if (!term) {
     return (
-      <div className="mx-auto max-w-2xl py-24 text-center">
-        <p className="text-lg font-semibold text-foam">Search LoonyTube</p>
-        <p className="mt-2 text-sm text-mist">Find videos, posts, people, and hashtags.</p>
+      <div className="mx-auto grid max-w-[1180px] gap-10 lg:grid-cols-[1.6fr,1fr]">
+        <div className="py-16 text-center lg:text-left">
+          <p className="text-2xl font-bold text-foam">Search LoonyTube</p>
+          <p className="mt-2 text-sm text-mist">Find videos, posts, channels, and hashtags.</p>
+        </div>
+        <aside className="space-y-8 py-6">
+          {trending.length > 0 && (
+            <section>
+              <h2 className="mb-3 border-l-2 border-teal pl-2 text-[12px] font-bold uppercase tracking-wide text-foam">Trending</h2>
+              <div className="flex flex-wrap gap-2">
+                {trending.map(([tag]) => (
+                  <Link key={tag} href={`/hashtag/${tag}`} className="rounded-full border border-edge px-3 py-1.5 text-sm text-teal hover:border-teal/50">#{tag}</Link>
+                ))}
+              </div>
+            </section>
+          )}
+          {(suggest ?? []).length > 0 && (
+            <section>
+              <h2 className="mb-3 border-l-2 border-teal pl-2 text-[12px] font-bold uppercase tracking-wide text-foam">Channels you might like</h2>
+              <div className="space-y-3">
+                {(suggest as Prof[]).map((p) => (
+                  <PeopleRow key={p.id} name={p.full_name || p.username || "user"} handle={p.username || "user"} avatar={p.avatar_url}
+                    action={<FollowUserButton targetId={p.id} signedIn={!!user} initialFollowing={following.has(p.id)} />} />
+                ))}
+              </div>
+            </section>
+          )}
+        </aside>
       </div>
     );
   }

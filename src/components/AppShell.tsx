@@ -154,7 +154,7 @@ export default function AppShell({ children, fullWidth = true, siteName, logoUrl
         : isWatch  ? `px-4 pb-24 ${mounted ? "transition-[padding] duration-200" : ""} sm:px-6 ${pad}`
         : `px-4 py-6 pb-24 ${mounted ? "transition-[padding] duration-200" : ""} sm:px-6 md:pb-6 ${pad}`
       }>{fullWidth ? children : <div className="mx-auto w-full max-w-[1440px]">{children}</div>}</main>
-      <SiteFooter sections={footerSections} siteName={siteName ?? "LoonyTube"} />
+      {!isMessages && <SiteFooter sections={footerSections} siteName={siteName ?? "LoonyTube"} />}
       <Suspense fallback={null}><CreateModal /></Suspense>
     </div>
   );

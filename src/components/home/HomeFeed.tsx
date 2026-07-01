@@ -95,21 +95,8 @@ export default function HomeFeed({ forYouVideos, postCard, articleCard, realShel
       </div>
 
       <aside className="space-y-8">
-        <section>
-          <h2 className="mb-3 text-lg font-bold text-foam">Live Now</h2>
-          <ComingSoon label="No live streams right now" />
-        </section>
-        <section>
-          <h2 className="mb-3 text-lg font-bold text-foam">Your Schedule Today</h2>
-          <ComingSoon label="Nothing scheduled yet" />
-        </section>
-        {realShelves.length > 0 ? (
+        {realShelves.length > 0 && (
           realShelves.map((s) => <RealShelf key={s.title} title={s.title} videos={s.videos} />)
-        ) : (
-          <section>
-            <h2 className="mb-3 text-lg font-bold text-foam">Browse by category</h2>
-            <ComingSoon label="No categorized videos yet" />
-          </section>
         )}
       </aside>
     </div>
