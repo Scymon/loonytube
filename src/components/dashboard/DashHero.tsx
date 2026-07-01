@@ -5,6 +5,7 @@ import PlayerContextMenu from "@/components/PlayerContextMenu";
 import Avatar from "@/components/Avatar";
 import Link from "next/link";
 import { IcoFill, IcoAutoplay } from "@/components/watch/WatchIcons";
+import { useAudio } from "@/contexts/AudioContext";
 
 export type FeaturedVideo = {
   id: string; title: string; thumbnail: string | null;
@@ -87,6 +88,9 @@ function CtrlBtn({ onClick, title, children, disabled, className = "" }: {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function DashHero({ featuredVideo, bannerUrl, videos }: Props) {
+  // Only one media source should ever play at once — when the hero video
+  // starts playing, stop the persistent audio mini player.
+  const { pause: pauseAudioTrack } = useAudio();
   const [isTheatre, setIsTheatre]     = useState(false);
   const [muted, setMuted]             = useState(true);
   const [volume, setVolumeState]       = useState(1);
@@ -329,6 +333,7 @@ export default function DashHero({ featuredVideo, bannerUrl, videos }: Props) {
     p.addEventListener("play", () => {
       setIsPaused(false);
       p.muted = mutedRef.current;
+      pauseAudioTrack();
     });
 
     p.addEventListener("pause", () => setIsPaused(true));
