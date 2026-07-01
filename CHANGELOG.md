@@ -6,9 +6,31 @@ Entries are milestone deliveries, newest first. Each lists the delivery zip(s) a
 ---
 
 ## [Unreleased] — next up
-- **Public channel page** (`/@handle`). Surfaces banner/avatar/bio/socials; gives follow-notifications, the "People you might like" rail, and a profile **Message** button real destinations. *(keystone — unblocks several pending links)*
 - **Step 3 — Comment unification + Repost/Quote.** Converge video comments onto `posts` nodes (one universal Comment node), add `host_type`/`host_id`, add a `reposts` table, and wire repost/quote actions + the feed/thread union. *(carries a migration)*
 - **Monetization tier system.** Platform-level toggle (off / tiers_active / legacy). Two competing models in featurelist §10a: recurring tiers ($2 commenter / $5 creator) vs freemium + one-time creator activation ($5). Stripe integration, role-sync webhook, Studio monetization settings. *No migration until model is chosen.*
+
+---
+
+## [0.17] Audio + Photos content types, CMS page builder, persistent mini player, download fix — 2026-06-30 – 2026-07-01
+_Migration required: `supabase/audio.sql` (or `audio-v2.sql` — see note below), `supabase/photos.sql`, `supabase/cms.sql`, `supabase/cms-blocks.sql`, `supabase/nav_footer.sql`, `supabase/ribbon_fixed_hidden.sql`_
+
+### Added
+- **Audio content type** — upload, browse, and play standalone audio tracks. `/listen/[id]` page, `AudioComposer`, `AudioPlayer`, persistent `MiniPlayer` (survives navigation via `AudioContext`), Studio `AudioTracksTable`, Explore `ExploreAudio` tab, `/api/audio/categories`. **Note:** `supabase/audio-v2.sql` supersedes `supabase/audio.sql` (switches storage from Cloudflare Stream to Supabase Storage and changes `audio_tracks.id` from text to `uuid`) — run `audio.sql` once, then `audio-v2.sql`; do not re-run `audio.sql` afterward.
+- **Photos content type** — image posts backed by Supabase Storage. `ImageComposer`, Studio `PhotosTable`, `photos` table + storage bucket/policies.
+- **CMS / visual page builder** (admin-only) — `site_config` (site name/tagline/logo/favicon/featured video) and `pages` tables. Publishable custom pages at `/p/[slug]`, built via a drag-and-drop `PageBuilder` (hero/text/image/CTA/columns/features/video blocks). Admin console gained `SiteConfigEditor`, `PageManager`, `NavLinksEditor`, `NavSlotCustomizer`, `RibbonShortcutCustomizer`, and a `SiteFooter` editor, all wrapped in a new `AdminShell`.
+- **Persistent mini player** — `PersistentMiniVideo`, `AudioShell`, and `AudioContext` updates so audio/video playback survives client-side navigation instead of stopping when you leave the watch/listen page.
+- **Keyboard shortcuts help panel** — `?`-style reference panel on the watch page listing all bindings.
+- **Ctrl-combo shortcuts** — `Ctrl+←/→` seeks ±10s, `Ctrl+↑/↓` adjusts volume ±10%, layered on top of the existing plain-arrow video/channel navigation.
+- **Ribbon customization** — admin-configurable shortcuts and fixed/hidden sections; custom nav slot overrides.
+
+### Fixed
+- **Download endpoint timeout (P1)** — `/api/videos/[id]/download` now declares `maxDuration = 60`, does an 8s server-side fast-path poll, and returns `202` with a lightweight `GET` status-check endpoint for the client to poll. Works within Vercel's default 10s limit regardless of plan tier. `WatchMeta`'s download button polls the new endpoint and shows an inline error (no more `alert()`) if generation is still pending after 2 minutes.
+- **CMS page renderer XSS gap** — `src/lib/renderMd.tsx` now HTML-escapes page-body text before applying markdown-style substitutions, and only renders `http(s)/mailto` links (previously accepted any scheme, including `javascript:`, and injected unescaped text straight into `dangerouslySetInnerHTML` on the public, unauthenticated `/p/[slug]` route). Exploitable only by an admin/superadmin-role account; hardened as defense-in-depth. See `docs/audits/2026-07-01.md`.
+- **Keyboard shortcuts panel copy** — corrected to describe actual behavior (plain arrows navigate video/channel, not seek/volume; removed a documented "L = lights out" shortcut that doesn't exist).
+- **"Live Now" / "Your Schedule Today" home sidebar placeholders** — removed; both were permanently-empty `ComingSoon` stubs.
+- **Search empty state** — replaced a two-line placeholder with a real Trending-hashtags + "Channels you might like" sidebar.
+- **Mini player scrubber touch target** — widened the clickable/hover hit area to 16px while keeping the visible track at 4px.
+- **Site footer** — hidden on the Messages surface (a full-height DM shell has no room/need for it).
 
 ---
 

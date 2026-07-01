@@ -273,11 +273,13 @@ src/lib/         supabase/server · supabase/client · format · cloudflare · n
 6. ✅ Privacy enforcement — RLS tightening, CF signed playback, visibility API.
 7. ✅ Admin switch enforcement — uploads + signups kill switches enforced server-side.
 8. ✅ Thumbnail system unification — shared `ThumbnailPicker`, Studio inline upload, post-upload toast.
-9. **Public channel page** (`/@handle`) — banner/avatar/bio/socials/follow; unblocks all "view channel" links. _(next P1)_
-10. **Comment unification + Repost/Quote** — converge video comments onto `posts` nodes (one universal Comment), add `host_type/host_id`, `reposts` table, feed/thread union. _(migration required)_
-11. **Monetization tier system** — platform-level toggle (off / tiers_active / legacy). Two models under consideration (see featurelist §10a): recurring tiers ($2 commenter / $5 creator) vs. freemium + one-time creator activation ($5). Stripe integration, role-sync webhook, Studio monetization settings.
-12. **Articles** — own table, own feed card, reading page with comments; embeddable as Article card in a Post.
-13. Scheduled-release enforcement, explore page, live streaming (CF Stream Live + chat).
+9. ✅ Public channel page (`/@handle`) — banner/avatar/bio/socials/follow; unblocks all "view channel" links.
+10. ✅ Watch page overhaul + Playlists + Infinite queue + Following feed + Downloadable videos + Player feature suite (OSD, chapters, quality/speed menus, keyboard shortcuts, miniplayer) + Live streaming — see CHANGELOG [0.16].
+11. ✅ Articles + Explore page — own table/feed card/reading page for Articles; Explore tabs across videos/posts/articles.
+12. ✅ Audio content type + Photos/images content type + CMS visual page builder (site branding, custom nav/ribbon/footer editors, publishable `/p/[slug]` pages) + persistent mini player — see CHANGELOG [0.17].
+13. **Comment unification + Repost/Quote** — converge video comments onto `posts` nodes (one universal Comment), add `host_type/host_id`, `reposts` table, feed/thread union. _(migration required, next P1)_
+14. **Monetization tier system** — platform-level toggle (off / tiers_active / legacy). Two models under consideration (see featurelist §10a): recurring tiers ($2 commenter / $5 creator) vs. freemium + one-time creator activation ($5). Stripe integration, role-sync webhook, Studio monetization settings.
+15. Scheduled-release enforcement, live chat for live streams (currently a placeholder — `watch/[id]/page.tsx`).
 
 ### Known follow-ups
 
