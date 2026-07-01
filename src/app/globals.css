@@ -92,10 +92,11 @@ html, body {
 }
 
 /* Lights-out: dim nav via opacity, no z-index changes needed */
-header {
+header, aside {
   transition: opacity 0.3s ease;
 }
-html.lt-lights-out header {
+html.lt-lights-out header,
+html.lt-lights-out aside {
   opacity: 0.08;
   pointer-events: none;
 }

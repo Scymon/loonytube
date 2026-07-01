@@ -173,6 +173,8 @@ export default function WatchPlayer({
     muted:        p.muted,
     playbackRate: p.playbackRate,
     mode,
+    volume:       p.volume,
+    onSetVolume:  p.setVolume,
     onTogglePlay: p.togglePlay,
     onSeekTo:     p.seekToTime,
     onToggleMute: p.toggleMute,

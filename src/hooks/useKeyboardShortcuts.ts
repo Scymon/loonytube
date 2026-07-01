@@ -18,6 +18,8 @@ type Opts = {
   onSetRate: (r: number) => void;
   onFullscreen: () => void;
   onModeChange: (m: PlayerMode) => void;
+  volume: number;
+  onSetVolume: (v: number) => void;
   onOSD: (msg: string) => void;
   /** Navigate to previous video in this channel's queue */
   onPrev?: () => void;
@@ -50,7 +52,38 @@ export function useKeyboardShortcuts(opts: Opts) {
         t.isContentEditable
       ) return;
 
-      if (e.ctrlKey || e.altKey || e.metaKey) return;
+        if (e.altKey || e.metaKey) return;
+
+      // ── Ctrl combos ───────────────────────────────────────────────────
+      if (e.ctrlKey) {
+        switch (e.key) {
+          case "ArrowLeft":
+            e.preventDefault();
+            o.onSeekTo(Math.max(0, o.currentTime - 10));
+            o.onOSD("\u23EA 10s");
+            break;
+          case "ArrowRight":
+            e.preventDefault();
+            o.onSeekTo(Math.min(o.duration || 0, o.currentTime + 10));
+            o.onOSD("\u23E9 10s");
+            break;
+          case "ArrowUp": {
+            e.preventDefault();
+            const next = Math.min(1, Math.round((o.volume + 0.1) * 10) / 10);
+            o.onSetVolume(next);
+            o.onOSD(`\uD83D\uDD0A ${Math.round(next * 100)}%`);
+            break;
+          }
+          case "ArrowDown": {
+            e.preventDefault();
+            const next = Math.max(0, Math.round((o.volume - 0.1) * 10) / 10);
+            o.onSetVolume(next);
+            o.onOSD(`\uD83D\uDD09 ${Math.round(next * 100)}%`);
+            break;
+          }
+        }
+        return;
+      }
 
       switch (e.key) {
         /* ── Play / Pause ─────────────────────────────── */

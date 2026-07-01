@@ -98,6 +98,7 @@ export default function DashHero({ featuredVideo, bannerUrl, videos }: Props) {
   const [vidIdx, setVidIdx]            = useState(0);
   const [channelIdx, setChannelIdx]    = useState(0);
   const [urlMuted, setUrlMuted]        = useState(true); // muted=true in iframe URL (needed for autoplay)
+  const urlMutedRef = useRef(true);
   const [fill, setFill]               = useState(true);  // fill/crop by default (ambient feel)
   const [autoplay, setAutoplay]       = useState(true);
   const [loop, setLoopState]           = useState(false);
@@ -190,8 +191,8 @@ export default function DashHero({ featuredVideo, bannerUrl, videos }: Props) {
   }, []);
 
   // Keyboard navigation: ref holds latest state so the listener never goes stale
-  const kbRef = useRef({ ci: 0, vi: 0, ct: 0, isPaused: false, gcLen: 0, ccvLen: 0 });
-  kbRef.current = { ci: channelIdx, vi: vidIdx, ct: currentTime, isPaused, gcLen: groupedChannels.length, ccvLen: currentChannelVideos.length };
+  const kbRef = useRef({ ci: 0, vi: 0, ct: 0, isPaused: false, gcLen: 0, ccvLen: 0, isTheatre: false, lightsOut: false });
+  kbRef.current = { ci: channelIdx, vi: vidIdx, ct: currentTime, isPaused, gcLen: groupedChannels.length, ccvLen: currentChannelVideos.length, isTheatre, lightsOut };
 
   // Reset vidIdx when channel changes
   useEffect(() => { setVidIdx(0); }, [channelIdx]);
@@ -201,6 +202,48 @@ export default function DashHero({ featuredVideo, bannerUrl, videos }: Props) {
     function onKey(e: KeyboardEvent) {
       const tgt = e.target as HTMLElement;
       if (['INPUT', 'TEXTAREA', 'SELECT'].includes(tgt.tagName) || tgt.isContentEditable) return;
+      if (e.altKey || e.metaKey) return;
+
+      // ── Ctrl combos ───────────────────────────────────────────────────
+      if (e.ctrlKey) {
+        const p = playerRef.current;
+        switch (e.key) {
+          case 'ArrowLeft': {
+            e.preventDefault();
+            if (!p) return;
+            const t = Math.max(0, (p.currentTime || 0) - 10);
+            p.currentTime = t; setCurrentTime(t);
+            break;
+          }
+          case 'ArrowRight': {
+            e.preventDefault();
+            if (!p) return;
+            const t = Math.min(p.duration || 0, (p.currentTime || 0) + 10);
+            p.currentTime = t; setCurrentTime(t);
+            break;
+          }
+          case 'ArrowUp': {
+            e.preventDefault();
+            const next = Math.min(1, Math.round((volumeRef.current + 0.1) * 10) / 10);
+            volumeRef.current = next; setVolumeState(next);
+            if (p) p.volume = next;
+            if (next > 0 && mutedRef.current) { mutedRef.current = false; setMuted(false); if (p) p.muted = false; }
+            try { localStorage.setItem("loonytube:volume", String(next)); } catch { /* noop */ }
+            break;
+          }
+          case 'ArrowDown': {
+            e.preventDefault();
+            const next = Math.max(0, Math.round((volumeRef.current - 0.1) * 10) / 10);
+            volumeRef.current = next; setVolumeState(next);
+            if (p) p.volume = next;
+            if (next === 0 && !mutedRef.current) { mutedRef.current = true; setMuted(true); if (p) p.muted = true; }
+            try { localStorage.setItem("loonytube:volume", String(next)); } catch { /* noop */ }
+            break;
+          }
+        }
+        return;
+      }
+
       const { ci, vi, ct, isPaused: paused, gcLen, ccvLen } = kbRef.current;
       switch (e.key) {
         case 'ArrowRight':
@@ -227,6 +270,37 @@ export default function DashHero({ featuredVideo, bannerUrl, videos }: Props) {
           if (paused) p.play().catch(() => {}); else p.pause();
           break;
         }
+        case 'm': case 'M': {
+          e.preventDefault();
+          const next = !mutedRef.current;
+          mutedRef.current = next;
+          setMuted(next);
+          const p = playerRef.current;
+          if (next) {
+            if (p) p.muted = true;
+          } else if (urlMutedRef.current) {
+            // First unmute — reload iframe without muted param
+            const liveTime = p?.currentTime ?? 0;
+            resumeTimeRef.current = liveTime > 2 ? liveTime : resumePointRef.current;
+            resumePointRef.current = resumeTimeRef.current;
+            playerRef.current = null;
+            urlMutedRef.current = false;
+            setUrlMuted(false);
+          } else {
+            if (p) {
+              p.muted = false;
+              const v = volumeRef.current > 0 ? volumeRef.current : 0.7;
+              p.volume = v; setVolumeState(v); volumeRef.current = v;
+            }
+          }
+          break;
+        }
+        case 'b': case 'B':
+          if (kbRef.current.isTheatre) {
+            e.preventDefault();
+            setLightsOut(v => !v);
+          }
+          break;
       }
     }
     document.addEventListener('keydown', onKey);
@@ -334,7 +408,7 @@ export default function DashHero({ featuredVideo, bannerUrl, videos }: Props) {
       resumeTimeRef.current = liveTime > 2 ? liveTime : resumePointRef.current;
       resumePointRef.current = resumeTimeRef.current; // keep in sync after remount
       playerRef.current = null; // let useEffect re-init the player
-      setUrlMuted(false);        // triggers useEffect re-run + iframe remount
+      urlMutedRef.current = false; setUrlMuted(false); // triggers useEffect re-run + iframe remount
     } else {
       // iframe URL already lacks muted=true — SDK set works fine now.
       if (p) {

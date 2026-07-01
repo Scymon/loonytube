@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 
 const sections = [
   {
@@ -42,39 +43,124 @@ const sections = [
   },
 ];
 
+// Three snap widths mirroring the ribbon's three states
+const SNAP_ICONS = 52;   // icon-only
+const SNAP_FULL  = 192;  // labels + icons
+const MID        = (SNAP_ICONS + SNAP_FULL) / 2; // 122
+
+
 export default function ThreadsSidebar() {
   const pathname = usePathname();
+  const [width, setWidth] = useState(SNAP_FULL);
+  const liveW          = useRef(SNAP_FULL);
+  const isDraggingRef  = useRef(false);
+  const startXRef      = useRef(0);
+  const startWRef      = useRef(0);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("lt:threads-sidebar-w");
+      if (saved) {
+        const w = parseInt(saved, 10) < MID ? SNAP_ICONS : SNAP_FULL;
+        setWidth(w);
+        liveW.current = w;
+      }
+    } catch { /* noop */ }
+  }, []);
+
+  useEffect(() => {
+    function onMove(e: MouseEvent) {
+      if (!isDraggingRef.current) return;
+      const w = Math.max(SNAP_ICONS, Math.min(SNAP_FULL, startWRef.current + (e.clientX - startXRef.current)));
+      liveW.current = w;
+      setWidth(w);
+    }
+    function onUp() {
+      if (!isDraggingRef.current) return;
+      isDraggingRef.current = false;
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      const snapped = liveW.current < MID ? SNAP_ICONS : SNAP_FULL;
+      liveW.current = snapped;
+      setWidth(snapped);
+      try { localStorage.setItem("lt:threads-sidebar-w", String(snapped)); } catch { /* noop */ }
+    }
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+    return () => {
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+    };
+  }, []);
+
+  function onDragStart(e: React.MouseEvent) {
+    isDraggingRef.current = true;
+    startXRef.current = e.clientX;
+    startWRef.current = liveW.current;
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    e.preventDefault();
+  }
+
+  const closed   = false;
+  const iconOnly = width < SNAP_FULL - 20;
+
   return (
-    <aside className="hidden md:flex w-48 shrink-0 flex-col border-r border-edge bg-ink">
-      <div className="px-4 py-4">
-        <p className="text-xs font-semibold uppercase tracking-widest text-mist">Threads</p>
+    <aside
+      className="relative hidden md:flex shrink-0 flex-col border-r border-edge bg-ink overflow-hidden transition-none"
+      style={{ width }}
+    >
+      {/* Content — hidden when fully closed */}
+      {!closed && (
+        <>
+          <div className={`py-4 ${iconOnly ? "flex justify-center" : "px-4"}`}>
+            {iconOnly
+              ? <span className="text-[9px] font-bold uppercase tracking-widest text-mist/40">···</span>
+              : <p className="text-xs font-semibold uppercase tracking-widest text-mist">Threads</p>
+            }
+          </div>
+
+          <nav className={`flex flex-col gap-0.5 ${iconOnly ? "px-1.5" : "px-2"}`}>
+            {sections.map((s) => {
+              const active = pathname.startsWith(s.href);
+              return (
+                <Link
+                  key={s.href}
+                  href={s.soon ? "#" : s.href}
+                  title={iconOnly ? s.label : undefined}
+                  aria-disabled={s.soon}
+                  onClick={s.soon ? (e) => e.preventDefault() : undefined}
+                  className={`flex items-center rounded-lg py-2.5 text-sm font-medium transition-colors
+                    ${iconOnly ? "justify-center px-2" : "gap-3 px-3"}
+                    ${active ? "bg-edge text-foam"
+                      : s.soon ? "cursor-default text-mist/40"
+                      : "text-mist hover:bg-edge/60 hover:text-foam"}`}
+                >
+                  <span className="shrink-0">{s.icon}</span>
+                  {!iconOnly && <span className="truncate">{s.label}</span>}
+                  {!iconOnly && s.soon && (
+                    <span className="ml-auto shrink-0 text-[10px] font-medium text-mist/40">soon</span>
+                  )}
+                </Link>
+              );
+            })}
+          </nav>
+        </>
+      )}
+
+      {/* Drag handle — always present */}
+      <div
+        className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize group z-10"
+        onMouseDown={onDragStart}
+        onDoubleClick={() => {
+          const next = width < SNAP_FULL - 20 ? SNAP_FULL : SNAP_ICONS;
+          liveW.current = next;
+          setWidth(next);
+          try { localStorage.setItem("lt:threads-sidebar-w", String(next)); } catch { /* noop */ }
+        }}
+      >
+        <div className="absolute right-0 top-0 bottom-0 w-px bg-edge group-hover:bg-teal/60 group-active:bg-teal transition-colors" />
       </div>
-      <nav className="flex flex-col gap-0.5 px-2">
-        {sections.map((s) => {
-          const active = pathname.startsWith(s.href);
-          return (
-            <Link
-              key={s.href}
-              href={s.soon ? "#" : s.href}
-              className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
-                active
-                  ? "bg-edge text-foam"
-                  : s.soon
-                  ? "cursor-default text-mist/40"
-                  : "text-mist hover:bg-edge/60 hover:text-foam"
-              }`}
-              aria-disabled={s.soon}
-              onClick={s.soon ? (e) => e.preventDefault() : undefined}
-            >
-              {s.icon}
-              <span>{s.label}</span>
-              {s.soon && (
-                <span className="ml-auto rounded text-[10px] font-medium text-mist/40">soon</span>
-              )}
-            </Link>
-          );
-        })}
-      </nav>
     </aside>
   );
 }
