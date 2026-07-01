@@ -11,6 +11,7 @@ import WatchSidebar, {
   type TrendingTag,
 } from "./WatchSidebar";
 import Comments from "@/components/Comments";
+import { useAudio } from "@/contexts/AudioContext";
 
 export type WatchLayoutProps = {
   videoId: string;
@@ -50,13 +51,36 @@ export default function WatchLayout({
   const [queueContext, setQueueContext] = useState("home");
   const [channelIdx, setChannelIdx] = useState(0);
   const refillInFlight = useRef(false);
-  const isTheatre = mode === "theatre";
   const { queue: userQueue, shiftQueue } = usePlayQueue();
+  const { setVideoMiniMode, setVideoMeta, videoMiniMode } = useAudio();
+
+  // Clear stale mini modes from localStorage (they're transient, not worth restoring)
+  // and clear videoMiniMode from AudioContext when leaving the watch page
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("loonytube:playerMode");
+      if (saved === "mini" || saved === "mini-float") {
+        localStorage.removeItem("loonytube:playerMode");
+      }
+    } catch { /* noop */ }
+    return () => { setVideoMiniMode(null); setVideoMeta(null); };
+  }, [setVideoMiniMode, setVideoMeta]);
+
+  // If something external clears videoMiniMode (e.g. MiniPlayer X button), restore page mode
+  useEffect(() => {
+    if (videoMiniMode === null && (mode === "mini" || mode === "mini-float")) {
+      setMode("page");
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [videoMiniMode]);
+
+  const isTheatre = mode === "theatre";
 
   // On mount: restore player mode + build/restore the video queue.
   // relatedVideos is stable (SSR prop), so empty deps is intentional.
   useEffect(() => {
     try {
+      // Only restore theatre mode — mini/mini-float are transient, don't restore them.
       if (localStorage.getItem("loonytube:playerMode") === "theatre") setMode("theatre");
       if (localStorage.getItem("loonytube:sidebar") === "0") setSidebarOpen(false);
       const ctx = localStorage.getItem("loonytube:queueContext");
@@ -84,6 +108,18 @@ export default function WatchLayout({
 
   function handleModeChange(m: PlayerMode) {
     setMode(m);
+    if (m === "mini" || m === "mini-float") {
+      setVideoMiniMode(m);
+      setVideoMeta({
+        id:        videoId,
+        title,
+        ownerName: channelName ?? channelUsername,
+        posterUrl: poster ?? null,
+      });
+    } else {
+      setVideoMiniMode(null);
+      setVideoMeta(null);
+    }
     try { localStorage.setItem("loonytube:playerMode", m); } catch { /* noop */ }
   }
 
@@ -230,7 +266,7 @@ export default function WatchLayout({
   }
 
   // ── Page (and mini): player + meta + comments on left, sidebar on right ───────
-  const isMini = mode === "mini";
+  const isMini = mode === "mini" || mode === "mini-float";
   return (
     <div className="flex min-h-0 w-full pl-3 pr-2">
       <div className="min-w-0 flex-1 pb-4 pt-3 pr-3">

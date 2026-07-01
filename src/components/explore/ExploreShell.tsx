@@ -6,6 +6,7 @@ import ExploreTabBar from "@/components/explore/ExploreTabBar";
 import ExploreVideos from "@/components/explore/ExploreVideos";
 import ExplorePosts from "@/components/explore/ExplorePosts";
 import ExploreArticles from "@/components/explore/ExploreArticles";
+import ExploreAudio from "@/components/explore/ExploreAudio";
 
 export type ExploreVideo = {
   id: string; title: string; thumbnail: string | null; duration: number | null;
@@ -17,12 +18,17 @@ export type ExplorePost = {
   author: string; handle: string; avatar: string | null;
   likes: number; replies: number; reposts: number;
 };
+export type ExploreAudioTrack = {
+  id: string; title: string; cover_url: string | null; duration: number | null;
+  views: number; created_at: string; category: string | null;
+  channel: string; avatar: string | null; channelHandle: string | null;
+};
 export type ExploreArticle = {
   id: string; title: string; cover_url: string | null;
   author: string; handle: string; avatar: string | null;
   agoLabel: string; readMinutes: number;
 };
-export type ExploreTab = "videos" | "posts" | "articles";
+export type ExploreTab = "videos" | "posts" | "articles" | "audio";
 
 type Props = {
   featuredVideo: FeaturedVideo | null;
@@ -30,10 +36,11 @@ type Props = {
   videos: ExploreVideo[];
   posts: ExplorePost[];
   articles: ExploreArticle[];
+  tracks: ExploreAudioTrack[];
   role: string | null;
 };
 
-export default function ExploreShell({ featuredVideo, heroVideos, videos, posts, articles, role }: Props) {
+export default function ExploreShell({ featuredVideo, heroVideos, videos, posts, articles, tracks, role }: Props) {
   const [activeTab, setActiveTab] = useState<ExploreTab>("videos");
 
   return (
@@ -62,6 +69,10 @@ export default function ExploreShell({ featuredVideo, heroVideos, videos, posts,
 
       {activeTab === "articles" && (
         <div className="pt-6"><ExploreArticles articles={articles} /></div>
+      )}
+
+      {activeTab === "audio" && (
+        <div className="pt-6"><ExploreAudio tracks={tracks} /></div>
       )}
     </div>
   );

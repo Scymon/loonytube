@@ -23,15 +23,33 @@ export default async function Home() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  // Hero = most-viewed ready video ("Now Trending").
-  const { data: heroRows } = await supabase
+  // Site config: check for a pinned featured video
+  const { data: siteConfig } = await supabase
+    .from("site_config")
+    .select("featured_video_id")
+    .eq("id", 1)
+    .maybeSingle();
+  const pinnedId = siteConfig?.featured_video_id ?? null;
+
+  // Hero = pinned video first (if set), then most-viewed ready videos
+  const heroQuery = supabase
     .from("videos")
     .select("id, title, thumbnail, duration, views, created_at, owner")
     .eq("status", "ready")
     .eq("visibility", "public")
     .order("views", { ascending: false })
-    .limit(5);
-  const heroRows5 = (heroRows ?? []) as Row[];
+    .limit(pinnedId ? 4 : 5);
+  const [{ data: heroRows }, pinnedResult] = await Promise.all([
+    heroQuery,
+    pinnedId
+      ? supabase.from("videos").select("id, title, thumbnail, duration, views, created_at, owner").eq("id", pinnedId).maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
+  const pinnedRow = (pinnedResult as { data: Row | null }).data as Row | undefined;
+  const heroRows5 = [
+    ...(pinnedRow ? [pinnedRow] : []),
+    ...((heroRows ?? []) as Row[]).filter(v => v.id !== pinnedId),
+  ].slice(0, 5) as Row[];
   const heroRow = heroRows5[0] as Row | undefined;
 
   // Feed = newest ready videos (excluding the hero).

@@ -177,10 +177,25 @@ export default function ContentTable({ initial }: { initial: Row[] }) {
     setDownloadingId(id);
     try {
       const r = await fetch(`/api/videos/${id}/download`, { method: "POST" });
-      const { url, error } = await r.json();
-      if (!url) { alert(error ?? "Download is being prepared — try again in a moment."); return; }
+      let body = await r.json();
+
+      // CF generates MP4s async — if not ready in the server fast-path, poll GET
+      if (r.status === 202) {
+        const POLL_MS  = 3_000;
+        const deadline = Date.now() + 120_000;
+        while (!body.url && Date.now() < deadline) {
+          await new Promise(res => setTimeout(res, POLL_MS));
+          const poll = await fetch(`/api/videos/${id}/download`);
+          body = await poll.json();
+        }
+      }
+
+      if (!body.url) {
+        alert("Download is being prepared — please try again in a moment.");
+        return;
+      }
       const a = document.createElement("a");
-      a.href = url;
+      a.href = body.url as string;
       a.download = "";
       a.target = "_blank";
       a.rel = "noopener";

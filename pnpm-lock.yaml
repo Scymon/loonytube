@@ -17,6 +17,9 @@ importers:
       '@supabase/supabase-js':
         specifier: ^2.45.4
         version: 2.108.1
+      hls.js:
+        specifier: ^1.6.16
+        version: 1.6.16
       next:
         specifier: ^15.1.0
         version: 15.5.19(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -30,6 +33,9 @@ importers:
         specifier: ^4.3.1
         version: 4.3.1
     devDependencies:
+      '@types/hls.js':
+        specifier: ^1.0.0
+        version: 1.0.0
       '@types/node':
         specifier: ^20
         version: 20.19.43
@@ -372,6 +378,10 @@ packages:
   '@types/cookie@0.6.0':
     resolution: {integrity: sha512-4Kh9a6B2bQciAhf7FSuMRRkUWecJgJu9nPnx3yzpsfXX/c50REIqpHY4C82bXP90qrLtXtkDxTZosYO3UpOwlA==}
 
+  '@types/hls.js@1.0.0':
+    resolution: {integrity: sha512-EGY2QJefX+Z9XH4PAxI7RFoNqBlQEk16UpYR3kbr82CIgMX5SlMe0PjFdFV0JytRhyVPQCiwSyONuI6S1KdSag==}
+    deprecated: This is a stub types definition. hls.js provides its own type definitions, so you do not need this installed.
+
   '@types/node@20.19.43':
     resolution: {integrity: sha512-6oYBAi5ikg4Pl+kGsoYtawUMBT2zZMCvPNF7pVLnHZfd1zf38DRiWn/gT01RYCdUqkv7Fhr+C9ot4/tb+2sVvA==}
 
@@ -674,6 +684,9 @@ packages:
   hasown@2.0.4:
     resolution: {integrity: sha512-T2UbfbBEF32wiepXIsMlTW9+dDYC6wMh/t/vYA4tuOMKqWz/n3vr1NFSxQiyP+zk2mXsoMA/i/7qV6LKut1t1A==}
     engines: {node: '>= 0.4'}
+
+  hls.js@1.6.16:
+    resolution: {integrity: sha512-VSIRpLfRwlAAdGL4wiTucx2ScRipo0ed1FBatWkyt832jC4CReKstga6yIhYVwGu9LOBjuX9wzmRMeQdBJtzEA==}
 
   iceberg-js@0.8.1:
     resolution: {integrity: sha512-1dhVQZXhcHje7798IVM+xoo/1ZdVfzOMIc8/rgVSijRK38EDqOJoGula9N/8ZI5RD8QTxNQtK/Gozpr+qUqRRA==}
@@ -1403,6 +1416,10 @@ snapshots:
 
   '@types/cookie@0.6.0': {}
 
+  '@types/hls.js@1.0.0':
+    dependencies:
+      hls.js: 1.6.16
+
   '@types/node@20.19.43':
     dependencies:
       undici-types: 6.21.0
@@ -1710,6 +1727,8 @@ snapshots:
   hasown@2.0.4:
     dependencies:
       function-bind: 1.1.2
+
+  hls.js@1.6.16: {}
 
   iceberg-js@0.8.1: {}
 

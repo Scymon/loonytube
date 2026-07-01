@@ -5,6 +5,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import Avatar from "@/components/Avatar";
 import RibbonSettings from "@/components/RibbonSettings";
+import type { RibbonShortcut } from "@/components/admin/NavLinksEditor";
 
 type SectionKey = "shortcuts" | "subscriptions" | "playlists" | "groups";
 export type Sub = { id: string; username: string | null; full_name: string | null; avatar_url: string | null };
@@ -29,13 +30,17 @@ const PLAYLIST = "M4 6h11|M4 12h11|M4 18h7|M16 13l5 3-5 3z";
 const GROUPS   = "M9 11a3 3 0 100-6 3 3 0 000 6z|M2 20c0-3 3-5 7-5s7 2 7 5|M17 11a3 3 0 100-6|M22 20c0-2.5-2-4.2-5-4.7";
 const GEAR     = "M12 9a3 3 0 100 6 3 3 0 000-6z|M19.4 13a7 7 0 000-2l2-1.5-2-3.5-2.4 1a7 7 0 00-1.7-1L13 3h-4l-.3 2.5a7 7 0 00-1.7 1l-2.4-1-2 3.5L4.6 11a7 7 0 000 2l-2 1.5 2 3.5 2.4-1a7 7 0 001.7 1L9 21h4l.3-2.5a7 7 0 001.7-1l2.4 1 2-3.5z";
 
-const SHORTCUTS      = [{ label: "Home", href: "/", icon: HOME }, { label: "Create", href: "/create", icon: PLUS }];
-const SOON_SHORTCUTS = [{ label: "Explore", icon: EXPLORE }, { label: "Saved", icon: SAVED }];
+const SHORTCUTS_ALL      = [{ label: "Home", href: "/", icon: HOME }, { label: "Create", href: "/create", icon: PLUS }, { label: "Explore", href: "/explore", icon: EXPLORE }];
+const SOON_SHORTCUTS_ALL = [{ label: "Saved", icon: SAVED }];
+
+const PAGE_ICON = "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z";
 
 export default function Ribbon({
-  open, expanded, onClose, onToggleExpand,
-}: { open: boolean; expanded: boolean; onClose: () => void; onToggleExpand: () => void }) {
+  open, expanded, onClose, onToggleExpand, ribbonShortcuts = [], ribbonFixedHidden = [],
+}: { open: boolean; expanded: boolean; onClose: () => void; onToggleExpand: () => void; ribbonShortcuts?: RibbonShortcut[]; ribbonFixedHidden?: string[] }) {
   const supabase = createClient();
+  const SHORTCUTS      = SHORTCUTS_ALL.filter(s => !ribbonFixedHidden.includes(s.label));
+  const SOON_SHORTCUTS = SOON_SHORTCUTS_ALL.filter(s => !ribbonFixedHidden.includes(s.label));
   const [visible,      setVisible]      = useState<Record<SectionKey, boolean>>(DEFAULT_VISIBLE);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [subs,         setSubs]         = useState<Sub[]>([]);
@@ -186,6 +191,11 @@ export default function Ribbon({
               <Glyph d={s.icon} />
             </span>
           ))}
+          {ribbonShortcuts.map((sc) => (
+            <RailBtn key={sc.id} title={sc.label} href={sc.href}>
+              <Glyph d={PAGE_ICON} />
+            </RailBtn>
+          ))}
           <span className="my-1 h-px w-8 bg-edge" />
         </>
       )}
@@ -213,6 +223,12 @@ export default function Ribbon({
           <Header>Shortcuts</Header>
           {SHORTCUTS.map((s) => <Row key={s.label} icon={s.icon} label={s.label} href={s.href} />)}
           {SOON_SHORTCUTS.map((s) => <Row key={s.label} icon={s.icon} label={s.label} soon />)}
+          {ribbonShortcuts.length > 0 && (
+            <>
+              <p className="px-3 pb-1 pt-3 text-[10px] font-bold uppercase tracking-wider text-mist/40">Pages</p>
+              {ribbonShortcuts.map((sc) => <Row key={sc.id} icon={PAGE_ICON} label={sc.label} href={sc.href} />)}
+            </>
+          )}
         </div>
       )}
       {visible.subscriptions && (
@@ -247,7 +263,7 @@ export default function Ribbon({
         </div>
       )}
       {open && <div className="fixed inset-0 top-[57px] z-30 bg-black/50 lg:hidden" onClick={onClose} />}
-      <aside className={`fixed left-0 top-[57px] z-40 flex h-[calc(100vh-57px)] flex-col border-r border-edge bg-panel transition-[transform,width] duration-200 ${
+      <aside className={`fixed left-0 top-[57px] z-[60] flex h-[calc(100vh-57px)] flex-col border-r border-edge bg-panel transition-[transform,width] duration-200 ${
         expanded ? "w-[264px]" : "w-[72px]"
       } ${open ? "translate-x-0" : "-translate-x-full"}`}>
         {expanded && (

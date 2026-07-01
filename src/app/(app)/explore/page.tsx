@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import ExploreShell, { type ExploreVideo, type ExplorePost, type ExploreArticle } from "@/components/explore/ExploreShell";
+import ExploreShell, { type ExploreVideo, type ExplorePost, type ExploreArticle, type ExploreAudioTrack } from "@/components/explore/ExploreShell";
 import type { FeaturedVideo } from "@/components/dashboard/DashHero";
 
 export const dynamic = "force-dynamic";
@@ -116,6 +116,31 @@ export default async function ExplorePage() {
       avatar: p?.avatar_url ?? null, agoLabel, readMinutes: Math.max(1, Math.round(wordCount / 200)) };
   });
 
+  // Audio tracks (newest 24, public only)
+  const { data: audioRows } = await supabase
+    .from("audio_tracks")
+    .select("id, title, cover_url, duration, views, created_at, owner, category_id, audio_categories(name)")
+    .eq("visibility", "public")
+    .order("created_at", { ascending: false }).limit(24);
+  const audioOwnerIds = [...new Set((audioRows ?? []).map(a => a.owner))];
+  const audioWho = new Map<string, Prof>();
+  if (audioOwnerIds.length) {
+    const { data: ps } = await supabase.from("profiles").select("id, username, full_name, avatar_url").in("id", audioOwnerIds);
+    for (const p of (ps ?? []) as Prof[]) audioWho.set(p.id, p);
+  }
+  const exploreTracks: ExploreAudioTrack[] = (audioRows ?? []).map(a => {
+    const p = audioWho.get(a.owner);
+    const cat = Array.isArray(a.audio_categories) ? a.audio_categories[0] : a.audio_categories;
+    return {
+      id: a.id, title: a.title, cover_url: a.cover_url ?? null,
+      duration: a.duration ?? null, views: a.views ?? 0,
+      created_at: a.created_at, category: cat?.name ?? null,
+      channel: p?.full_name || p?.username || "Artist",
+      avatar: p?.avatar_url ?? null,
+      channelHandle: p?.username ?? null,
+    };
+  });
+
   return (
     <ExploreShell
       featuredVideo={featuredVideo}
@@ -123,6 +148,7 @@ export default async function ExplorePage() {
       videos={exploreVideos}
       posts={explorePosts}
       articles={exploreArticles}
+      tracks={exploreTracks}
       role={role}
     />
   );

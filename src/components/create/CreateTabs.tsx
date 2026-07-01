@@ -8,8 +8,9 @@ import { ProcessingToast } from "@/components/ProcessingToast";
 const VideoComposer   = lazy(() => import("@/components/create/VideoComposer"));
 const PostComposer    = lazy(() => import("@/components/create/PostComposer"));
 const ArticleComposer = lazy(() => import("@/components/create/ArticleComposer"));
+const AudioComposer   = lazy(() => import("@/components/create/AudioComposer"));
 
-export type CreateTab = "video" | "post" | "article";
+export type CreateTab = "video" | "post" | "article" | "audio";
 
 const TABS: { key: CreateTab; label: string; icon: ReactNode }[] = [
   { key: "video", label: "Video", icon: (
@@ -20,6 +21,11 @@ const TABS: { key: CreateTab; label: string; icon: ReactNode }[] = [
   { key: "post", label: "Post", icon: (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z" />
+    </svg>
+  ) },
+  { key: "audio", label: "Audio", icon: (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" />
     </svg>
   ) },
   { key: "article", label: "Article", icon: (
@@ -51,6 +57,7 @@ export default function CreateTabs({ initialTab = "video" }: { initialTab?: Crea
           {tab === "video" && <VideoComposer onComplete={(id) => setProcessingId(id)} />}
           {tab === "post" && <PostComposer />}
           {tab === "article" && <ArticleComposer />}
+          {tab === "audio"   && <AudioComposer onComplete={(id) => setProcessingId(id)} />}
         </Suspense>
       </div>
       {processingId && (

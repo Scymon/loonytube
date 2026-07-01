@@ -22,12 +22,20 @@ const TAB_ICONS: Record<string, { paths: string[]; viewBox?: string }> = {
       "M14 2v6h6M16 13H8M16 17H8M10 9H8",
     ],
   },
+  audio: {
+    paths: [
+      "M9 18V5l12-2v13",
+      "M6 21a3 3 0 100-6 3 3 0 000 6z",
+      "M18 19a3 3 0 100-6 3 3 0 000 6z",
+    ],
+  },
 };
 
 const TABS: { key: ExploreTab; title: string }[] = [
   { key: "videos",   title: "Videos"   },
   { key: "posts",    title: "Posts"    },
   { key: "articles", title: "Articles" },
+  { key: "audio",    title: "Audio"    },
 ];
 
 type Props = {

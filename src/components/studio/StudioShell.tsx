@@ -1,9 +1,11 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Avatar from "@/components/Avatar";
 import Nav from "@/components/Nav";
+import Ribbon from "@/components/Ribbon";
 
 type Prof = { username: string | null; full_name: string | null; avatar_url: string | null };
 
@@ -22,15 +24,53 @@ function Glyph({ d }: { d: string }) {
 export default function StudioShell({ profile, children }: { profile: Prof; children: React.ReactNode }) {
   const pathname = usePathname();
   const name = profile.full_name || profile.username || "Your channel";
+  const [ribbonOpen,     setRibbonOpen]     = useState(false);
+  const [ribbonExpanded, setRibbonExpanded] = useState(false);
+
+  useEffect(() => {
+    try {
+      setRibbonOpen(localStorage.getItem("lt-ribbon-open") === "1");
+      setRibbonExpanded(localStorage.getItem("lt-ribbon-expanded") === "1");
+    } catch {}
+  }, []);
+
+  function persistRibbon(o: boolean, e: boolean) {
+    setRibbonOpen(o); setRibbonExpanded(e);
+    try {
+      localStorage.setItem("lt-ribbon-open", o ? "1" : "0");
+      localStorage.setItem("lt-ribbon-expanded", e ? "1" : "0");
+    } catch {}
+  }
+
+  // Keep --sidebar-w in sync so MiniAudioPlayer offsets correctly
+  useEffect(() => {
+    function update() {
+      const isLg = window.matchMedia("(min-width: 1024px)").matches;
+      const w = ribbonOpen && isLg ? (ribbonExpanded ? "264px" : "72px") : "0px";
+      document.documentElement.style.setProperty("--sidebar-w", w);
+    }
+    update();
+    const mq = window.matchMedia("(min-width: 1024px)");
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, [ribbonOpen, ribbonExpanded]);
 
   return (
     <div className="min-h-screen text-foam" style={{ background: "#0d0d0f" }}>
       {/* consistent site top nav (shows "Studio" after the logo while in /studio) */}
-      <Nav />
+      <Nav onLogoClick={() => persistRibbon(!ribbonOpen, ribbonExpanded)} />
+      <Ribbon
+        open={ribbonOpen}
+        expanded={ribbonExpanded}
+        onClose={() => persistRibbon(false, ribbonExpanded)}
+        onToggleExpand={() => persistRibbon(true, !ribbonExpanded)}
+        ribbonShortcuts={[]}
+        ribbonFixedHidden={[]}
+      />
 
       <div className="flex">
         {/* internal sidebar */}
-        <aside className="sticky top-[57px] hidden h-[calc(100vh-57px)] w-60 shrink-0 border-r border-edge px-3 py-5 sm:block">
+        <aside className={`sticky top-[57px] hidden h-[calc(100vh-57px)] w-60 shrink-0 border-r border-edge px-3 py-5 sm:block transition-[margin] duration-200 ${ribbonOpen ? (ribbonExpanded ? "lg:ml-[264px]" : "lg:ml-[72px]") : ""}`}>
           <div className="mb-5 flex flex-col items-center px-2 text-center">
             <Avatar name={name} src={profile.avatar_url} size={72} />
             <p className="mt-2 font-bold">{name}</p>

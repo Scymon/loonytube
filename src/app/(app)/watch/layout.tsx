@@ -1,9 +1,5 @@
-// Watch pages cancel AppShell's generic py-6 px-4 sm:px-6 so the player
-// can sit flush against the nav bar with its own tighter spacing.
+// AppShell already handles watch-page spacing via its isWatch branch
+// (pt-[57px] px-4 pb-24 sm:px-6 + sidebar offset). No negative margins needed.
 export default function WatchRouteLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="-mx-4 -mt-6 sm:-mx-6">
-      {children}
-    </div>
-  );
+  return <>{children}</>;
 }

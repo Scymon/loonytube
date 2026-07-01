@@ -8,6 +8,9 @@ import Avatar from "@/components/Avatar";
 import SearchBar from "@/components/SearchBar";
 import NotificationBell from "@/components/notifications/NotificationBell";
 
+import type { NavSlotOverride } from "@/components/admin/NavLinksEditor";
+import { NAV_SLOT_DEFAULTS, DEFAULT_SLOT_ICONS } from "@/components/admin/NavLinksEditor";
+
 type IconKey = "home" | "explore" | "create" | "chat" | "schedule" | "profile";
 
 const ICONS: Record<IconKey, string> = {
@@ -69,7 +72,47 @@ function NavIcon({
   );
 }
 
-export default function Nav({ onLogoClick }: { onLogoClick?: () => void }) {
+// Renders a reassignable nav slot using the override's icon (or slot default) and destination
+function SlotNavIcon({ ov, defaultIcon, active, mobile = false }: {
+  ov: { label: string; href: string; icon?: string };
+  defaultIcon: string;
+  active: boolean;
+  mobile?: boolean;
+}) {
+  const iconD = ov.icon ?? defaultIcon;
+  if (mobile) {
+    return (
+      <Link href={ov.href} aria-label={ov.label}
+        className={`flex flex-col items-center gap-0.5 px-2 py-1 ${active ? "text-sky" : "text-mist"}`}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          {iconD.split("|").map((p, i) => <path key={i} d={p} />)}
+        </svg>
+        <span className="text-[10px] font-medium">{ov.label}</span>
+      </Link>
+    );
+  }
+  return (
+    <Link href={ov.href} aria-label={ov.label} title={ov.label}>
+      <span className={`relative grid h-10 w-10 place-items-center rounded-full transition-all duration-200 ${
+        active ? "text-sky" : "text-mist/70 hover:text-teal hover:[filter:drop-shadow(0_0_6px_rgba(45,212,180,0.85))] hover:scale-105"
+      }`}>
+        <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          {iconD.split("|").map((p, i) => <path key={i} d={p} />)}
+        </svg>
+        {active && <span className="absolute -bottom-[14px] h-0.5 w-7 rounded-full bg-sky" />}
+      </span>
+    </Link>
+  );
+}
+
+export default function Nav({ onLogoClick, siteName, logoUrl, navSlotOverrides = [] }: { onLogoClick?: () => void; siteName?: string; logoUrl?: string | null; navSlotOverrides?: NavSlotOverride[] }) {
+  // Resolve slot targets: override wins, otherwise use default
+  function slot(s: "explore" | "threads" | "dashboard") {
+    return navSlotOverrides.find(o => o.slot === s) ?? NAV_SLOT_DEFAULTS[s];
+  }
+  const exploreSlot   = slot("explore");
+  const threadsSlot   = slot("threads");
+  const dashboardSlot = slot("dashboard");
   const supabase = createClient();
   const router = useRouter();
   const pathname = usePathname();
@@ -131,21 +174,21 @@ export default function Nav({ onLogoClick }: { onLogoClick?: () => void }) {
           {onLogoClick ? (
             <button onClick={onLogoClick} aria-label="Open menu ribbon" className="transition hover:brightness-110 active:scale-95">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="\loonytube-logo_x480.png" alt="LoonyTube" className="h-9 w-9 rounded-[10px] object-cover" />
+              <img src={logoUrl ?? "/loonytube-logo_x480.png"} alt={siteName ?? "LoonyTube"} className="h-9 w-9 rounded-[10px] object-cover" />
             </button>
           ) : (
-            <Link href="/" aria-label="LoonyTube home" className="transition hover:brightness-110">
+            <Link href="/" aria-label={`${siteName ?? "LoonyTube"} home`} className="transition hover:brightness-110">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="\loonytube-logo_x480.png" alt="LoonyTube" className="h-9 w-9 rounded-[10px] object-cover" />
+              <img src={logoUrl ?? "/loonytube-logo_x480.png"} alt={siteName ?? "LoonyTube"} className="h-9 w-9 rounded-[10px] object-cover" />
             </Link>
           )}
           {isStudio && <span className="ml-1 mr-1 text-lg font-bold tracking-tight text-foam">Studio</span>}
           <nav className="ml-1 hidden items-center gap-1 md:flex">
             <NavIcon k="home" href="/" label="Home" active={is("/")} />
-            <NavIcon k="explore" href="/explore" label="Explore" active={pathname.startsWith("/explore")} />
+            <SlotNavIcon ov={exploreSlot}   defaultIcon={DEFAULT_SLOT_ICONS.explore}   active={pathname.startsWith(exploreSlot.href)} />
             <NavIcon k="create" label="Create" onClick={() => openCreate()} active={pathname === "/create"} />
-            <NavIcon k="chat" href="/threads" label="Messages" active={pathname.startsWith("/messages")} />
-            <NavIcon k="profile" href="/dashboard" label="Dashboard" active={pathname.startsWith("/dashboard")} />
+            <SlotNavIcon ov={threadsSlot}   defaultIcon={DEFAULT_SLOT_ICONS.threads}   active={pathname.startsWith(threadsSlot.href)} />
+            <SlotNavIcon ov={dashboardSlot} defaultIcon={DEFAULT_SLOT_ICONS.dashboard} active={pathname.startsWith(dashboardSlot.href)} />
           </nav>
         </div>
 
@@ -240,19 +283,10 @@ export default function Nav({ onLogoClick }: { onLogoClick?: () => void }) {
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d={ICONS.home} /></svg>
             <span className="text-[10px] font-medium">Home</span>
           </Link>
-          <Link href="/explore" aria-label="Explore" className={`flex flex-col items-center gap-0.5 px-2 py-1 ${pathname.startsWith("/explore") ? "text-sky" : "text-mist"}`}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d={ICONS.explore} /></svg>
-            <span className="text-[10px] font-medium">Explore</span>
-          </Link>
+          <SlotNavIcon ov={exploreSlot}   defaultIcon={DEFAULT_SLOT_ICONS.explore}   active={pathname.startsWith(exploreSlot.href)}   mobile />
           <div className="w-14" aria-hidden="true" />
-          <Link href="/threads" aria-label="Threads" className={`flex flex-col items-center gap-0.5 px-2 py-1 ${pathname.startsWith("/threads") || pathname.startsWith("/messages") ? "text-sky" : "text-mist"}`}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d={ICONS.chat} /></svg>
-            <span className="text-[10px] font-medium">Threads</span>
-          </Link>
-          <Link href="/dashboard" aria-label="Dashboard" className={`flex flex-col items-center gap-0.5 px-2 py-1 ${pathname.startsWith("/dashboard") ? "text-sky" : "text-mist"}`}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d={ICONS.profile} /></svg>
-            <span className="text-[10px] font-medium">Dashboard</span>
-          </Link>
+          <SlotNavIcon ov={threadsSlot}   defaultIcon={DEFAULT_SLOT_ICONS.threads}   active={pathname.startsWith(threadsSlot.href)}   mobile />
+          <SlotNavIcon ov={dashboardSlot} defaultIcon={DEFAULT_SLOT_ICONS.dashboard} active={pathname.startsWith(dashboardSlot.href)} mobile />
           <button type="button" onClick={() => openCreate()} aria-label="Create"
             className="absolute left-1/2 -translate-x-1/2 -top-5 flex flex-col items-center gap-0.5">
             <span className="grid h-11 w-11 place-items-center rounded-full border border-teal/60 bg-teal/10 text-teal shadow-[0_0_12px_rgba(58,214,189,0.2)]">

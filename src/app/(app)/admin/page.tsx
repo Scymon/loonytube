@@ -1,8 +1,11 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import AdminSwitches from "@/components/admin/AdminSwitches";
-import InviteManager, { type Invite } from "@/components/admin/InviteManager";
-import RoleManager, { type UserRow } from "@/components/admin/RoleManager";
+import AdminShell from "@/components/admin/AdminShell";
+import type { Invite } from "@/components/admin/InviteManager";
+import type { UserRow } from "@/components/admin/RoleManager";
+import type { SiteConfig } from "@/components/admin/SiteConfigEditor";
+import type { CmsPage } from "@/components/admin/PageManager";
+import type { NavSlotOverride, RibbonShortcut, RibbonFixedHidden, FooterSection } from "@/components/admin/NavLinksEditor";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Admin · LoonyTube" };
@@ -17,12 +20,27 @@ export default async function AdminPage() {
   if (role !== "admin" && role !== "superadmin") redirect("/");
   const isSuper = role === "superadmin";
 
-  const { data: settings } = await supabase
-    .from("app_settings").select("invite_only, signups_enabled, uploads_enabled, full_width").eq("id", 1).maybeSingle();
-  const { data: invites } = await supabase
-    .from("invites").select("code, note, redeemed_by, redeemed_at, created_at, expires_at").order("created_at", { ascending: false }).limit(50);
-  const { data: waitlist } = await supabase
-    .from("waitlist").select("email, created_at").order("created_at", { ascending: false }).limit(100);
+  const [
+    { data: settings },
+    { data: invites },
+    { data: waitlist },
+    { data: siteConfigRaw },
+    { data: pagesRaw },
+    { count: videoCount },
+    { count: userCount },
+    { count: postCount },
+    { count: commentCount },
+  ] = await Promise.all([
+    supabase.from("app_settings").select("invite_only, signups_enabled, uploads_enabled, full_width").eq("id", 1).maybeSingle(),
+    supabase.from("invites").select("code, note, redeemed_by, redeemed_at, created_at, expires_at").order("created_at", { ascending: false }).limit(50),
+    supabase.from("waitlist").select("email, created_at").order("created_at", { ascending: false }).limit(100),
+    supabase.from("site_config").select("site_name, site_tagline, logo_url, favicon_url, featured_video_id, nav_slot_overrides, ribbon_shortcuts, ribbon_fixed_hidden, footer_sections").eq("id", 1).maybeSingle(),
+    supabase.from("pages").select("id, slug, title, body, blocks, is_published, updated_at").order("updated_at", { ascending: false }),
+    supabase.from("videos").select("*", { count: "exact", head: true }).eq("status", "ready"),
+    supabase.from("profiles").select("*", { count: "exact", head: true }),
+    supabase.from("posts").select("*", { count: "exact", head: true }).is("parent_id", null),
+    supabase.from("comments").select("*", { count: "exact", head: true }),
+  ]);
 
   let users: UserRow[] = [];
   if (isSuper) {
@@ -30,37 +48,38 @@ export default async function AdminPage() {
     users = (data ?? []) as UserRow[];
   }
 
+  const siteConfig: SiteConfig = {
+    site_name:        siteConfigRaw?.site_name        ?? "LoonyTube",
+    site_tagline:     siteConfigRaw?.site_tagline     ?? "Watch. Post. Stream. All in one.",
+    logo_url:         siteConfigRaw?.logo_url         ?? null,
+    favicon_url:      siteConfigRaw?.favicon_url      ?? null,
+    featured_video_id: siteConfigRaw?.featured_video_id ?? null,
+  };
+  const navSlotOverrides: NavSlotOverride[] = (siteConfigRaw?.nav_slot_overrides as NavSlotOverride[] | null) ?? [];
+  const ribbonShortcuts:   RibbonShortcut[]   = (siteConfigRaw?.ribbon_shortcuts   as RibbonShortcut[]   | null) ?? [];
+  const ribbonFixedHidden: RibbonFixedHidden  = (siteConfigRaw?.ribbon_fixed_hidden as RibbonFixedHidden | null) ?? [];
+  const footerSections:    FooterSection[]    = (siteConfigRaw?.footer_sections    as FooterSection[]   | null) ?? [];
+
   return (
-    <div className="mx-auto max-w-3xl">
-      <h1 className="text-2xl font-bold">Admin console</h1>
-      <p className="mt-1 text-sm text-mist">Signed in as <span className="font-semibold capitalize text-foam">{role}</span>.</p>
-
-      <h2 className="mt-8 mb-3 text-lg font-bold">Feature switches</h2>
-      <AdminSwitches initial={settings ?? { invite_only: false, signups_enabled: true, uploads_enabled: true, full_width: true }} canInviteOnly={isSuper} />
-
-      <h2 className="mt-8 mb-3 text-lg font-bold">Invites</h2>
-      <InviteManager initial={(invites ?? []) as Invite[]} uid={user.id} />
-
-      <h2 className="mt-8 mb-3 text-lg font-bold">Waitlist {waitlist && waitlist.length > 0 && <span className="text-sm font-normal text-mist">· {waitlist.length}</span>}</h2>
-      <div className="rounded-xl border border-edge bg-surface p-4">
-        {waitlist && waitlist.length > 0 ? (
-          <ul className="divide-y divide-edge text-sm">
-            {waitlist.map((w) => (
-              <li key={w.email} className="flex items-center justify-between py-2">
-                <span className="text-foam">{w.email}</span>
-                <span className="text-xs text-mist">{new Date(w.created_at).toLocaleDateString()}</span>
-              </li>
-            ))}
-          </ul>
-        ) : <p className="py-2 text-center text-sm text-mist">No waitlist signups yet.</p>}
-      </div>
-
-      {isSuper && (
-        <>
-          <h2 className="mt-8 mb-3 text-lg font-bold">Roles</h2>
-          <RoleManager initial={users} selfId={user.id} />
-        </>
-      )}
-    </div>
+    <AdminShell
+      isSuper={isSuper}
+      settings={settings ?? { invite_only: false, signups_enabled: true, uploads_enabled: true, full_width: true }}
+      invites={(invites ?? []) as Invite[]}
+      waitlist={waitlist ?? []}
+      users={users}
+      selfId={user.id}
+      siteConfig={siteConfig}
+      pages={(pagesRaw ?? []) as CmsPage[]}
+      navSlotOverrides={navSlotOverrides}
+      ribbonShortcuts={ribbonShortcuts}
+      ribbonFixedHidden={ribbonFixedHidden}
+      footerSections={footerSections}
+      stats={{
+        videos:   videoCount   ?? 0,
+        users:    userCount    ?? 0,
+        posts:    postCount    ?? 0,
+        comments: commentCount ?? 0,
+      }}
+    />
   );
 }

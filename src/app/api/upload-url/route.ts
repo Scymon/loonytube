@@ -73,8 +73,6 @@ export async function POST(req: Request) {
   }
 
   // ── Thumbnail URL ──────────────────────────────────────────────────────────
-  // Must originate from our own Supabase Storage bucket to prevent open-redirect
-  // / stored-XSS via arbitrary thumbnail URLs.
   const thumbStr = typeof thumbnail === "string" && thumbnail ? thumbnail : null;
   if (thumbStr) {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -152,26 +150,28 @@ export async function POST(req: Request) {
   }
 
   // ── Persist video metadata ─────────────────────────────────────────────────
+  const descVal = typeof description === "string" && description ? description : null;
+
   const baseRow = {
     id: uid,
     owner: user.id,
     title: title.trim(),
-    description: typeof description === "string" && description ? description : null,
+    description: descVal,
     status: "uploading",
     thumbnail: thumbStr,
   };
-
-  let { error } = await supabase.from("videos").insert({
+  let { error: insertError } = await supabase.from("videos").insert({
     ...baseRow,
     category: category ?? null,
     visibility: vis,
     made_for_kids: !!madeForKids,
   });
-  if (error) {
-    ({ error } = await supabase.from("videos").insert(baseRow));
+  if (insertError) {
+    ({ error: insertError } = await supabase.from("videos").insert(baseRow));
   }
-  if (error) {
-    console.error("Insert video row failed", error);
+
+  if (insertError) {
+    console.error("Insert row failed", insertError);
     return err("DB insert failed", 500);
   }
 

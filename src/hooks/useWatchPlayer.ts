@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 
 const SDK_URL = "https://embed.cloudflarestream.com/embed/sdk.latest.js";
 
-export type PlayerMode = "page" | "theatre" | "mini";
+export type PlayerMode = "page" | "theatre" | "mini" | "mini-float";
 
 export function useWatchPlayer(uid: string, token?: string | null, onEnded?: () => void) {
   const onEndedRef = useRef(onEnded);
@@ -161,7 +161,8 @@ export function useWatchPlayer(uid: string, token?: string | null, onEnded?: () 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const p = playerRef.current as any;
     if (!p) return;
-    if (isPaused) p.play().catch(() => {});
+    // Use isPausedRef (always current) not isPaused (stale when called via videoToggleRef)
+    if (isPausedRef.current) p.play().catch(() => {});
     else p.pause();
   }
 
@@ -224,6 +225,13 @@ export function useWatchPlayer(uid: string, token?: string | null, onEnded?: () 
     setCurrentTime(t);
   }
 
+  function forcePlay() {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const p = playerRef.current as any;
+    if (!p) return;
+    p.play().catch(() => {});
+  }
+
   function seekToTime(seconds: number) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const p = playerRef.current as any;
@@ -260,7 +268,7 @@ export function useWatchPlayer(uid: string, token?: string | null, onEnded?: () 
     controlsVisible, showControls, hideControls,
     iframeRef, containerRef,
     iframeSrc,
-    togglePlay, toggleMute, setVolume,
+    togglePlay, forcePlay, toggleMute, setVolume,
     toggleLoop, setPlaybackRate,
     seekTo, seekToTime, doFullscreen,
   };

@@ -31,7 +31,8 @@ export default function CreateModal() {
   }, [open]);
 
   if (!open) return null;
-  const initial: CreateTab = raw === "post" || raw === "article" ? raw : "video";
+  const VALID_TABS: CreateTab[] = ["video", "post", "article", "audio"];
+  const initial: CreateTab = VALID_TABS.includes(raw as CreateTab) ? (raw as CreateTab) : "video";
 
   return (
     <div

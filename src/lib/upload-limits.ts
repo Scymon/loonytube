@@ -34,6 +34,22 @@ export const UPLOAD_LIMITS = {
     "image/gif",
   ] as const,
 
+  /** 500 MiB — matches the audio-files storage bucket limit */
+  AUDIO_MAX_BYTES: 500 * 1024 * 1024,
+
+  ALLOWED_AUDIO_TYPES: [
+    "audio/mpeg",         // .mp3
+    "audio/mp4",          // .m4a
+    "audio/x-m4a",
+    "audio/wav",
+    "audio/x-wav",
+    "audio/flac",
+    "audio/x-flac",
+    "audio/ogg",
+    "audio/aac",
+    "audio/webm",
+  ] as const,
+
   /** Max upload initiations per rolling 60-minute window per user */
   RATE_LIMIT_PER_HOUR: 5,
 
