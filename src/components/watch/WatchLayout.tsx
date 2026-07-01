@@ -45,6 +45,11 @@ export default function WatchLayout({
 }: WatchLayoutProps) {
   const router = useRouter();
   const [mode, setMode] = useState<PlayerMode>("page");
+  const videoMiniModeRef = useRef<PlayerMode>("page");
+  // True only if THIS WatchLayout instance called handleModeChange("mini"/"mini-float").
+  // Used in cleanup to avoid wiping another video's mini context when navigating
+  // from one watch page to another without ever clicking mini on this page.
+  const didSetMiniRef = useRef(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [queue, setQueue] = useState<string[]>([]);
   const [queuePos, setQueuePos] = useState(0);
@@ -52,19 +57,31 @@ export default function WatchLayout({
   const [channelIdx, setChannelIdx] = useState(0);
   const refillInFlight = useRef(false);
   const { queue: userQueue, shiftQueue } = usePlayQueue();
-  const { setVideoMiniMode, setVideoMeta, videoMiniMode } = useAudio();
+  const { setVideoMiniMode, setVideoMeta, videoMiniMode, setVideoOnWatchPage } = useAudio();
 
-  // Clear stale mini modes from localStorage (they're transient, not worth restoring)
-  // and clear videoMiniMode from AudioContext when leaving the watch page
+  // Register that WatchLayout is mounted so PersistentMiniVideo defers to us.
+  // On unmount: if still in mini mode, leave videoMiniMode/videoMeta intact so
+  // PersistentMiniVideo can take over; otherwise clear.
   useEffect(() => {
+    setVideoOnWatchPage(true);
     try {
       const saved = localStorage.getItem("loonytube:playerMode");
       if (saved === "mini" || saved === "mini-float") {
         localStorage.removeItem("loonytube:playerMode");
       }
     } catch { /* noop */ }
-    return () => { setVideoMiniMode(null); setVideoMeta(null); };
-  }, [setVideoMiniMode, setVideoMeta]);
+    return () => {
+      setVideoOnWatchPage(false);
+      // Only clear context if THIS WatchLayout set it AND it's no longer in mini mode.
+      // Without this guard, navigating Watch A (mini) → Watch B → away would have
+      // Watch B's cleanup wipe Watch A's mini context (Watch B never went mini).
+      if (didSetMiniRef.current && videoMiniModeRef.current !== "mini") {
+        setVideoMiniMode(null);
+        setVideoMeta(null);
+      }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // If something external clears videoMiniMode (e.g. MiniPlayer X button), restore page mode
   useEffect(() => {
@@ -108,13 +125,16 @@ export default function WatchLayout({
 
   function handleModeChange(m: PlayerMode) {
     setMode(m);
+    videoMiniModeRef.current = m;
     if (m === "mini" || m === "mini-float") {
+      didSetMiniRef.current = true;
       setVideoMiniMode(m);
       setVideoMeta({
         id:        videoId,
         title,
         ownerName: channelName ?? channelUsername,
         posterUrl: poster ?? null,
+        token:     token ?? null,
       });
     } else {
       setVideoMiniMode(null);

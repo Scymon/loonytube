@@ -22,6 +22,7 @@ export type VideoMeta = {
   title:    string;
   ownerName: string | null;
   posterUrl: string | null;
+  token:    string | null;
 };
 
 type AudioState = {
@@ -33,8 +34,9 @@ type AudioState = {
   speed:         number;
   sleepTimer:    SleepTimer;
   sleepLeft:     number | null;
-  videoMiniMode:   "mini" | "mini-float" | null;
-  videoMeta:       VideoMeta | null;
+  videoMiniMode:    "mini" | "mini-float" | null;
+  videoMeta:        VideoMeta | null;
+  videoOnWatchPage: boolean;
   videoPosition:   number;
   videoDuration:   number;
   videoIsPlaying:  boolean;
@@ -55,6 +57,7 @@ type AudioActions = {
   dismiss:          () => void;
   setVideoMiniMode:    (m: "mini" | "mini-float" | null) => void;
   setVideoMeta:        (m: VideoMeta | null) => void;
+  setVideoOnWatchPage: (v: boolean) => void;
   setVideoProgress:    (pos: number, dur: number) => void;
   setVideoIsPlaying:   (v: boolean) => void;
   registerVideoSeek:   (fn: ((frac: number) => void) | null) => void;
@@ -95,8 +98,9 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   const [speed,      setSpeedState] = useState(1);
   const [sleepTimer, setSleepState] = useState<SleepTimer>(null);
   const [sleepLeft,  setSleepLeft]  = useState<number | null>(null);
-  const [videoMiniMode,  setVideoMiniMode]  = useState<"mini" | "mini-float" | null>(null);
-  const [videoMeta,      setVideoMeta]      = useState<VideoMeta | null>(null);
+  const [videoMiniMode,    setVideoMiniMode]    = useState<"mini" | "mini-float" | null>(null);
+  const [videoMeta,        setVideoMeta]        = useState<VideoMeta | null>(null);
+  const [videoOnWatchPage, setVideoOnWatchPage] = useState(false);
   const [videoPosition,  setVideoPosition]  = useState(0);
   const [videoDuration,  setVideoDuration]  = useState(0);
   const [videoIsPlaying, setVideoIsPlaying] = useState(false);
@@ -172,6 +176,15 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     }
   }, [videoMiniMode]);
 
+  /* ── When audio starts playing, dismiss any active video mini player ── */
+  useEffect(() => {
+    if (playing) {
+      setVideoMiniMode(null);
+      setVideoMeta(null);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playing]);
+
   /* ── Sleep timer countdown ── */
   useEffect(() => {
     if (sleepRef.current) clearInterval(sleepRef.current);
@@ -195,6 +208,10 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   const play = useCallback((newTrack: AudioTrackMeta, newQueue: AudioTrackMeta[] = []) => {
     const audio = audioRef.current;
     if (!audio) return;
+
+    // Dismiss video mini player when a new audio track takes over
+    setVideoMiniMode(null);
+    setVideoMeta(null);
 
     setTrack(newTrack);
     setQueue(newQueue);
@@ -307,6 +324,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     <Ctx.Provider value={{
       track, queue, playing, position, duration, speed, sleepTimer, sleepLeft,
       videoMiniMode, setVideoMiniMode, videoMeta, setVideoMeta,
+      videoOnWatchPage, setVideoOnWatchPage,
       videoPosition, videoDuration, videoIsPlaying, setVideoIsPlaying,
       setVideoProgress, registerVideoSeek, seekVideoFraction,
       registerVideoToggle, toggleVideoPlay,
