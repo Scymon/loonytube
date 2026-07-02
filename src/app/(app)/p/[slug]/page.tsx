@@ -1,23 +1,34 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { renderMd } from "@/lib/renderMd";
+import { getPublishedPage, SITE_URL } from "@/lib/pages";
 import BlockRenderer from "@/components/admin/page-builder/blocks/BlockRenderer";
 import type { Block } from "@/components/admin/page-builder/types";
 
-export const dynamic = "force-dynamic";
+// No force-dynamic: page data comes from a tagged cache, invalidated on publish.
 
-export default async function CustomPage({ params }: { params: Promise<{ slug: string }> }) {
+type Params = { params: Promise<{ slug: string }> };
+
+export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { slug } = await params;
-  const supabase = await createClient();
+  const page = await getPublishedPage(slug);
+  if (!page) return {};
+  const description = page.description ?? undefined;
+  const images = page.og_image_url ? [page.og_image_url] : undefined;
+  return {
+    title: page.title,
+    description,
+    alternates: { canonical: `${SITE_URL}/p/${slug}` },
+    openGraph: { title: page.title, description, url: `${SITE_URL}/p/${slug}`, images, type: "website" },
+    twitter: { card: images ? "summary_large_image" : "summary", title: page.title, description, images },
+  };
+}
 
-  const { data: page } = await supabase
-    .from("pages")
-    .select("title, body, blocks, is_published, updated_at")
-    .eq("slug", slug)
-    .maybeSingle();
-
-  if (!page || !page.is_published) notFound();
+export default async function CustomPage({ params }: Params) {
+  const { slug } = await params;
+  const page = await getPublishedPage(slug);
+  if (!page) notFound();
 
   const blocks: Block[] = Array.isArray(page.blocks) && page.blocks.length > 0
     ? (page.blocks as Block[])
@@ -29,7 +40,7 @@ export default async function CustomPage({ params }: { params: Promise<{ slug: s
         // Legacy markdown body fallback — shown when no blocks exist yet
         <div className="mx-auto max-w-2xl px-4">
           <Link href="/" className="mb-8 block text-sm text-mist hover:text-foam transition-colors">
-            \u2190 Back
+            ← Back
           </Link>
           <h1 className="text-4xl font-bold text-foam">{page.title}</h1>
           <p className="mt-2 text-sm text-mist">

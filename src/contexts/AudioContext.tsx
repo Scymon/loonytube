@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  createContext, useCallback, useContext, useEffect, useRef, useState,
+  createContext, useCallback, useContext, useEffect, useMemo, useRef, useState,
 } from "react";
 import { createClient } from "@/lib/supabase/client";
 
@@ -29,17 +29,23 @@ type AudioState = {
   track:         AudioTrackMeta | null;
   queue:         AudioTrackMeta[];
   playing:       boolean;
-  position:      number;
-  duration:      number;
   speed:         number;
   sleepTimer:    SleepTimer;
   sleepLeft:     number | null;
   videoMiniMode:    "mini" | "mini-float" | null;
   videoMeta:        VideoMeta | null;
   videoOnWatchPage: boolean;
-  videoPosition:   number;
-  videoDuration:   number;
   videoIsPlaying:  boolean;
+};
+
+// High-frequency playback progress (timeupdate fires ~4x/second while playing).
+// Kept in a separate context so scrubber UIs can subscribe without forcing every
+// useAudio() consumer (WatchPlayer, DashHero, WatchLayout, ...) to re-render on ticks.
+export type ProgressState = {
+  position:      number;
+  duration:      number;
+  videoPosition: number;
+  videoDuration: number;
 };
 
 type AudioActions = {
@@ -64,6 +70,8 @@ type AudioActions = {
   seekVideoFraction:   (frac: number) => void;
   registerVideoToggle: (fn: (() => void) | null) => void;
   toggleVideoPlay:     () => void;
+  /** Read the latest video position without subscribing to progress ticks. */
+  getVideoPosition:    () => number;
 };
 
 export type AudioCtxValue = AudioState & AudioActions;
@@ -74,6 +82,14 @@ const Ctx = createContext<AudioCtxValue | null>(null);
 export function useAudio(): AudioCtxValue {
   const ctx = useContext(Ctx);
   if (!ctx) throw new Error("useAudio must be used inside <AudioProvider>");
+  return ctx;
+}
+
+const ProgressCtx = createContext<ProgressState | null>(null);
+
+export function useAudioProgress(): ProgressState {
+  const ctx = useContext(ProgressCtx);
+  if (!ctx) throw new Error("useAudioProgress must be used inside <AudioProvider>");
   return ctx;
 }
 
@@ -279,10 +295,13 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   }, []);
   const setSleep = useCallback((t: SleepTimer) => setSleepState(t), []);
 
+  const videoPositionRef = useRef(0);
   const setVideoProgress   = useCallback((pos: number, dur: number) => {
+    videoPositionRef.current = pos;
     setVideoPosition(pos);
     setVideoDuration(dur);
   }, []);
+  const getVideoPosition   = useCallback(() => videoPositionRef.current, []);
   const registerVideoSeek  = useCallback((fn: ((frac: number) => void) | null) => {
     videoSeekRef.current = fn;
   }, []);
@@ -320,18 +339,35 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     });
   }, [play, seek]);
 
+  // Stable-identity value: consumers only re-render when low-frequency state changes.
+  const mainValue = useMemo<AudioCtxValue>(() => ({
+    track, queue, playing, speed, sleepTimer, sleepLeft,
+    videoMiniMode, setVideoMiniMode, videoMeta, setVideoMeta,
+    videoOnWatchPage, setVideoOnWatchPage,
+    videoIsPlaying, setVideoIsPlaying,
+    setVideoProgress, registerVideoSeek, seekVideoFraction,
+    registerVideoToggle, toggleVideoPlay, getVideoPosition,
+    play, pause, resume, seek, seekFraction, setSpeed, setSleep,
+    skipForward, skipBack, playNext, playPrev, dismiss,
+  }), [
+    track, queue, playing, speed, sleepTimer, sleepLeft,
+    videoMiniMode, videoMeta, videoOnWatchPage, videoIsPlaying,
+    setVideoProgress, registerVideoSeek, seekVideoFraction,
+    registerVideoToggle, toggleVideoPlay, getVideoPosition,
+    play, pause, resume, seek, seekFraction, setSpeed, setSleep,
+    skipForward, skipBack, playNext, playPrev, dismiss,
+  ]);
+
+  const progressValue = useMemo<ProgressState>(
+    () => ({ position, duration, videoPosition, videoDuration }),
+    [position, duration, videoPosition, videoDuration]
+  );
+
   return (
-    <Ctx.Provider value={{
-      track, queue, playing, position, duration, speed, sleepTimer, sleepLeft,
-      videoMiniMode, setVideoMiniMode, videoMeta, setVideoMeta,
-      videoOnWatchPage, setVideoOnWatchPage,
-      videoPosition, videoDuration, videoIsPlaying, setVideoIsPlaying,
-      setVideoProgress, registerVideoSeek, seekVideoFraction,
-      registerVideoToggle, toggleVideoPlay,
-      play, pause, resume, seek, seekFraction, setSpeed, setSleep,
-      skipForward, skipBack, playNext, playPrev, dismiss,
-    }}>
-      {children}
+    <Ctx.Provider value={mainValue}>
+      <ProgressCtx.Provider value={progressValue}>
+        {children}
+      </ProgressCtx.Provider>
     </Ctx.Provider>
   );
 }

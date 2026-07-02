@@ -24,6 +24,8 @@ export default function ArticleCard({ article }: { article: CardArticle }) {
         <img
           src={article.cover_url}
           alt=""
+          loading="lazy"
+          decoding="async"
           className="h-24 w-36 flex-shrink-0 rounded-xl border border-edge object-cover"
         />
       )}

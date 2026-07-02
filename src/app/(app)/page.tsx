@@ -21,45 +21,53 @@ type Row = {
 
 export default async function Home() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
 
-  // Site config: check for a pinned featured video
-  const { data: siteConfig } = await supabase
-    .from("site_config")
-    .select("featured_video_id")
-    .eq("id", 1)
-    .maybeSingle();
+  // ── Phase A: all independent queries, one parallel round-trip ──
+  const [
+    { data: { user } },
+    { data: siteConfig },
+    { data: heroRowsRaw },
+    { data: feedRows },
+    { data: latestPost },
+    { data: latestArticle },
+    { data: catRows },
+  ] = await Promise.all([
+    supabase.auth.getUser(),
+    supabase.from("site_config").select("featured_video_id").eq("id", 1).maybeSingle(),
+    supabase.from("videos").select("id, title, thumbnail, duration, views, created_at, owner").eq("status", "ready").eq("visibility", "public").order("views", { ascending: false }).limit(5),
+    supabase.from("videos").select("id, title, thumbnail, duration, views, created_at, owner").eq("status", "ready").eq("visibility", "public").order("created_at", { ascending: false }).limit(12),
+    supabase.from("posts").select("id, owner, body, images, created_at").is("parent_id", null).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+    supabase.from("articles").select("id, owner, title, cover_url, blocks, created_at").order("created_at", { ascending: false }).limit(1).maybeSingle(),
+    supabase.from("videos").select("id, title, thumbnail, duration, category, created_at").eq("status", "ready").eq("visibility", "public").not("category", "is", null).order("created_at", { ascending: false }).limit(48),
+  ]);
   const pinnedId = siteConfig?.featured_video_id ?? null;
+  // Fetch 5 above, trim to 4 when pinned — identical to the old limit(pinnedId ? 4 : 5)
+  const heroRows = (heroRowsRaw ?? []).slice(0, pinnedId ? 4 : 5);
 
-  // Hero = pinned video first (if set), then most-viewed ready videos
-  const heroQuery = supabase
-    .from("videos")
-    .select("id, title, thumbnail, duration, views, created_at, owner")
-    .eq("status", "ready")
-    .eq("visibility", "public")
-    .order("views", { ascending: false })
-    .limit(pinnedId ? 4 : 5);
-  const [{ data: heroRows }, pinnedResult] = await Promise.all([
-    heroQuery,
+  // ── Phase B: rows that depend on Phase A results ──
+  const [pinnedResult, postExtras, { data: aa }] = await Promise.all([
     pinnedId
       ? supabase.from("videos").select("id, title, thumbnail, duration, views, created_at, owner").eq("id", pinnedId).maybeSingle()
+      : Promise.resolve({ data: null }),
+    latestPost
+      ? Promise.all([
+          supabase.from("profiles").select("username, full_name, avatar_url").eq("id", latestPost.owner).maybeSingle(),
+          supabase.from("post_likes").select("*", { count: "exact", head: true }).eq("post_id", latestPost.id),
+          supabase.from("posts").select("*", { count: "exact", head: true }).eq("parent_id", latestPost.id),
+        ])
+      : Promise.resolve(null),
+    latestArticle
+      ? supabase.from("profiles").select("username, full_name, avatar_url").eq("id", latestArticle.owner).maybeSingle()
       : Promise.resolve({ data: null }),
   ]);
   const pinnedRow = (pinnedResult as { data: Row | null }).data as Row | undefined;
   const heroRows5 = [
     ...(pinnedRow ? [pinnedRow] : []),
-    ...((heroRows ?? []) as Row[]).filter(v => v.id !== pinnedId),
+    ...(heroRows as Row[]).filter(v => v.id !== pinnedId),
   ].slice(0, 5) as Row[];
   const heroRow = heroRows5[0] as Row | undefined;
 
   // Feed = newest ready videos (excluding the hero).
-  const { data: feedRows } = await supabase
-    .from("videos")
-    .select("id, title, thumbnail, duration, views, created_at, owner")
-    .eq("status", "ready")
-    .eq("visibility", "public")
-    .order("created_at", { ascending: false })
-    .limit(12);
   const feed = ((feedRows ?? []) as Row[]).filter((v) => v.id !== heroRow?.id);
 
   // Batch-resolve creator names/avatars (decoupled query — avoids the FK-embed bug).
@@ -99,22 +107,10 @@ export default async function Home() {
     avatar: chan(v.owner).avatar,
   }));
 
-  // Latest top-level Loon Post (real). No fake fallback — empty shows "coming soon".
-  const { data: latestPost } = await supabase
-    .from("posts")
-    .select("id, owner, body, images, created_at")
-    .is("parent_id", null)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
+  // Latest top-level Loon Post (fetched in Phase A; stats in Phase B).
   let postCard: CardPost | null = null;
-  if (latestPost) {
-    const [{ data: pa }, { count: plikes }, { count: preplies }] = await Promise.all([
-      supabase.from("profiles").select("username, full_name, avatar_url").eq("id", latestPost.owner).maybeSingle(),
-      supabase.from("post_likes").select("*", { count: "exact", head: true }).eq("post_id", latestPost.id),
-      supabase.from("posts").select("*", { count: "exact", head: true }).eq("parent_id", latestPost.id),
-    ]);
+  if (latestPost && postExtras) {
+    const [{ data: pa }, { count: plikes }, { count: preplies }] = postExtras;
     const secs = Math.max(1, Math.floor((Date.now() - new Date(latestPost.created_at).getTime()) / 1000));
     const agoLabel = secs < 3600 ? `${Math.floor(secs / 60) || 1}m` : secs < 86400 ? `${Math.floor(secs / 3600)}h` : `${Math.floor(secs / 86400)}d`;
     postCard = {
@@ -131,21 +127,9 @@ export default async function Home() {
     };
   }
 
-  // Latest published article.
-  const { data: latestArticle } = await supabase
-    .from("articles")
-    .select("id, owner, title, cover_url, blocks, created_at")
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
+  // Latest published article (fetched in Phase A; author in Phase B).
   let articleCard: CardArticle | null = null;
   if (latestArticle) {
-    const { data: aa } = await supabase
-      .from("profiles")
-      .select("username, full_name, avatar_url")
-      .eq("id", latestArticle.owner)
-      .maybeSingle();
     const secs = Math.max(1, Math.floor((Date.now() - new Date(latestArticle.created_at).getTime()) / 1000));
     const agoLabel = secs < 3600 ? `${Math.floor(secs / 60) || 1}m` : secs < 86400 ? `${Math.floor(secs / 3600)}h` : `${Math.floor(secs / 86400)}d`;
     const wordCount = ((latestArticle.blocks ?? []) as { value?: string }[])
@@ -162,15 +146,7 @@ export default async function Home() {
     };
   }
 
-  // Real category shelves (from videos.category). Empty -> "coming soon".
-  const { data: catRows } = await supabase
-    .from("videos")
-    .select("id, title, thumbnail, duration, category, created_at")
-    .eq("status", "ready")
-    .eq("visibility", "public")
-    .not("category", "is", null)
-    .order("created_at", { ascending: false })
-    .limit(48);
+  // Real category shelves (fetched in Phase A). Empty -> "coming soon".
   const byCat = new Map<string, ShelfVideo[]>();
   for (const v of catRows ?? []) {
     const arr = byCat.get(v.category as string) ?? [];

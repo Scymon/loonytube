@@ -35,9 +35,11 @@ export function usePageBuilder(pageId: string, initialBlocks: Block[]) {
       setSaveStatus("saving");
       if (saveTimer.current) clearTimeout(saveTimer.current);
       saveTimer.current = setTimeout(async () => {
+        // Drafts autosave to draft_blocks — the public page keeps serving
+        // the published blocks column until the admin hits Publish.
         const { error } = await supabase
           .from("pages")
-          .update({ blocks: blocksToSave })
+          .update({ draft_blocks: blocksToSave })
           .eq("id", pageId);
         if (error) {
           setSaveStatus("error");
@@ -172,6 +174,17 @@ export function usePageBuilder(pageId: string, initialBlocks: Block[]) {
     pushHistory(next);
   }
 
+  // Replace the working set wholesale (discard draft / restore revision).
+  // Resets history so undo can't cross the reset boundary.
+  function resetTo(newBlocks: Block[]) {
+    historyRef.current = [newBlocks];
+    historyIdxRef.current = 0;
+    setCanUndo(false);
+    setCanRedo(false);
+    setSelectedId(null);
+    setBlocks(newBlocks);
+  }
+
   function togglePreview() {
     setPreview((p) => !p);
     if (!preview) setSelectedId(null);
@@ -184,6 +197,6 @@ export function usePageBuilder(pageId: string, initialBlocks: Block[]) {
     canUndo, canRedo,
     setSelectedId, addBlock, addBlockAtIndex, updateBlock,
     duplicateBlock, deleteBlock, moveBlock, reorderBlocks, renameBlock,
-    undo, redo, togglePreview, toggleHidden,
+    undo, redo, togglePreview, toggleHidden, resetTo,
   };
 }

@@ -11,9 +11,20 @@ export type CmsPage = {
   title: string;
   body: string;
   blocks: Block[];
+  draft_blocks: Block[] | null;
+  published_at: string | null;
   is_published: boolean;
   updated_at: string;
 };
+
+// Bust the cached /p/[slug] + sitemap after any change that affects the live page
+function revalidatePage(body: { pageId?: string; slug?: string }) {
+  fetch("/api/pages/revalidate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  }).catch(() => {});
+}
 
 function slugify(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -48,7 +59,7 @@ export default function PageManager({
     const { data, error } = await supabase
       .from("pages")
       .insert({ slug, title, body: "", blocks: [], is_published: false })
-      .select("id, slug, title, body, blocks, is_published, updated_at")
+      .select("id, slug, title, body, blocks, draft_blocks, published_at, is_published, updated_at")
       .single();
     if (error) { setCreateErr(error.message); return; }
     const page = data as CmsPage;
@@ -58,11 +69,21 @@ export default function PageManager({
   }
 
   // ── Builder close — sync updated title/published back into the list ──
-  function handleBuilderClose(updated: { title: string; is_published: boolean; updated_at: string }) {
+  function handleBuilderClose(updated: {
+    title: string; is_published: boolean; updated_at: string;
+    blocks: Block[]; draft_blocks: Block[] | null;
+  }) {
     if (!builderPage) return;
     const next = pages.map((p) =>
       p.id === builderPage.id
-        ? { ...p, title: updated.title, is_published: updated.is_published, updated_at: updated.updated_at }
+        ? {
+            ...p,
+            title: updated.title,
+            is_published: updated.is_published,
+            updated_at: updated.updated_at,
+            blocks: updated.blocks,
+            draft_blocks: updated.draft_blocks,
+          }
         : p
     );
     updatePages(next);
@@ -72,7 +93,9 @@ export default function PageManager({
   async function deletePage(id: string) {
     if (!confirm("Delete this page? This cannot be undone.")) return;
     setDeleting(id);
+    const slug = pages.find((p) => p.id === id)?.slug;
     await supabase.from("pages").delete().eq("id", id);
+    if (slug) revalidatePage({ slug }); // row is gone — bust by slug
     updatePages(pages.filter((p) => p.id !== id));
     setDeleting(null);
   }
@@ -82,6 +105,7 @@ export default function PageManager({
     const nextPages = pages.map((x) => (x.id === p.id ? { ...x, is_published: next } : x));
     updatePages(nextPages);
     await supabase.from("pages").update({ is_published: next }).eq("id", p.id);
+    revalidatePage({ pageId: p.id });
   }
 
   return (
@@ -94,6 +118,7 @@ export default function PageManager({
           initialSlug={builderPage.slug}
           initialPublished={builderPage.is_published}
           initialBlocks={builderPage.blocks ?? []}
+          initialDraftBlocks={builderPage.draft_blocks}
           onClose={handleBuilderClose}
         />
       )}
@@ -116,6 +141,11 @@ export default function PageManager({
                     className="hover:text-sky transition-colors">/p/{p.slug}</a>
                   <span className="mx-2">·</span>
                   {p.is_published ? "Published" : "Draft"}
+                  {p.draft_blocks && (
+                    <span className="ml-2 rounded bg-yellow-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-yellow-500">
+                      unpublished changes
+                    </span>
+                  )}
                   <span className="mx-2">·</span>
                   {new Date(p.updated_at).toLocaleDateString()}
                   {(p.blocks?.length ?? 0) > 0 && (

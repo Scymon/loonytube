@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useAudio, type SleepTimer } from "@/contexts/AudioContext";
+import { useAudio, useAudioProgress, type SleepTimer } from "@/contexts/AudioContext";
 import { parseChapters, chapterAt } from "@/utils/parseChapters";
 
 /* ── Helpers ──────────────────────────────────────────────────────────── */
@@ -110,9 +110,10 @@ export type AudioPlayerProps = {
 
 export default function AudioPlayer({ description }: AudioPlayerProps) {
   const {
-    track, playing, position, duration, speed, sleepTimer, sleepLeft,
+    track, playing, speed, sleepTimer, sleepLeft,
     pause, resume, seek, seekFraction, setSpeed, setSleep, skipForward, skipBack, playNext, playPrev,
   } = useAudio();
+  const { position, duration } = useAudioProgress();
 
   const [showSpeed, setShowSpeed]   = useState(false);
   const [showSleep, setShowSleep]   = useState(false);

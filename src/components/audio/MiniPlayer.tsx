@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useAudio } from "@/contexts/AudioContext";
+import { useAudio, useAudioProgress } from "@/contexts/AudioContext";
 
 function fmt(s: number) {
   if (!s || !isFinite(s)) return "0:00";
@@ -28,11 +28,12 @@ const BAR_H        = 61;   // px, scrubber(4) + py-2.5 top(10) + h-9 content(36)
 
 export default function MiniPlayer() {
   const {
-    track, playing, position, duration, speed, videoMiniMode, videoMeta,
-    videoPosition, videoDuration, videoIsPlaying, seekVideoFraction, toggleVideoPlay,
+    track, playing, speed, videoMiniMode, videoMeta,
+    videoIsPlaying, seekVideoFraction, toggleVideoPlay,
     setVideoMiniMode, setVideoMeta,
     pause, resume, seekFraction, skipForward, skipBack, playNext, playPrev, dismiss,
   } = useAudio();
+  const { position, duration, videoPosition, videoDuration } = useAudioProgress();
 
   // Show bar if audio is loaded OR a video is docked
   if (!track && !videoMiniMode) return null;

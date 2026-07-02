@@ -35,7 +35,7 @@ export default async function AdminPage() {
     supabase.from("invites").select("code, note, redeemed_by, redeemed_at, created_at, expires_at").order("created_at", { ascending: false }).limit(50),
     supabase.from("waitlist").select("email, created_at").order("created_at", { ascending: false }).limit(100),
     supabase.from("site_config").select("site_name, site_tagline, logo_url, favicon_url, featured_video_id, nav_slot_overrides, ribbon_shortcuts, ribbon_fixed_hidden, footer_sections").eq("id", 1).maybeSingle(),
-    supabase.from("pages").select("id, slug, title, body, blocks, is_published, updated_at").order("updated_at", { ascending: false }),
+    supabase.from("pages").select("id, slug, title, body, blocks, draft_blocks, published_at, is_published, updated_at").order("updated_at", { ascending: false }),
     supabase.from("videos").select("*", { count: "exact", head: true }).eq("status", "ready"),
     supabase.from("profiles").select("*", { count: "exact", head: true }),
     supabase.from("posts").select("*", { count: "exact", head: true }).is("parent_id", null),

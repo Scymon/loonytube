@@ -11,9 +11,9 @@ const H = 144;
 export default function PersistentMiniVideo() {
   const {
     videoMiniMode, videoMeta,
-    videoPosition, videoIsPlaying, setVideoProgress, setVideoIsPlaying,
+    videoIsPlaying, setVideoProgress, setVideoIsPlaying,
     registerVideoSeek, registerVideoToggle,
-    setVideoMiniMode, setVideoMeta,
+    setVideoMiniMode, setVideoMeta, getVideoPosition,
   } = useAudio();
   const router     = useRouter();
   const pathname   = usePathname();
@@ -33,7 +33,7 @@ export default function PersistentMiniVideo() {
   // Snapshot position synchronously the first render where visible becomes true,
   // so the iframe src is built with the correct startTime on first paint.
   if (visible && !prevVisRef.current) {
-    startRef.current = videoPosition;
+    startRef.current = getVideoPosition();
     wasPlayingRef.current = videoIsPlaying;
   }
   prevVisRef.current = visible;

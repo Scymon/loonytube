@@ -12,13 +12,19 @@ export default async function Watch({ params }: { params: Promise<{ id: string }
   const supabase = await createClient();
 
   // ============================================
-  // 1. Check if this is a LIVE stream first
+  // 1. Gate queries — all independent, one parallel round-trip
   // ============================================
-  const { data: live } = await supabase
-    .from("live_streams")
-    .select("id, title, description, status, started_at")
-    .eq("id", id)
-    .maybeSingle();
+  const [
+    { data: live },
+    { data: video },
+    { data: { user: viewer } },
+    { data: tagRows },
+  ] = await Promise.all([
+    supabase.from("live_streams").select("id, title, description, status, started_at").eq("id", id).maybeSingle(),
+    supabase.from("videos").select("id, title, description, status, views, created_at, owner, visibility, thumbnail").eq("id", id).maybeSingle(),
+    supabase.auth.getUser(),
+    supabase.from("post_hashtags").select("tag").limit(200),
+  ]);
 
   if (live) {
     if (live.status !== "live") {
@@ -57,12 +63,6 @@ export default async function Watch({ params }: { params: Promise<{ id: string }
   // ============================================
   // 2. Normal video flow (your existing logic)
   // ============================================
-  const { data: video } = await supabase
-    .from("videos")
-    .select("id, title, description, status, views, created_at, owner, visibility, thumbnail")
-    .eq("id", id)
-    .maybeSingle();
-
   if (!video) {
     return <p className="py-16 text-center text-mist">Video not found or still private.</p>;
   }
@@ -77,46 +77,31 @@ export default async function Watch({ params }: { params: Promise<{ id: string }
     );
   }
 
-  const { data: { user: viewer } } = await supabase.auth.getUser();
   const viewerId = viewer?.id ?? null;
 
-  const { data: channel } = await supabase
-    .from("profiles")
-    .select("id, username, full_name, avatar_url")
-    .eq("id", video.owner)
-    .maybeSingle();
-
-  const token = video.visibility === "private" ? await cfStreamToken(id) : null;
-
-  const { data: relatedRaw } = await supabase
-    .from("videos")
-    .select("id, title, thumbnail, views, created_at, duration")
-    .eq("owner", video.owner)
-    .eq("status", "ready")
-    .neq("id", id)
-    .order("created_at", { ascending: false })
-    .limit(10);
+  // Everything below depends only on the video row — second parallel round-trip
+  const [
+    { data: channel },
+    token,
+    { data: relatedRaw },
+    { data: follows },
+    { data: suggestRaw },
+  ] = await Promise.all([
+    supabase.from("profiles").select("id, username, full_name, avatar_url").eq("id", video.owner).maybeSingle(),
+    video.visibility === "private" ? cfStreamToken(id) : Promise.resolve(null),
+    supabase.from("videos").select("id, title, thumbnail, views, created_at, duration").eq("owner", video.owner).eq("status", "ready").neq("id", id).order("created_at", { ascending: false }).limit(10),
+    viewerId
+      ? supabase.from("follows").select("followee").eq("follower", viewerId)
+      : Promise.resolve({ data: null }),
+    supabase.from("profiles").select("id, username, full_name, avatar_url").neq("id", video.owner).limit(20),
+  ]);
   const relatedVideos: SidebarVideo[] = relatedRaw ?? [];
-
-  let followedIds: string[] = [];
-  let isFollowingChannel = false;
-  if (viewerId) {
-    const { data: follows } = await supabase
-      .from("follows").select("followee").eq("follower", viewerId);
-    followedIds = (follows ?? []).map((f: { followee: string }) => f.followee);
-    isFollowingChannel = followedIds.includes(video.owner);
-  }
-
-  const { data: suggestRaw } = await supabase
-    .from("profiles")
-    .select("id, username, full_name, avatar_url")
-    .neq("id", video.owner)
-    .limit(20);
+  const followedIds = (follows ?? []).map((f: { followee: string }) => f.followee);
+  const isFollowingChannel = followedIds.includes(video.owner);
   const suggestedProfiles: SidebarProfile[] = (suggestRaw ?? [])
     .filter((p: SidebarProfile) => p.id !== viewerId && !followedIds.includes(p.id))
     .slice(0, 5);
 
-  const { data: tagRows } = await supabase.from("post_hashtags").select("tag").limit(200);
   const tagMap: Record<string, number> = {};
   for (const row of tagRows ?? []) tagMap[row.tag] = (tagMap[row.tag] ?? 0) + 1;
   const trendingTags: TrendingTag[] = Object.entries(tagMap)

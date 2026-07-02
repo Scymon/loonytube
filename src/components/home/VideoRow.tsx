@@ -2,6 +2,7 @@
 /* eslint-disable @next/next/no-img-element */
 import { useState } from "react";
 import Link from "next/link";
+import { sizedThumb } from "@/lib/media";
 import Avatar from "@/components/Avatar";
 import { nfmt, dur, ago } from "@/lib/format";
 import { usePlayQueue } from "@/hooks/usePlayQueue";
@@ -55,7 +56,7 @@ export default function VideoRow({
       <div className="group relative aspect-video w-full overflow-hidden rounded-xl border border-edge bg-black">
         <Link href={`/watch/${video.id}`} onClick={setCtx} className="block h-full w-full">
           {video.thumbnail ? (
-            <img src={video.thumbnail} alt={video.title} className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.02]" />
+            <img src={sizedThumb(video.thumbnail, 640)} alt={video.title} loading="lazy" decoding="async" className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.02]" />
           ) : (
             <div className="grid h-full w-full place-items-center text-mist" style={{ backgroundImage: "linear-gradient(180deg,#141a24,#0b0f15)" }}>
               <span className="text-sm">processing…</span>

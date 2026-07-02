@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import Avatar from "@/components/Avatar";
+import { sizedThumb } from "@/lib/media";
 import FollowUserButton from "@/components/discovery/FollowUserButton";
 import { IcoChevron } from "./WatchIcons";
 
@@ -46,8 +47,10 @@ function ThumbStrip({ videos }: { videos: SidebarVideo[] }) {
             {v.thumbnail ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={v.thumbnail}
+                src={sizedThumb(v.thumbnail, 160)}
                 alt={v.title}
+                loading="lazy"
+                decoding="async"
                 className="h-full w-full object-cover"
               />
             ) : (
@@ -78,8 +81,10 @@ function MoreVideos({ videos, channelHandle }: { videos: SidebarVideo[]; channel
               {v.thumbnail ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
-                  src={v.thumbnail}
+                  src={sizedThumb(v.thumbnail, 320)}
                   alt={v.title}
+                  loading="lazy"
+                  decoding="async"
                   className="h-full w-full object-cover transition group-hover:brightness-90"
                 />
               ) : (
