@@ -30,7 +30,7 @@ export default function ReplyBox({ parentId, signedIn }: { parentId: string; sig
         className="lt-input flex-1"
       />
       <button onClick={send} disabled={busy} className="rounded-[10px] px-5 text-sm font-bold text-ink disabled:opacity-50"
-        style={{ backgroundImage: "linear-gradient(180deg,#3ad6bd,#3e9fe6)" }}>
+        style={{ backgroundImage: "var(--lt-grad-primary)" }}>
         Comment
       </button>
     </div>

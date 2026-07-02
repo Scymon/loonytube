@@ -57,7 +57,7 @@ export default function Scheduler({ initial }: { initial: SchedRow[] }) {
                 {r.thumbnail
                   ? // eslint-disable-next-line @next/next/no-img-element
                     <img src={r.thumbnail} alt="" className="h-full w-full object-cover" />
-                  : <div className="h-full w-full" style={{ backgroundImage: "linear-gradient(160deg,#13202c,#0a0f15)" }} />}
+                  : <div className="h-full w-full" style={{ backgroundImage: "var(--lt-grad-placeholder)" }} />}
               </div>
               <p className="min-w-0 flex-1 truncate font-semibold text-foam">{r.title}</p>
               <input

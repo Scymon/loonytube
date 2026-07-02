@@ -31,7 +31,7 @@ export function VideoResult({ v }: { v: VideoHit }) {
         {v.thumbnail
           ? // eslint-disable-next-line @next/next/no-img-element
             <img src={v.thumbnail} alt="" className="h-full w-full object-cover" />
-          : <div className="h-full w-full" style={{ backgroundImage: "linear-gradient(160deg,#13202c,#0a0f15)" }} />}
+          : <div className="h-full w-full" style={{ backgroundImage: "var(--lt-grad-placeholder)" }} />}
         {v.duration ? <span className="absolute bottom-1.5 right-1.5 rounded bg-black/80 px-1.5 py-0.5 text-[11px] font-semibold text-foam">{dur(v.duration)}</span> : null}
       </div>
       <div className="min-w-0">

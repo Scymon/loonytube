@@ -33,7 +33,7 @@ export default function InviteGate() {
       {err && <p className="mt-2 text-sm text-loonred">{err}</p>}
 
       <button onClick={redeem} disabled={busy} className="mt-5 w-full rounded-[10px] py-3 text-sm font-bold text-ink disabled:opacity-50"
-        style={{ backgroundImage: "linear-gradient(180deg,#3ad6bd,#3e9fe6)" }}>
+        style={{ backgroundImage: "var(--lt-grad-primary)" }}>
         {busy ? "Checking…" : "Continue"}
       </button>
     </div>

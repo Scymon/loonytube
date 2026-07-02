@@ -19,7 +19,7 @@ export default function CategoryShelf({ shelf }: { shelf: Shelf }) {
                 className="h-full w-full transition group-hover:scale-[1.03]"
                 style={{
                   backgroundImage:
-                    "radial-gradient(120% 120% at 30% 0%, rgba(98,184,230,0.25), transparent 60%), linear-gradient(160deg,#13202c,#0a0f15)",
+                    "radial-gradient(120% 120% at 30% 0%, rgba(98,184,230,0.25), transparent 60%), var(--lt-grad-placeholder)",
                 }}
               />
               <span className="absolute right-1.5 top-1.5 rounded bg-black/75 px-1.5 py-0.5 text-[10px] font-semibold text-foam">

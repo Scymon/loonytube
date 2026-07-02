@@ -195,8 +195,8 @@ export default function WatchSidebar({
 
   return (
     <aside
-      className={`relative flex shrink-0 flex-col border-l border-edge bg-panel/40 transition-all duration-200 ${
-        open ? "w-[300px]" : "w-[80px]"
+      className={`relative flex w-full shrink-0 flex-col border-t border-edge bg-panel/40 transition-all duration-200 lg:border-t-0 lg:border-l ${
+        open ? "lg:w-[300px]" : "lg:w-[80px]"
       }`}
     >
       {/* Toggle tab */}
@@ -204,15 +204,14 @@ export default function WatchSidebar({
         type="button"
         onClick={() => onOpenChange(!open)}
         title={open ? "Collapse sidebar" : "Expand sidebar"}
-        className="absolute -left-3.5 top-6 z-10 flex h-7 w-7 items-center justify-center rounded-full border border-edge bg-panel text-mist shadow-md transition hover:bg-edge/80 hover:text-foam"
+        className="absolute -left-3.5 top-6 z-10 hidden h-7 w-7 items-center justify-center rounded-full border border-edge bg-panel text-mist shadow-md transition hover:bg-edge/80 hover:text-foam lg:flex"
       >
         <IcoChevron dir={open ? "right" : "left"} />
       </button>
 
       <div className="overflow-y-auto px-3 py-4">
-        {open ? (
-          /* Expanded view */
-          <div className="space-y-6">
+        {/* Expanded view — always shown on mobile; on lg+ follows the toggle */}
+        <div className={`space-y-6 ${open ? "" : "lg:hidden"}`}>
             <MoreVideos videos={relatedVideos} channelHandle={channelHandle} />
             {!!suggestedProfiles.length && !!relatedVideos.length && (
               <div className="border-t border-edge" />
@@ -222,11 +221,11 @@ export default function WatchSidebar({
               <div className="border-t border-edge" />
             )}
             <Trending tags={trendingTags} />
-          </div>
-        ) : (
-          /* Collapsed: thumbnail icon rail */
+        </div>
+        {/* Collapsed: thumbnail rail (lg+ only) */}
+        <div className={open ? "hidden" : "hidden lg:block"}>
           <ThumbStrip videos={relatedVideos} />
-        )}
+        </div>
       </div>
     </aside>
   );

@@ -122,7 +122,7 @@ export default async function PostDetail({ params }: { params: Promise<{ id: str
               {vid.thumbnail
                 ? // eslint-disable-next-line @next/next/no-img-element
                   <img src={vid.thumbnail} alt={vid.title} className="h-full w-full object-cover" />
-                : <div className="h-full w-full" style={{ backgroundImage: "linear-gradient(160deg,#13202c,#0a0f15)" }} />}
+                : <div className="h-full w-full" style={{ backgroundImage: "var(--lt-grad-placeholder)" }} />}
               <span className="absolute inset-0 grid place-items-center">
                 <span className="grid h-14 w-14 place-items-center rounded-full bg-black/50 text-foam backdrop-blur">
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
@@ -185,7 +185,7 @@ export default async function PostDetail({ params }: { params: Promise<{ id: str
                     {v.thumbnail
                       ? // eslint-disable-next-line @next/next/no-img-element
                         <img src={v.thumbnail} alt="" className="h-full w-full object-cover" />
-                      : <div className="h-full w-full" style={{ backgroundImage: "linear-gradient(160deg,#13202c,#0a0f15)" }} />}
+                      : <div className="h-full w-full" style={{ backgroundImage: "var(--lt-grad-placeholder)" }} />}
                   </div>
                   <div className="min-w-0">
                     <p className="line-clamp-2 text-sm font-semibold text-foam group-hover:text-sky">{v.title}</p>

@@ -65,7 +65,7 @@ export default async function StudioDashboard() {
               {v.thumbnail
                 ? // eslint-disable-next-line @next/next/no-img-element
                   <img src={v.thumbnail} alt="" className="h-full w-full object-cover" />
-                : <div className="h-full w-full" style={{ backgroundImage: "linear-gradient(160deg,#13202c,#0a0f15)" }} />}
+                : <div className="h-full w-full" style={{ backgroundImage: "var(--lt-grad-placeholder)" }} />}
             </div>
             <div className="min-w-0 flex-1">
               <p className="truncate font-semibold text-foam">{v.title}</p>

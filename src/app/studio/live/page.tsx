@@ -22,6 +22,7 @@ export default function GoLivePage() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<LiveResult | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   // Gate to signed-in users only
   useEffect(() => {
@@ -39,6 +40,7 @@ export default function GoLivePage() {
 
     setLoading(true);
     setCopied(null);
+    setError(null);
 
     try {
       const res = await fetch("/api/live/create", {
@@ -53,7 +55,7 @@ export default function GoLivePage() {
       const json = await res.json();
 
       if (!res.ok) {
-        alert(json.error || "Failed to create live input");
+        setError(json.error || "Failed to create live input");
         setLoading(false);
         return;
       }
@@ -61,7 +63,7 @@ export default function GoLivePage() {
       setResult(json);
     } catch (err) {
       console.error(err);
-      alert("Something went wrong. Check console.");
+      setError("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -85,7 +87,7 @@ export default function GoLivePage() {
       .eq("id", result.liveId);
 
     if (error) {
-      alert("Could not mark stream as live. Try again.");
+      setError("Could not mark stream as live. Try again.");
       return;
     }
 
@@ -148,6 +150,8 @@ export default function GoLivePage() {
           >
             {loading ? "Creating live input…" : "Create Live Input"}
           </button>
+
+          {error && <p className="mt-3 text-center text-sm text-loonred">{error}</p>}
 
           <p className="mt-4 text-center text-xs text-gray-500">
             This creates a private RTMP endpoint on Cloudflare Stream. You’ll get a stream key to use in OBS.
@@ -266,6 +270,8 @@ export default function GoLivePage() {
       Pro tip: Use 1080p60 or 720p60 with CBR 6000–8000 kbps for best quality on LoonyTube.
     </div>
   </div>
+
+  {error && <p className="text-sm text-loonred">{error}</p>}
 
   {/* Action buttons */}
   <div className="flex flex-col gap-3 pt-2 sm:flex-row">

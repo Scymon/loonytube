@@ -16,6 +16,7 @@ type LiveStream = {
 export default function LiveStreamsTable() {
   const [streams, setStreams] = useState<LiveStream[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   async function fetchStreams() {
     const supabase = createClient();
@@ -34,12 +35,13 @@ export default function LiveStreamsTable() {
 
   async function handleDelete(id: string, title: string) {
     if (!confirm(`Delete live stream "${title}"? This cannot be undone.`)) return;
+    setError(null);
 
     const supabase = createClient();
     const { error } = await supabase.from("live_streams").delete().eq("id", id);
 
     if (error) {
-      alert("Failed to delete live stream");
+      setError("Failed to delete live stream. Try again.");
       console.error(error);
     } else {
       setStreams((prev) => prev.filter((s) => s.id !== id));
@@ -49,6 +51,7 @@ export default function LiveStreamsTable() {
   async function handleEdit(stream: LiveStream) {
     const newTitle = prompt("Edit stream title:", stream.title);
     if (!newTitle || newTitle === stream.title) return;
+    setError(null);
 
     const supabase = createClient();
     const { error } = await supabase
@@ -57,7 +60,7 @@ export default function LiveStreamsTable() {
       .eq("id", stream.id);
 
     if (error) {
-      alert("Failed to update title");
+      setError("Failed to update title. Try again.");
     } else {
       setStreams((prev) =>
         prev.map((s) => (s.id === stream.id ? { ...s, title: newTitle.trim() } : s))
@@ -82,6 +85,7 @@ export default function LiveStreamsTable() {
 
   return (
     <div className="overflow-x-auto rounded-xl border border-edge bg-panel">
+      {error && <p className="border-b border-edge px-4 py-2 text-sm text-loonred">{error}</p>}
       <table className="w-full text-sm">
         <thead className="border-b border-edge text-left text-mist">
           <tr>

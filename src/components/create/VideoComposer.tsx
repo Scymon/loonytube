@@ -479,7 +479,7 @@ export default function VideoComposer({ onComplete }: { onComplete?: (videoId: s
           className="text-sm font-semibold text-mist hover:text-foam">Schedule</button>
         <button onClick={publish} disabled={busy || thumbBusy || titleOver || descOver}
           className="rounded-[10px] px-6 py-3 text-sm font-bold text-ink disabled:opacity-50"
-          style={{ backgroundImage: "linear-gradient(180deg,#3ad6bd,#3e9fe6)" }}>
+          style={{ backgroundImage: "var(--lt-grad-primary)" }}>
           {busy ? `Uploading ${progress}%` : thumbBusy ? "Uploading thumbnail…" : "Publish Video"}
         </button>
       </div>

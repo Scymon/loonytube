@@ -231,7 +231,7 @@ export default async function ChannelPage({
               href="/create"
               className="mt-2 rounded-full px-5 py-2 text-sm font-bold text-ink"
               style={{
-                backgroundImage: "linear-gradient(180deg,#3ad6bd,#3e9fe6)",
+                backgroundImage: "var(--lt-grad-primary)",
               }}
             >
               Upload a video

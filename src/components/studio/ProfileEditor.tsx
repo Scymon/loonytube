@@ -172,7 +172,7 @@ export default function ProfileEditor({ initial }: { initial: Profile }) {
             </button>
             <button onClick={save} disabled={busy || !dirty}
               className="rounded-full px-6 py-2.5 text-sm font-bold text-ink transition hover:brightness-110 disabled:opacity-50"
-              style={{ backgroundImage: "linear-gradient(180deg,#3ad6bd,#3e9fe6)" }}>
+              style={{ backgroundImage: "var(--lt-grad-primary)" }}>
               {busy ? "Saving…" : "Save Profile"}
             </button>
           </div>

@@ -14,6 +14,7 @@ export default function CategoryCombobox({ categories, value, onChange, onAdd }:
   const [open,   setOpen]   = useState(false);
   const [query,  setQuery]  = useState("");
   const [saving, setSaving] = useState(false);
+  const [error,  setError]  = useState<string | null>(null);
   const wrapRef  = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -37,6 +38,7 @@ export default function CategoryCombobox({ categories, value, onChange, onAdd }:
     const name = query.trim();
     if (!name || saving) return;
     setSaving(true);
+    setError(null);
     try {
       const r    = await fetch("/api/audio/categories", {
         method:  "POST",
@@ -44,7 +46,7 @@ export default function CategoryCombobox({ categories, value, onChange, onAdd }:
         body:    JSON.stringify({ name }),
       });
       const json = await r.json();
-      if (!r.ok) { alert(json.error ?? "Failed to create category"); return; }
+      if (!r.ok) { setError(json.error ?? "Failed to create category"); return; }
       onAdd(json as Category);
       onChange((json as Category).id);
       close();
@@ -123,6 +125,7 @@ export default function CategoryCombobox({ categories, value, onChange, onAdd }:
                 {saving ? "Adding…" : `Add "${query.trim()}"`}
               </button>
             )}
+            {error && <p className="px-3 py-2 text-xs text-loonred">{error}</p>}
           </div>
         </div>
       )}

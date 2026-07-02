@@ -272,7 +272,7 @@ export default function WatchLayout({
     return (
       <div className="flex flex-col">
         {player}
-        <div className="mt-4 flex min-h-0 pl-3 pr-2">
+        <div className="mt-4 flex min-h-0 flex-col pl-3 pr-2 lg:flex-row">
           <div className="min-w-0 flex-1 pb-4 pr-3">
             {meta}
             <div className="mt-8">
@@ -288,7 +288,7 @@ export default function WatchLayout({
   // ── Page (and mini): player + meta + comments on left, sidebar on right ───────
   const isMini = mode === "mini" || mode === "mini-float";
   return (
-    <div className="flex min-h-0 w-full pl-3 pr-2">
+    <div className="flex min-h-0 w-full flex-col pl-3 pr-2 lg:flex-row">
       <div className="min-w-0 flex-1 pb-4 pt-3 pr-3">
         {/* Mini mode: show placeholder where the player was */}
         {isMini && (

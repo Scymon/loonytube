@@ -128,7 +128,7 @@ export default function PostComposer() {
       <div className="flex items-center justify-between pt-1">
         <p className="text-xs text-mist">Starts a new thread — others continue it with comments.</p>
         <button onClick={submit} disabled={!canPost} className="rounded-[10px] px-6 py-3 text-sm font-bold text-ink disabled:opacity-50"
-          style={{ backgroundImage: "linear-gradient(180deg,#3ad6bd,#3e9fe6)" }}>
+          style={{ backgroundImage: "var(--lt-grad-primary)" }}>
           {busy ? "Posting…" : "Post"}
         </button>
       </div>

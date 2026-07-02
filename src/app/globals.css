@@ -100,3 +100,25 @@ html.lt-lights-out aside {
   opacity: 0.08;
   pointer-events: none;
 }
+
+/* ── Shared gradient tokens — single source of truth for inline styles ── */
+:root {
+  --lt-grad-primary: linear-gradient(180deg, #3ad6bd, #3e9fe6);
+  --lt-grad-placeholder: linear-gradient(160deg, #13202c, #0a0f15);
+}
+
+/* ── Keyboard focus — visible ring on every focusable element ── */
+:focus-visible {
+  outline: 2px solid #2dd4b4;
+  outline-offset: 2px;
+}
+
+/* ── Respect reduced-motion preference ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -502,7 +502,7 @@ export default function Thread({ conversationId, meId, header, onActivity }: {
               )}
               <div
                 className={`max-w-[90%] sm:max-w-[460px] rounded-2xl px-3.5 py-2 text-[15px] ${m.failed ? "opacity-50" : ""} ${mine ? "text-ink" : "bg-surface text-foam"}`}
-                style={mine ? { backgroundImage: "linear-gradient(180deg,#3ad6bd,#3e9fe6)" } : undefined}
+                style={mine ? { backgroundImage: "var(--lt-grad-primary)" } : undefined}
               >
                 {m.body && (() => {
                   const xUrl = extractXUrl(m.body);
@@ -612,7 +612,7 @@ export default function Thread({ conversationId, meId, header, onActivity }: {
 
           <button onClick={send} disabled={uploading}
             className="rounded-full px-5 py-2.5 text-sm font-bold text-ink disabled:opacity-50"
-            style={{ backgroundImage: "linear-gradient(180deg,#3ad6bd,#3e9fe6)" }}>
+            style={{ backgroundImage: "var(--lt-grad-primary)" }}>
             Send
           </button>
         </div>

@@ -72,7 +72,7 @@ export default function StudioUploadsShell({ initial }: { initial: Row[] }) {
           <button
             onClick={() => setView("upload")}
             className="shrink-0 rounded-[10px] px-4 py-2.5 text-sm font-bold text-ink"
-            style={{ backgroundImage: "linear-gradient(180deg,#3ad6bd,#3e9fe6)" }}
+            style={{ backgroundImage: "var(--lt-grad-primary)" }}
           >
             {uploadLabel}
           </button>

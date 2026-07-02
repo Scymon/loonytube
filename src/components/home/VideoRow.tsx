@@ -67,7 +67,7 @@ export default function VideoRow({
         </Link>
 
         {/* Hover action buttons */}
-        <div className="absolute right-2 top-2 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+        <div className="absolute right-2 top-2 flex gap-1 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
           <button
             onClick={handleAddToQueue}
             title={queued ? "Added!" : "Add to queue"}

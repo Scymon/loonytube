@@ -48,6 +48,7 @@ export default function ContentTable({ initial }: { initial: Row[] }) {
   const [edit, setEdit] = useState<Row | null>(null);
   const [busy, setBusy] = useState(false);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [thumbBusy, setThumbBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -191,7 +192,7 @@ export default function ContentTable({ initial }: { initial: Row[] }) {
       }
 
       if (!body.url) {
-        alert("Download is being prepared — please try again in a moment.");
+        setNotice("Download is still being prepared — try again in a moment.");
         return;
       }
       const a = document.createElement("a");
@@ -200,6 +201,7 @@ export default function ContentTable({ initial }: { initial: Row[] }) {
       a.target = "_blank";
       a.rel = "noopener";
       a.click();
+      setNotice(null);
     } finally {
       setDownloadingId(null);
     }
@@ -239,7 +241,7 @@ export default function ContentTable({ initial }: { initial: Row[] }) {
                     <div className="relative aspect-video w-24 shrink-0 overflow-hidden rounded border border-edge bg-black">
                       {r.thumbnail
                         ? <img src={r.thumbnail} alt="" className="h-full w-full object-cover" />
-                        : <div className="h-full w-full" style={{ backgroundImage: "linear-gradient(160deg,#13202c,#0a0f15)" }} />}
+                        : <div className="h-full w-full" style={{ backgroundImage: "var(--lt-grad-placeholder)" }} />}
                     </div>
                     <div className="min-w-0">
                       <p className="line-clamp-1 font-semibold text-foam">{r.title}</p>
@@ -280,6 +282,8 @@ export default function ContentTable({ initial }: { initial: Row[] }) {
           </tbody>
         </table>
       </div>
+
+      {notice && <p className="mt-3 text-sm text-mist">{notice}</p>}
 
       {/* ── Edit modal ────────────────────────────────────────────────────── */}
       {edit && (
@@ -379,7 +383,7 @@ export default function ContentTable({ initial }: { initial: Row[] }) {
                 className="text-sm font-semibold text-mist hover:text-foam">Cancel</button>
               <button onClick={save} disabled={busy || thumbBusy}
                 className="rounded-[10px] px-5 py-2.5 text-sm font-bold text-ink disabled:opacity-50"
-                style={{ backgroundImage: "linear-gradient(180deg,#3ad6bd,#3e9fe6)" }}>
+                style={{ backgroundImage: "var(--lt-grad-primary)" }}>
                 {busy ? "Saving…" : thumbBusy ? "Uploading thumbnail…" : "Save"}
               </button>
             </div>
