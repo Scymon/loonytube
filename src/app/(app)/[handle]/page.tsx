@@ -229,7 +229,7 @@ export default async function ChannelPage({
           {isOwnChannel && (
             <a
               href="/create"
-              className="mt-2 rounded-full px-5 py-2 text-sm font-bold text-ink"
+              className="mt-2 rounded px-5 py-2 text-sm font-bold text-ink"
               style={{
                 backgroundImage: "var(--lt-grad-primary)",
               }}

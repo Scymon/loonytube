@@ -611,7 +611,7 @@ export default function Thread({ conversationId, meId, header, onActivity }: {
             className="lt-input max-h-32 min-h-[44px] flex-1 resize-none" />
 
           <button onClick={send} disabled={uploading}
-            className="rounded-full px-5 py-2.5 text-sm font-bold text-ink disabled:opacity-50"
+            className="rounded px-5 py-2.5 text-sm font-bold text-ink disabled:opacity-50"
             style={{ backgroundImage: "var(--lt-grad-primary)" }}>
             Send
           </button>

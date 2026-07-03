@@ -36,7 +36,7 @@ export default function InviteManager({ initial, uid }: { initial: Invite[]; uid
     <div className="rounded-xl border border-edge bg-surface p-4">
       <div className="flex flex-wrap items-center gap-2">
         <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Note (optional, e.g. who it's for)" className="lt-input max-w-xs" />
-        <button onClick={create} disabled={busy} className="rounded-full px-5 py-2.5 text-sm font-bold text-ink disabled:opacity-50" style={{ backgroundImage: "var(--lt-grad-primary)" }}>
+        <button onClick={create} disabled={busy} className="rounded px-5 py-2.5 text-sm font-bold text-ink disabled:opacity-50" style={{ backgroundImage: "var(--lt-grad-primary)" }}>
           {busy ? "Generating…" : "Generate invite"}
         </button>
         <span className={`text-xs font-semibold text-teal transition-opacity duration-300 ${saved ? "opacity-100" : "opacity-0"}`}>Created ✓</span>

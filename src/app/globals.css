@@ -13,31 +13,48 @@ html, body {
 * { box-sizing: border-box; }
 
 @layer components {
-  /* ---- Primary CTA: light-blue gradient, dark text, soft glow ---- */
+  /* ---- Primary CTA: Loonatic raised button (hard-stop ice/cyan, sharp corner) ---- */
   .lt-btn-primary {
-    @apply w-full rounded-[10px] py-3 text-center text-[15px] font-bold text-ink transition
+    @apply w-full py-3 text-center text-[15px] font-bold text-ink
            disabled:opacity-50 disabled:cursor-not-allowed;
-    background-image: linear-gradient(180deg, #7dd0f2 0%, #4fa6e4 100%);
-    box-shadow: 0 0 0 1px rgba(125, 208, 242, 0.35),
-                0 10px 26px -10px rgba(79, 166, 228, 0.7);
+    border-radius: var(--lt-radius-sm);
+    background-image: var(--lt-grad-primary);
+    box-shadow: var(--lt-shadow-1);
+    transition: transform var(--lt-dur-fast) var(--lt-ease-out), filter var(--lt-dur-fast) var(--lt-ease-out);
   }
-  .lt-btn-primary:hover:not(:disabled) { filter: brightness(1.05); }
-  .lt-btn-primary:active:not(:disabled) { filter: brightness(0.97); transform: translateY(1px); }
+  .lt-btn-primary:hover:not(:disabled) { filter: brightness(1.06); transform: translateY(-1px); }
+  .lt-btn-primary:active:not(:disabled) { filter: brightness(0.95); transform: translateY(1px); }
+
+  /* ---- Guide button sizes (Part 2): composable CTA classes ---- */
+  .lt-cta {
+    @apply inline-flex items-center justify-center font-bold text-ink
+           disabled:opacity-50 disabled:cursor-not-allowed;
+    border-radius: var(--lt-radius-sm);
+    background-image: var(--lt-grad-primary);
+    box-shadow: var(--lt-shadow-1);
+    transition: transform var(--lt-dur-fast) var(--lt-ease-out), filter var(--lt-dur-fast) var(--lt-ease-out);
+  }
+  .lt-cta:hover:not(:disabled) { filter: brightness(1.06); transform: translateY(-1px); }
+  .lt-cta:active:not(:disabled) { filter: brightness(0.95); transform: translateY(1px); }
+  .lt-btn-sm { font-size: 10px; padding: 8px 18px; text-transform: uppercase; letter-spacing: 0.08em; }
+  .lt-btn-md { font-size: 14px; padding: 14px 32px; }
+  .lt-btn-lg { font-size: 17px; padding: 20px 48px; }
 
   /* ---- Secondary / outline button ---- */
   .lt-btn-outline {
-    @apply w-full rounded-[10px] border border-teal/60 py-3 text-center text-[15px]
+    @apply w-full rounded border border-teal/60 py-3 text-center text-[15px]
            font-semibold text-teal transition hover:bg-teal/10;
   }
 
   /* ---- Text input ---- */
   .lt-input {
-    @apply w-full rounded-[10px] border border-edge bg-surface px-4 py-3 text-[15px]
+    @apply w-full rounded border border-edge bg-surface px-4 py-3 text-[15px]
            text-foam placeholder:text-mist/70 outline-none transition;
+    box-shadow: var(--lt-shadow-inset);
   }
   .lt-input:focus {
-    border-color: #2dd4b4;
-    box-shadow: 0 0 0 3px rgba(45, 212, 180, 0.15);
+    border-color: rgb(var(--lt-teal));
+    box-shadow: 0 0 0 3px rgb(var(--lt-teal) / 0.15), var(--lt-shadow-inset);
   }
 
   /* ---- Field label (small caps) ---- */
@@ -52,13 +69,13 @@ html, body {
   }
   .lt-pill[data-on="true"] {
     @apply border-transparent text-ink;
-    background-image: linear-gradient(180deg, #3ad6bd 0%, #2dbfa6 100%);
+    background-color: rgb(var(--lt-teal));
   }
-  .lt-pill:hover { border-color: #2dd4b4; }
+  .lt-pill:hover { border-color: rgb(var(--lt-teal)); }
 
   /* ---- Social auth button ---- */
   .lt-social {
-    @apply flex flex-1 items-center justify-center gap-2 rounded-[10px] border border-edge
+    @apply flex flex-1 items-center justify-center gap-2 rounded border border-edge
            bg-surface py-2.5 text-[14px] font-medium text-foam transition hover:border-hair hover:bg-edge/60;
   }
 
@@ -144,7 +161,8 @@ html.lt-lights-out aside {
   --lt-ease-press: cubic-bezier(0.4,0,0.6,1);
   --lt-ease-smooth: cubic-bezier(0.07,0.07,0,1);
 
-  --lt-grad-primary: linear-gradient(180deg, #7DF6FF, #008B94);
+  /* Raised button recipe: hard stop 49%/50% — top half ice, bottom half deep cyan */
+  --lt-grad-primary: linear-gradient(180deg, #7DF6FF 0%, #7DF6FF 49%, #008B94 50%, #008B94 100%);
   --lt-grad-placeholder: linear-gradient(160deg, #13202c, #0a0f15);
 }
 

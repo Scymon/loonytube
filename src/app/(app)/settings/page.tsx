@@ -32,7 +32,7 @@ export default async function SettingsPage() {
           <div className="flex justify-between"><dt className="text-mist">Email</dt><dd className="text-foam">{user.email}</dd></div>
         </dl>
         <div className="mt-4 flex items-center gap-3">
-          <Link href="/studio/profile" className="rounded-full px-5 py-2.5 text-sm font-bold text-ink" style={{ backgroundImage: "var(--lt-grad-primary)" }}>Edit profile</Link>
+          <Link href="/studio/profile" className="rounded px-5 py-2.5 text-sm font-bold text-ink" style={{ backgroundImage: "var(--lt-grad-primary)" }}>Edit profile</Link>
           <SignOutButton />
         </div>
       </section>

@@ -103,7 +103,7 @@ export default function FollowUserButton({
   if (!on) {
     return (
       <button onClick={toggle} disabled={busy}
-        className="rounded-full px-5 py-2 text-sm font-bold text-ink disabled:opacity-50"
+        className="rounded px-5 py-2 text-sm font-bold text-ink disabled:opacity-50"
         style={{ backgroundImage: "var(--lt-grad-primary)" }}>
         Follow
       </button>

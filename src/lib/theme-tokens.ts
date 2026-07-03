@@ -42,8 +42,12 @@ export const TOKENS: TokenDef[] = [
   { key: "warning",   var: "--lt-warning",   label: "Warning (Amber)", default: "#D8B25A", group: "Semantic", desc: "Degraded, caution badges" },
 ];
 
-// Primary CTA — "Raised button, Ice Cyan" recipe from the guide
+// Primary CTA — "Raised button, Ice Cyan" recipe from the guide:
+// 180deg with a hard stop at 49%/50% (top half ice, bottom half deep cyan)
 export const GRAD_PRIMARY_DEFAULT: [string, string] = ["#7DF6FF", "#008B94"];
+export function gradPrimaryCss(a: string, b: string): string {
+  return `linear-gradient(180deg, ${a} 0%, ${a} 49%, ${b} 50%, ${b} 100%)`;
+}
 
 // Radius scale — guide Part 1: 2px sharp signature / 4px subtle / 8px soft
 export const RADIUS_DEFAULT: [number, number, number] = [2, 4, 8];
@@ -105,7 +109,7 @@ export function themeToCss(theme: ThemeOverrides | null | undefined): string {
   const g = theme.gradPrimary;
   if (Array.isArray(g) && g.length === 2 && HEX_RE.test(g[0]) && HEX_RE.test(g[1])) {
     if (g[0].toLowerCase() !== GRAD_PRIMARY_DEFAULT[0].toLowerCase() || g[1].toLowerCase() !== GRAD_PRIMARY_DEFAULT[1].toLowerCase()) {
-      lines.push(`--lt-grad-primary: linear-gradient(180deg, ${g[0]}, ${g[1]});`);
+      lines.push(`--lt-grad-primary: ${gradPrimaryCss(g[0], g[1])};`);
     }
   }
   if (Array.isArray(theme.radius)) {

@@ -11,7 +11,7 @@ import { useMemo, useState, type CSSProperties } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Slider } from "./page-builder/props-panel/fields";
 import {
-  TOKENS, FONT_PRESETS, FONT_DEFAULT, GRAD_PRIMARY_DEFAULT,
+  TOKENS, gradPrimaryCss, FONT_PRESETS, FONT_DEFAULT, GRAD_PRIMARY_DEFAULT,
   RADIUS_DEFAULT, RADIUS_LABELS, DURATION_DEFAULT, DURATION_LABELS,
   HEX_RE, hexToTriplet, type ThemeOverrides, type TokenDef,
 } from "@/lib/theme-tokens";
@@ -73,7 +73,7 @@ export default function StyleguideTab({ initialTheme }: Props) {
       if (triplet) style[t.var] = triplet;
     }
     if (HEX_RE.test(grad[0]) && HEX_RE.test(grad[1])) {
-      style["--lt-grad-primary"] = `linear-gradient(180deg, ${grad[0]}, ${grad[1]})`;
+      style["--lt-grad-primary"] = gradPrimaryCss(grad[0], grad[1]);
     }
     if (font && FONT_PRESETS[font]) style["--font-sans"] = FONT_PRESETS[font].stack;
     style["--lt-radius-sm"] = `${radius[0]}px`;
@@ -183,13 +183,11 @@ export default function StyleguideTab({ initialTheme }: Props) {
         </section>
 
         <div className="flex items-center gap-2">
-          <button type="button" onClick={save} disabled={saving}
-            className="rounded-full px-5 py-2 text-sm font-bold text-ink disabled:opacity-50"
-            style={{ backgroundImage: "var(--lt-grad-primary)" }}>
+          <button type="button" onClick={save} disabled={saving} className="lt-cta lt-btn-md">
             {saving ? "Saving…" : "Save theme"}
           </button>
           <button type="button" onClick={resetAll}
-            className="rounded-full border border-edge px-4 py-2 text-sm text-mist hover:text-foam hover:border-hair transition-colors">
+            className="rounded border border-edge px-4 py-2 text-sm text-mist hover:text-foam hover:border-hair transition-colors">
             Reset all to defaults
           </button>
         </div>
@@ -208,9 +206,9 @@ export default function StyleguideTab({ initialTheme }: Props) {
         <div>
           <PreviewLabel>02 · Buttons — three sizes, easing on hover</PreviewLabel>
           <div className="flex flex-wrap items-center gap-3">
-            <button type="button" className="rounded px-[18px] py-2 text-[10px] font-bold uppercase tracking-wider text-ink transition-transform duration-fast hover:-translate-y-0.5" style={{ backgroundImage: "var(--lt-grad-primary)" }}>Small</button>
-            <button type="button" className="rounded px-8 py-2.5 text-sm font-bold text-ink transition-transform hover:-translate-y-0.5" style={{ backgroundImage: "var(--lt-grad-primary)" }}>Medium CTA</button>
-            <button type="button" className="rounded px-12 py-3.5 text-[17px] font-bold text-ink transition-transform duration-slow hover:-translate-y-0.5" style={{ backgroundImage: "var(--lt-grad-primary)" }}>Large</button>
+            <button type="button" className="lt-cta lt-btn-sm">Small</button>
+            <button type="button" className="lt-cta lt-btn-md">Medium CTA</button>
+            <button type="button" className="lt-cta lt-btn-lg">Large</button>
             <button type="button" className="rounded border border-follow px-5 py-2 text-sm font-bold text-follow transition-colors hover:bg-follow/10">Follow</button>
             <button type="button" className="rounded border border-edge bg-surface px-5 py-2 text-sm text-foam transition-colors hover:border-hair">Secondary</button>
             <button type="button" className="rounded bg-loonred/15 border border-loonred/40 px-5 py-2 text-sm font-bold text-loonred">Danger</button>
