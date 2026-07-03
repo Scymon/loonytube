@@ -340,6 +340,25 @@ export default function StyleguideTab({ initialTheme }: Props) {
         </div>
 
         <div>
+          <PreviewLabel>08b · Section templates (CMS)</PreviewLabel>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {([
+              ["lt-sec-lake", "Lake — hero / full-bleed"],
+              ["lt-sec-cabin", "Cabin — default section"],
+              ["lt-sec-signal", "Signal — red accent, sparingly"],
+              ["lt-sec-ice", "Ice tint — featured / promo"],
+              ["lt-sec-glass", "Mist glass — nav / footer"],
+              ["lt-sec-hero", "Hero — lake canvas + aurora"],
+            ] as [string, string][]).map(([cls, label]) => (
+              <div key={cls} className={`${cls} rounded-lg px-4 py-6`}>
+                <p className="text-xs font-semibold text-foam">{label}</p>
+                <p className="font-mono text-[10px] text-mist/70">.{cls}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div>
           <PreviewLabel>09 · Background ladder</PreviewLabel>
           <div className="flex overflow-hidden rounded-lg border border-edge">
             {["bg-abyss", "bg-ink", "bg-panel", "bg-surface", "bg-edge", "bg-hair"].map((c) => (

@@ -115,6 +115,9 @@ recursive `BlockRenderer`; recursive tree ops in `usePageBuilder`
 canvas (stopPropagation up the tree) with breadcrumb in the props-panel header;
 palette gains a Layout group; "wrap selection in section". Drag-and-drop *between*
 containers can land after buttons-based moves — Divi shipped years on buttons.
+Section presets ship with the six guide templates (`.lt-sec-lake/cabin/signal/
+ice/glass/hero`, already in globals.css) and rows default to the guide widths:
+content 1100px, narrow/article 720px, wide 100% (guide Part 3 §11–12).
 
 **C. Figma-like UI (M–L).** Layers panel (tree sidebar; the flat `group` type
 retires in favor of real nesting), multi-select, copy/paste style, per-breakpoint

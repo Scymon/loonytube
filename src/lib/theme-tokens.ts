@@ -20,11 +20,11 @@ export type TokenDef = { key: string; var: string; label: string; default: strin
 export const TOKENS: TokenDef[] = [
   // Background ladder (darkest -> lifted) — Abyss/Deep/Pinenight/Cabin/Bog
   { key: "abyss",     var: "--lt-abyss",     label: "Abyss",      default: "#01090B", group: "Background ladder", desc: "Darkest — hero vignette" },
-  { key: "ink",       var: "--lt-ink",       label: "Ink (Deep)", default: "#031317", group: "Background ladder", desc: "Deep page base" },
-  { key: "panel",     var: "--lt-panel",     label: "Panel (Lake)", default: "#052024", group: "Background ladder", desc: "Base surface — night water" },
-  { key: "surface",   var: "--lt-surface",   label: "Surface (Cabin)",   default: "#102326", group: "Background ladder", desc: "Cards, inputs" },
-  { key: "edge",      var: "--lt-edge",      label: "Edge (Bog)",  default: "#1B3A3D", group: "Background ladder", desc: "Hairline borders" },
-  { key: "hair",      var: "--lt-hair",      label: "Hair",       default: "#254A4E", group: "Background ladder", desc: "Lifted hairline (derived from Bog)" },
+  { key: "ink",       var: "--lt-ink",       label: "Ink (Lake)", default: "#052024", group: "Background ladder", desc: "Page background — set at body level" },
+  { key: "panel",     var: "--lt-panel",     label: "Panel (Cabin)", default: "#102326", group: "Background ladder", desc: "Default section / panel background" },
+  { key: "surface",   var: "--lt-surface",   label: "Surface (Bog)", default: "#1B3A3D", group: "Background ladder", desc: "Cards, inputs" },
+  { key: "edge",      var: "--lt-edge",      label: "Edge",       default: "#2E5054", group: "Background ladder", desc: "Hairline borders (derived — ~14% mist over Lake)" },
+  { key: "hair",      var: "--lt-hair",      label: "Hair",       default: "#3B6266", group: "Background ladder", desc: "Lifted hairline (derived)" },
   // Brand accents — Ice/Aurora/Cyan family
   { key: "sky",       var: "--lt-sky",       label: "Sky (Ice)",  default: "#63E6F2", group: "Brand accents", desc: "Primary CTA, highlights" },
   { key: "skyLight",  var: "--lt-sky-light", label: "Sky light (Aurora)", default: "#B7FFF7", group: "Brand accents", desc: "Hover, rare highlights" },
