@@ -26,6 +26,7 @@ export default async function AdminPage() {
     { data: waitlist },
     { data: siteConfigRaw },
     { data: pagesRaw },
+    { data: draftRows },
     { count: videoCount },
     { count: userCount },
     { count: postCount },
@@ -35,12 +36,16 @@ export default async function AdminPage() {
     supabase.from("invites").select("code, note, redeemed_by, redeemed_at, created_at, expires_at").order("created_at", { ascending: false }).limit(50),
     supabase.from("waitlist").select("email, created_at").order("created_at", { ascending: false }).limit(100),
     supabase.from("site_config").select("site_name, site_tagline, logo_url, favicon_url, featured_video_id, nav_slot_overrides, ribbon_shortcuts, ribbon_fixed_hidden, footer_sections").eq("id", 1).maybeSingle(),
-    supabase.from("pages").select("id, slug, title, body, blocks, draft_blocks, published_at, is_published, updated_at").order("updated_at", { ascending: false }),
+    supabase.from("pages").select("id, slug, title, body, blocks, published_at, is_published, updated_at").order("updated_at", { ascending: false }),
+    supabase.from("page_drafts").select("page_id, blocks"),
     supabase.from("videos").select("*", { count: "exact", head: true }).eq("status", "ready"),
     supabase.from("profiles").select("*", { count: "exact", head: true }),
     supabase.from("posts").select("*", { count: "exact", head: true }).is("parent_id", null),
     supabase.from("comments").select("*", { count: "exact", head: true }),
   ]);
+
+  // Drafts live in admin-only page_drafts (RLS) — merge into the list shape
+  const draftMap = new Map((draftRows ?? []).map((d) => [d.page_id as string, d.blocks]));
 
   let users: UserRow[] = [];
   if (isSuper) {
@@ -69,7 +74,7 @@ export default async function AdminPage() {
       users={users}
       selfId={user.id}
       siteConfig={siteConfig}
-      pages={(pagesRaw ?? []) as CmsPage[]}
+      pages={(pagesRaw ?? []).map((p) => ({ ...p, draft_blocks: draftMap.get(p.id) ?? null })) as CmsPage[]}
       navSlotOverrides={navSlotOverrides}
       ribbonShortcuts={ribbonShortcuts}
       ribbonFixedHidden={ribbonFixedHidden}

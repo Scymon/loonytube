@@ -35,12 +35,11 @@ export function usePageBuilder(pageId: string, initialBlocks: Block[]) {
       setSaveStatus("saving");
       if (saveTimer.current) clearTimeout(saveTimer.current);
       saveTimer.current = setTimeout(async () => {
-        // Drafts autosave to draft_blocks — the public page keeps serving
-        // the published blocks column until the admin hits Publish.
+        // Drafts autosave to page_drafts (admin-only RLS) — the public page
+        // keeps serving pages.blocks until the admin hits Publish.
         const { error } = await supabase
-          .from("pages")
-          .update({ draft_blocks: blocksToSave })
-          .eq("id", pageId);
+          .from("page_drafts")
+          .upsert({ page_id: pageId, blocks: blocksToSave });
         if (error) {
           setSaveStatus("error");
         } else {

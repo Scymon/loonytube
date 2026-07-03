@@ -6,9 +6,9 @@ import type { Block } from "./types";
 
 export type PageRevision = { id: string; saved_at: string };
 
-// Draft/publish workflow for the page builder. Edits autosave into
-// pages.draft_blocks (see usePageBuilder); publishing promotes the draft into
-// pages.blocks, snapshots a revision, and busts the public page cache.
+// Draft/publish workflow for the page builder. Edits autosave into the
+// admin-only page_drafts table (see usePageBuilder); publishing promotes the
+// draft into pages.blocks, snapshots a revision, and busts the public page cache.
 export function useDraftPublish({
   pageId, supabase, blocks, resetTo, initialBlocks, initialDraftBlocks,
 }: {
@@ -51,9 +51,10 @@ export function useDraftPublish({
     const current = blocks;
     const { error } = await supabase
       .from("pages")
-      .update({ blocks: current, draft_blocks: null, published_at: new Date().toISOString() })
+      .update({ blocks: current, published_at: new Date().toISOString() })
       .eq("id", pageId);
     if (!error) {
+      await supabase.from("page_drafts").delete().eq("page_id", pageId);
       const { data: { user } } = await supabase.auth.getUser();
       await supabase.from("page_revisions")
         .insert({ page_id: pageId, blocks: current, saved_by: user?.id ?? null });
@@ -73,7 +74,7 @@ export function useDraftPublish({
   // Throw the draft away and go back to what is live
   async function discardDraft() {
     if (!confirm("Discard all unpublished changes and restore the live version?")) return;
-    await supabase.from("pages").update({ draft_blocks: null }).eq("id", pageId);
+    await supabase.from("page_drafts").delete().eq("page_id", pageId);
     resetTo(publishedRef.current);
     setHasDraft(false);
     mountedRef.current = false;
@@ -82,7 +83,7 @@ export function useDraftPublish({
   // Replace the whole draft (import, clear, revision restore) — never touches live
   async function replaceDraft(next: Block[]) {
     resetTo(next);
-    await supabase.from("pages").update({ draft_blocks: next }).eq("id", pageId);
+    await supabase.from("page_drafts").upsert({ page_id: pageId, blocks: next });
     setHasDraft(true);
   }
 

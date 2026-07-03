@@ -59,10 +59,10 @@ export default function PageManager({
     const { data, error } = await supabase
       .from("pages")
       .insert({ slug, title, body: "", blocks: [], is_published: false })
-      .select("id, slug, title, body, blocks, draft_blocks, published_at, is_published, updated_at")
+      .select("id, slug, title, body, blocks, published_at, is_published, updated_at")
       .single();
     if (error) { setCreateErr(error.message); return; }
-    const page = data as CmsPage;
+    const page = { ...(data as Omit<CmsPage, "draft_blocks">), draft_blocks: null };
     updatePages([page, ...pages]);
     setNewTitle(""); setNewSlug(""); setCreating(false); setCreateErr(null);
     setBuilderPage(page);       // open builder immediately
