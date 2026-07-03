@@ -69,3 +69,62 @@ Size: M–L, but this is what turns CMS pages from static brochures into pages w
 ## Suggested order
 
 Phase 2 first (smallest, most user-visible — SEO + speed), then Phase 1 (editorial safety), then 3, 5, 4. Phases 1–2 together close every **High** row in the table above.
+
+
+---
+
+# Builder 2.0 — competing with Framer / Divi / Instatic (added 2026-07-02)
+
+Operator decision (2026-07-02): the page builder should compete with Framer, Divi, and
+Instatic — "better UI, more property controls, columns that hold blocks, sections,
+rows, and columns, more Figma-like design, mapping to CSS properties, JSON export."
+This supersedes the "not adopting design tokens / multi-breakpoint" line above:
+LoonyTube is a full CMS + social + video platform, and the builder is a pillar of it.
+
+## Target data model
+
+Flat `Block[]` becomes a tree. Containers are blocks whose `children` hold blocks:
+
+```
+Page
+└─ section (full-width band; bg, padding)
+   └─ row (horizontal flex; gap, wrap, vertical align)
+      └─ column (width fraction; holds any blocks, incl. nested rows)
+         └─ leaf blocks (hero, text, image, video, cta, features, …)
+```
+
+- `Block` gains `children?: Block[]` (containers only) — same `id`/`props`/`style`
+  shape at every level, so undo history, revisions, drafts, and JSON export/import
+  (`{ version: 2, blocks }`) all keep working with the same whole-tree snapshots.
+- Legacy pages (flat arrays / `version: 1` exports) load unchanged: top-level leaf
+  blocks are valid forever; "wrap in section" is an explicit action, not a migration.
+- Design properties: `style?: NodeStyle` on every node (shipped — Phase A below).
+  All values typed + validated in `styleToCss()`; free-form CSS strings are
+  deliberately impossible (style JSON renders on the public route → security boundary).
+
+## Phases
+
+**A. Style system — SHIPPED 2026-07-02.** `style.ts` (NodeStyle → validated CSS),
+`StylePanel` in the props panel for every block (spacing, size, surface, text,
+effects), applied by `BlockRenderer` in canvas + public page. Untouched blocks
+render byte-identical to Builder 1.x.
+
+**B. Container tree (L).** `section`/`row`/`column` block types with `children`;
+recursive `BlockRenderer`; recursive tree ops in `usePageBuilder`
+(find/update/insert/delete/move-within-parent by id); nested click-selection on
+canvas (stopPropagation up the tree) with breadcrumb in the props-panel header;
+palette gains a Layout group; "wrap selection in section". Drag-and-drop *between*
+containers can land after buttons-based moves — Divi shipped years on buttons.
+
+**C. Figma-like UI (M–L).** Layers panel (tree sidebar; the flat `group` type
+retires in favor of real nesting), multi-select, copy/paste style, per-breakpoint
+overrides (`style.md`, `style.lg` partial NodeStyle merged in a generated class —
+inline styles can't express media queries), and inline editing extended to every
+text-bearing block (hero/text/cta already have it).
+
+**D. Presets & templates (M).** "Save as section" into a `cms_presets` table,
+starter page templates, and the Phase 3–5 items above (media picker, platform
+blocks) which all compose better once containers exist.
+
+Order: B → C → D. Phase 3 (media picker) from the original plan slots naturally
+between B and C. One phase per branch, per GIT-WORKFLOW.

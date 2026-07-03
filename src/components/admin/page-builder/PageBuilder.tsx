@@ -61,7 +61,7 @@ export default function PageBuilder({
   const {
     blocks, selectedId, selectedBlock, preview, saveStatus,
     canUndo, canRedo,
-    setSelectedId, addBlock, addBlockAtIndex, updateBlock,
+    setSelectedId, addBlock, addBlockAtIndex, updateBlock, updateBlockStyle,
     duplicateBlock, deleteBlock, moveBlock, reorderBlocks,
     undo, redo, togglePreview, toggleHidden, resetTo,
   } = usePageBuilder(pageId, initialDraftBlocks ?? initialBlocks);
@@ -193,7 +193,7 @@ export default function PageBuilder({
         />
 
         {!preview && selectedBlock && (
-          <PropsPanel block={selectedBlock} onChange={updateBlock} />
+          <PropsPanel block={selectedBlock} onChange={updateBlock} onStyleChange={updateBlockStyle} />
         )}
         {!preview && !selectedBlock && (
           <PageInfoPanel

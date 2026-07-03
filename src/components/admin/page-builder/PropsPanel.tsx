@@ -1,6 +1,8 @@
 "use client";
 
 import type { Block } from "./types";
+import type { NodeStyle } from "./style";
+import StylePanel from "./props-panel/StylePanel";
 import { HeroPanel, TextPanel, CtaPanel } from "./props-panel/panels-content";
 import { ImagePanel, VideoPanel } from "./props-panel/panels-media";
 import { FeaturesPanel, ColumnsPanel, SpacerPanel, DividerPanel } from "./props-panel/panels-layout";
@@ -8,9 +10,13 @@ import { FeaturesPanel, ColumnsPanel, SpacerPanel, DividerPanel } from "./props-
 // Preserved exports so PageBuilder's `import PropsPanel, { PageInfoPanel }` keeps working.
 export { default as PageInfoPanel, type PageInfoPanelProps } from "./props-panel/PageInfoPanel";
 
-type Props = { block: Block; onChange: (id: string, p: Record<string, unknown>) => void };
+type Props = {
+  block: Block;
+  onChange: (id: string, p: Record<string, unknown>) => void;
+  onStyleChange: (id: string, patch: Partial<NodeStyle> | null) => void;
+};
 
-export default function PropsPanel({ block, onChange }: Props) {
+export default function PropsPanel({ block, onChange, onStyleChange }: Props) {
   function up(newProps: Record<string, unknown>) { onChange(block.id, newProps); }
 
   return (
@@ -36,6 +42,9 @@ export default function PropsPanel({ block, onChange }: Props) {
         {block.type === "columns"  && <ColumnsPanel  p={block.props} up={up} />}
         {block.type === "spacer"   && <SpacerPanel   p={block.props} up={up} />}
         {block.type === "divider"  && <DividerPanel  p={block.props} up={up} />}
+
+        {/* Builder 2.0 — design properties, available on every block */}
+        <StylePanel style={block.style} onStyle={(patch) => onStyleChange(block.id, patch)} />
       </div>
     </aside>
   );

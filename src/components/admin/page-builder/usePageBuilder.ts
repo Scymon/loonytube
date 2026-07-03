@@ -4,6 +4,7 @@ import { useCallback, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { Block, BlockType } from "./types";
 import { BLOCK_DEFAULTS } from "./types";
+import { pruneStyle, type NodeStyle } from "./style";
 
 function genId(): string {
   return typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
@@ -120,6 +121,17 @@ export function usePageBuilder(pageId: string, initialBlocks: Block[]) {
     pushHistory(next);
   }
 
+  // Patch design properties; pass null to clear all styles on the block.
+  function updateBlockStyle(id: string, patch: Partial<NodeStyle> | null) {
+    const curr = historyRef.current[historyIdxRef.current];
+    const next = curr.map((b) =>
+      b.id === id
+        ? { ...b, style: patch === null ? undefined : pruneStyle({ ...b.style, ...patch }) }
+        : b
+    );
+    pushHistory(next);
+  }
+
   function duplicateBlock(id: string): string | null {
     const curr = historyRef.current[historyIdxRef.current];
     const idx = curr.findIndex((b) => b.id === id);
@@ -194,7 +206,7 @@ export function usePageBuilder(pageId: string, initialBlocks: Block[]) {
   return {
     blocks, selectedId, selectedBlock, preview, saveStatus,
     canUndo, canRedo,
-    setSelectedId, addBlock, addBlockAtIndex, updateBlock,
+    setSelectedId, addBlock, addBlockAtIndex, updateBlock, updateBlockStyle,
     duplicateBlock, deleteBlock, moveBlock, reorderBlocks, renameBlock,
     undo, redo, togglePreview, toggleHidden, resetTo,
   };

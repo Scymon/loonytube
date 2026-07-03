@@ -1,4 +1,5 @@
 import type { Block } from "../types";
+import { styleToCss, hasStyle } from "../style";
 import HeroBlock     from "./HeroBlock";
 import TextBlock     from "./TextBlock";
 import ImageBlock    from "./ImageBlock";
@@ -18,6 +19,13 @@ export default function BlockRenderer({
   editing = false,
   onEdit,
 }: { block: Block } & InlineEditProps) {
+  const inner = renderInner(block, editing, onEdit);
+  // Design properties wrap the block only when set — untouched blocks render
+  // byte-identical to Builder 1.x output.
+  return hasStyle(block.style) ? <div style={styleToCss(block.style!)}>{inner}</div> : inner;
+}
+
+function renderInner(block: Block, editing: boolean, onEdit?: (field: string, value: string) => void) {
   switch (block.type) {
     case "hero":     return <HeroBlock     props={block.props} editing={editing} onEdit={onEdit} />;
     case "text":     return <TextBlock     props={block.props} editing={editing} onEdit={onEdit} />;

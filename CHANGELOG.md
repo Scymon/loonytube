@@ -6,6 +6,7 @@ Entries are milestone deliveries, newest first. Each lists the delivery zip(s) a
 ---
 
 ## [Unreleased] — next up
+- **Builder 2.0** (see `docs/cms-improvement-plan.md` § Builder 2.0). Phase A (style system) shipped 2026-07-02; next: Phase B container tree (section/row/column with children), then Figma-like UI (layers, breakpoints, multi-select), then presets/templates.
 - **Step 3 — Comment unification + Repost/Quote.** Converge video comments onto `posts` nodes (one universal Comment node), add `host_type`/`host_id`, add a `reposts` table, and wire repost/quote actions + the feed/thread union. *(carries a migration)*
 - **Monetization tier system.** Platform-level toggle (off / tiers_active / legacy). Two competing models in featurelist §10a: recurring tiers ($2 commenter / $5 creator) vs freemium + one-time creator activation ($5). Stripe integration, role-sync webhook, Studio monetization settings. *No migration until model is chosen.*
 

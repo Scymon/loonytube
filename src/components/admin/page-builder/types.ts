@@ -1,3 +1,5 @@
+import type { NodeStyle } from "./style";
+
 export type BlockType =
   | 'hero' | 'text' | 'image' | 'video'
   | 'cta' | 'features' | 'columns' | 'divider' | 'spacer' | 'group';
@@ -12,6 +14,8 @@ export interface Block {
   id: string;
   type: BlockType;
   props: Record<string, unknown>;
+  /** Builder 2.0: typed design properties, mapped to CSS by styleToCss() */
+  style?: NodeStyle;
   name?: string;
   hidden?: boolean;
   groupId?: string;
