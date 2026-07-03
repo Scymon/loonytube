@@ -118,6 +118,9 @@ export default function AppShell({ children, fullWidth = true, siteName, logoUrl
   const pathname   = usePathname();
   const isMessages = pathname.startsWith("/messages") || pathname.startsWith("/threads");
   const isWatch    = pathname.startsWith("/watch");
+  // AdminShell brings its own full-height chrome (sticky sidebar + internal
+  // padding) — the outer gutter + 1440px centering would double-frame it.
+  const isAdmin    = pathname.startsWith("/admin");
 
   return (
     <div className={isMessages ? "fixed inset-0 flex flex-col" : ""}>
@@ -151,9 +154,10 @@ export default function AppShell({ children, fullWidth = true, siteName, logoUrl
 
       <main className={
         isMessages ? `flex-1 min-h-0 overflow-hidden ${pad}`
+        : isAdmin  ? `pb-24 md:pb-0 ${pad}`
         : isWatch  ? `px-4 pb-24 ${mounted ? "transition-[padding] duration-200" : ""} sm:px-6 ${pad}`
         : `px-4 py-6 pb-24 ${mounted ? "transition-[padding] duration-200" : ""} sm:px-6 md:pb-6 ${pad}`
-      }>{fullWidth ? children : <div className="mx-auto w-full max-w-[1440px]">{children}</div>}</main>
+      }>{fullWidth || isAdmin ? children : <div className="mx-auto w-full max-w-[1440px]">{children}</div>}</main>
       {!isMessages && <SiteFooter sections={footerSections} siteName={siteName ?? "LoonyTube"} />}
       <Suspense fallback={null}><CreateModal /></Suspense>
     </div>
