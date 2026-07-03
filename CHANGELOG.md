@@ -11,6 +11,31 @@ Entries are milestone deliveries, newest first. Each lists the delivery zip(s) a
 
 ---
 
+## [0.18] CMS draft/publish + revisions, SEO surfaces, article editor rebuild, app-wide error/loading states — 2026-07-01 – 2026-07-02
+_Migration required: `supabase/cms-drafts.sql` (revised — creates `page_drafts` + `page_revisions`, migrates & drops `pages.draft_blocks`; see Security), `supabase/cms-seo.sql`_
+
+### Added
+- **Draft/publish workflow for CMS pages** — the builder autosaves into an admin-only `page_drafts` table while the public page keeps serving `pages.blocks`; Publish promotes the draft, snapshots into `page_revisions` (newest 20 kept), and busts the tagged page cache. Discard-draft and restore-revision (into the draft, never straight to live) included.
+- **SEO surfaces** — `sitemap.xml` (public+ready videos, published pages, articles; hourly cache + tag invalidation), `robots.ts` (disallows admin/studio/settings/messages/threads/notifications/api), per-page `generateMetadata` with description/og-image/canonical, `pages.description` + `pages.og_image_url` fields, and `/api/pages/revalidate` (admin-auth) for instant cache busting on save.
+- **App-wide error/loading/empty states** — `(app)/error.tsx`, `(app)/loading.tsx`, `watch/[id]/loading.tsx`, `studio/loading.tsx`, root `not-found.tsx`.
+- **Article composer rebuilt** — 952-line monolith decomposed into `useArticleEditor` + `article/` block components (`ArticleBlock`, `BlockToolbar`, `AutoText`), with HTML/Markdown paste-to-blocks conversion (textContent-only, no raw HTML stored) and localStorage draft recovery.
+
+### Changed
+- **Page builder decomposed** — `PropsPanel` (740 lines) split into five panel modules + shared fields; toolbar split into six modules (`TitleBar`, `ViewportTools`, `HistoryTools`, `PublishTools`, `PageTools`, `StatusBar`); keyboard shortcuts extracted to `useBuilderShortcuts`.
+- **Home + watch page query batching** — independent queries grouped into parallel `Promise.all` phases (same data, fewer sequential round-trips).
+- **Comments** — optimistic posting with rollback-and-restore-draft on failure, loading skeleton, inline errors, and the `profiles()` embed replaced with the separate-username-fetch pattern.
+- **Watch sidebar** — responsive (stacks below `lg`), lazy-loaded sized thumbnails via `sizedThumb()`.
+- Remaining `alert()` calls in Studio tables replaced with inline notices; hardcoded gradients moved to `--lt-grad-*` CSS tokens; middleware skips static-asset extensions (no Supabase session round-trip per asset).
+- DashHero pauses the audio mini player on play.
+
+### Removed
+- `hls.js` + `@types/hls.js` — unused dependency (Cloudflare Stream player handles HLS).
+
+### Security
+- **CMS drafts were publicly readable** — `pages.draft_blocks` sat on a table whose read policy is row-level (`is_published = true or is_admin()`), so any client could select unpublished draft content of published pages via the REST API. Drafts moved to `page_drafts` with admin-only RLS; the revised `cms-drafts.sql` migrates existing draft data and drops the column. See `docs/audits/2026-07-02.md`.
+
+---
+
 ## [0.17] Audio + Photos content types, CMS page builder, persistent mini player, download fix — 2026-06-30 – 2026-07-01
 _Migration required: `supabase/audio.sql` (or `audio-v2.sql` — see note below), `supabase/photos.sql`, `supabase/cms.sql`, `supabase/cms-blocks.sql`, `supabase/nav_footer.sql`, `supabase/ribbon_fixed_hidden.sql`_
 

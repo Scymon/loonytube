@@ -2,7 +2,7 @@
 
 <!-- agent instructions: Important, Read the Instructions in CLAUDE.md and EDITING-RULES.md BEFORE EDITING ANYTHING -->
 
-A hybrid video + social platform — long-form video (YouTube-style), short text **Posts**, longform **Articles**, and real-time **Direct Messages**, all sharing one conversation model. Northwoods loon brand. Part of the **Loon Suite**; shares the **Loonatic** design system.
+A complete CMS + social media + video platform — long-form video (YouTube-style), audio, photos, short text **Posts**, longform **Articles**, real-time **Direct Messages**, and an admin visual page builder for operator-owned custom pages. Starts video-first; the goal is a full self-hosted platform where the operator owns content, community, pages, and revenue. Northwoods loon brand. Part of the **Loon Suite**; shares the **Loonatic** design system.
 
 **Stack:** Next.js 15 (App Router, TypeScript, Tailwind) · Supabase (auth + Postgres + RLS + Realtime + Storage) · Cloudflare Stream (video ingest / transcode / adaptive CDN).
 
@@ -83,6 +83,24 @@ pnpm install
    | 15  | `supabase/video-field-constraints.sql` | CHECK constraints on `videos.title` / `videos.description` length                                                                                               |
    | 16  | `supabase/post-media-hardening.sql`    | Image URL origin check + rate-limit on `create_post()`                                                                                                          |
    | 17  | `supabase/articles.sql`                | `articles` table, storage, RLS                                                                                                                                  |
+   | 18  | `supabase/post-media.sql`              | Image/GIF attachments on posts (run after `posts.sql`)                                                                                                          |
+   | 19  | `supabase/dm-media.sql`                | Image/GIF attachments on DMs (run after `messages.sql`)                                                                                                         |
+   | 20  | `supabase/messages-embeds.sql`         | DM embed cards (internal videos + X posts)                                                                                                                      |
+   | 21  | `supabase/video-progress-history.sql`  | Last playback position per user per video (resume + watch history)                                                                                              |
+   | 22  | `supabase/follows-notif-level.sql`     | Per-follow notification level: `all` / `personalized` / `none` (YouTube-style bell)                                                                             |
+   | 23  | `supabase/dashboard-saves-playlists.sql` | Saves (Watch Later) + playlists                                                                                                                               |
+   | 24  | `supabase/content-width.sql`           | `app_settings.full_width` layout switch                                                                                                                         |
+   | 25  | `supabase/audio.sql`                   | Audio content type v1 (Cloudflare Stream backed) — run once, then `audio-v2.sql`                                                                                |
+   | 26  | `supabase/audio-v2.sql`                | Audio v2: storage → Supabase Storage, `audio_tracks.id` → uuid. Supersedes `audio.sql`; never re-run `audio.sql` after this                                     |
+   | 27  | `supabase/photos.sql`                  | Photos / image library (shared by posts, articles, CMS pages)                                                                                                   |
+   | 28  | `supabase/cms.sql`                     | CMS: `site_config` (white-labeling) + `pages` tables, RLS                                                                                                       |
+   | 29  | `supabase/cms-blocks.sql`              | `pages.blocks` column for the visual page builder (after `cms.sql`)                                                                                             |
+   | 30  | `supabase/nav_footer.sql`              | `site_config` nav-slot overrides + footer sections                                                                                                              |
+   | 31  | `supabase/ribbon_fixed_hidden.sql`     | `site_config.ribbon_fixed_hidden` — admin-hidden fixed ribbon items                                                                                             |
+   | 32  | `supabase/cms-drafts.sql`              | `page_drafts` (admin-only WIP blocks) + `page_revisions` (last 20 publishes); migrates & drops the old `pages.draft_blocks` column                              |
+   | 33  | `supabase/cms-seo.sql`                 | `pages.description` + `pages.og_image_url` (SEO / link previews)                                                                                                |
+
+   > `supabase/messages-v01.sql` is an earlier, superseded version of `messages.sql` (#10) kept for reference — **do not run it**.
 
 4. **Authentication → Providers → Email**: for fast local testing, turn **off** "Confirm email" so signups log in immediately. (Re-enable before launch.)
 
@@ -257,7 +275,7 @@ src/components/
   admin/         AdminSwitches  InviteManager  RoleManager
   settings/      SignOutButton
 
-supabase/        17 migrations (see Setup table)
+supabase/        34 SQL files — 33 ordered migrations + 1 superseded (see Setup table)
 src/lib/         supabase/server · supabase/client · format · cloudflare · notif · upload-limits
 ```
 

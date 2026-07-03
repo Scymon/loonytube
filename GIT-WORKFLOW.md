@@ -204,3 +204,4 @@ git log --oneline -10
 3. **Hotfixes merge to both `main` AND `dev`** — never skip `dev` or the fix gets re-broken next deploy.
 4. **Tag every production merge** — keeps the changelog anchored to real commits.
 5. **Delete branches after merging** — keeps the repo clean.
+6. **Every new `supabase/*.sql` file gets a README Setup-table row and a CHANGELOG line in the same commit that adds it.** Same for revising an existing migration. This has drifted three times; the table is the only setup path a new operator has.
