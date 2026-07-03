@@ -20,7 +20,9 @@ _Migration required: `supabase/theme.sql`_
 - **Builder 2.0 Phase A — per-block design properties.** Every page-builder block gains a Style panel (spacing, size, surface, typography, effects) mapped 1:1 to validated CSS via `NodeStyle`/`styleToCss`. Untouched blocks render identical to before. Phases B–D (section/row/column tree, Figma-like UI, presets) are specced in `docs/cms-improvement-plan.md`.
 
 ### Changed
-- **Tailwind palette moved to CSS variables** — all Loonatic colors are now `rgb(var(--lt-*) / <alpha-value>)` with defaults in `globals.css`, enabling runtime re-branding while keeping every `/opacity` utility working. Visual output is unchanged for the stock theme.
+- **App restyled to the Loonatic Style Guide (darker set)** — default palette remapped to the guide's night-water ladder (Abyss/Deep/Pinenight/Cabin/Bog), Ice/Aurora/Cyan accents, Morning Fog muted text, Signal-red danger, new Amber `warning` token, Ice→deep-cyan CTA gradient, Space Grotesk as the default font (Google-loaded from a preset whitelist), 2/4/8px sharp radius scale (all `rounded-lg`+ classes collapse to the 8px "soft" step), guide elevation shadows, and 70/120/200ms motion tokens with snap-out/snap-press/smooth easings — all wired through CSS variables into Tailwind (`borderRadius`, `boxShadow`, `transitionDuration`, `transitionTimingFunction`).
+- **Styleguide tab expanded to the full guide** — sections 01–09 (type ladder, button sizes, semantic states, surfaces & elevation, forms, modal, table, empty states & signals, background ladder) render as a live preview; editable tokens now include corner radius (3 sliders) and motion durations (3 sliders) alongside colors, gradient, and fonts. Spacing scale and shadow strings remain fixed reference tokens.
+- **Tailwind palette moved to CSS variables** — all Loonatic colors are now `rgb(var(--lt-*) / <alpha-value>)` with defaults in `globals.css`, enabling runtime re-branding while keeping every `/opacity` utility working.
 - `/api/pages/revalidate` additionally accepts `{ theme: true }` to bust the cached theme.
 
 ---

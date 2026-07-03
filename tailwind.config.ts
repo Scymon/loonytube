@@ -29,6 +29,35 @@ export default {
         mist:    "rgb(var(--lt-mist) / <alpha-value>)",
         foam:    "rgb(var(--lt-foam) / <alpha-value>)",
         loonred: "rgb(var(--lt-loonred) / <alpha-value>)",
+        warning: "rgb(var(--lt-warning) / <alpha-value>)",
+      },
+      // Loonatic radius scale: 2px sharp signature / 4px subtle / 8px soft.
+      // Everything >= lg collapses to the "soft" step per the guide.
+      borderRadius: {
+        DEFAULT: "var(--lt-radius-sm)",
+        sm:  "var(--lt-radius-sm)",
+        md:  "var(--lt-radius-md)",
+        lg:  "var(--lt-radius-lg)",
+        xl:  "var(--lt-radius-lg)",
+        "2xl": "var(--lt-radius-lg)",
+        "3xl": "var(--lt-radius-lg)",
+      },
+      boxShadow: {
+        sm: "var(--lt-shadow-1)",
+        DEFAULT: "var(--lt-shadow-2)",
+        md: "var(--lt-shadow-2)",
+        lg: "var(--lt-shadow-3)",
+        inner: "var(--lt-shadow-inset)",
+      },
+      transitionDuration: {
+        DEFAULT: "var(--lt-dur-med)",
+        fast: "var(--lt-dur-fast)",
+        slow: "var(--lt-dur-slow)",
+      },
+      transitionTimingFunction: {
+        DEFAULT: "var(--lt-ease-out)",
+        press: "var(--lt-ease-press)",
+        smooth: "var(--lt-ease-smooth)",
       },
       fontFamily: {
         sans: ["var(--font-sans)", "ui-sans-serif", "system-ui", "-apple-system", "Segoe UI", "Roboto", "sans-serif"],

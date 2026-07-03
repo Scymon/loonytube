@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 :root {
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-sans: "Space Grotesk", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
 html, body {
@@ -104,26 +104,47 @@ html.lt-lights-out aside {
 /* ── Shared gradient tokens — single source of truth for inline styles ── */
 :root {
   /* Loonatic palette defaults as RGB triplets (see src/lib/theme-tokens.ts).
+     Darker night-water set from the Loonatic Style Guide (2026-07).
      The Styleguide admin tab overrides these via a <style> block in the layout. */
-  --lt-abyss: 7 11 17;
-  --lt-ink: 10 14 20;
-  --lt-panel: 17 18 23;
-  --lt-surface: 24 27 34;
-  --lt-edge: 36 40 51;
-  --lt-hair: 45 51 64;
-  --lt-sky: 98 184 230;
-  --lt-sky-light: 125 208 242;
-  --lt-sky-deep: 79 166 228;
-  --lt-teal: 45 212 180;
-  --lt-teal-soft: 85 201 182;
-  --lt-loon: 34 211 238;
-  --lt-link: 63 162 240;
-  --lt-follow: 59 130 246;
-  --lt-foam: 238 245 251;
-  --lt-mist: 138 152 168;
-  --lt-loonred: 239 68 68;
+  --lt-abyss: 1 9 11;        /* #01090B */
+  --lt-ink: 3 19 23;         /* #031317 Deep */
+  --lt-panel: 10 29 33;      /* #0A1D21 Pinenight */
+  --lt-surface: 16 35 38;    /* #102326 Cabin */
+  --lt-edge: 27 58 61;       /* #1B3A3D Bog */
+  --lt-hair: 37 74 78;       /* #254A4E derived */
+  --lt-sky: 99 230 242;      /* #63E6F2 Ice */
+  --lt-sky-light: 183 255 247; /* #B7FFF7 Aurora */
+  --lt-sky-deep: 0 175 193;  /* #00AFC1 Cyan */
+  --lt-teal: 0 175 193;      /* #00AFC1 Cyan */
+  --lt-teal-soft: 47 189 203; /* #2FBDCB derived */
+  --lt-loon: 0 175 193;      /* #00AFC1 */
+  --lt-link: 99 230 242;     /* #63E6F2 Ice */
+  --lt-follow: 0 175 193;    /* #00AFC1 */
+  --lt-foam: 225 242 239;    /* #E1F2EF */
+  --lt-mist: 94 115 117;     /* #5E7375 Morning Fog */
+  --lt-loonred: 216 58 78;   /* #D83A4E Signal */
+  --lt-warning: 216 178 90;  /* #D8B25A Amber */
 
-  --lt-grad-primary: linear-gradient(180deg, #3ad6bd, #3e9fe6);
+  /* Radius scale — 2px sharp signature / 4px subtle / 8px soft */
+  --lt-radius-sm: 2px;
+  --lt-radius-md: 4px;
+  --lt-radius-lg: 8px;
+
+  /* Elevation ladder (guide Part 2) — reference tokens, used by tailwind shadows */
+  --lt-shadow-1: 0 2px 0 rgba(0,0,0,.6);
+  --lt-shadow-2: 0 4px 0 #000;
+  --lt-shadow-3: 0 6px 0 #000, 0 8px 24px rgba(0,0,0,.5);
+  --lt-shadow-inset: inset 0 2px 4px rgba(0,0,0,.8);
+
+  /* Motion tokens (guide Part 5) */
+  --lt-dur-fast: 70ms;
+  --lt-dur-med: 120ms;
+  --lt-dur-slow: 200ms;
+  --lt-ease-out: cubic-bezier(0.22,1,0.36,1);
+  --lt-ease-press: cubic-bezier(0.4,0,0.6,1);
+  --lt-ease-smooth: cubic-bezier(0.07,0.07,0,1);
+
+  --lt-grad-primary: linear-gradient(180deg, #7DF6FF, #008B94);
   --lt-grad-placeholder: linear-gradient(160deg, #13202c, #0a0f15);
 }
 
