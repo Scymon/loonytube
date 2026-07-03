@@ -45,7 +45,7 @@ export const TOKENS: TokenDef[] = [
 
 // Primary CTA — "Raised button, Ice Cyan" recipe from the guide:
 // 180deg with a hard stop at 49%/50% (top half ice, bottom half deep cyan)
-export const GRAD_PRIMARY_DEFAULT: [string, string] = ["#7DF6FF", "#008B94"];
+export const GRAD_PRIMARY_DEFAULT: [string, string] = ["#63E6F2", "#006D72"]; // Launch: Ice -> Lake Teal
 export function gradPrimaryCss(a: string, b: string): string {
   return `linear-gradient(180deg, ${a} 0%, ${a} 49%, ${b} 50%, ${b} 100%)`;
 }
@@ -69,7 +69,7 @@ export const EASINGS = {
 export const FONT_PRESETS = {
   loonatic:  { label: "Loonatic (Grotesk + Orbitron)", stack: `"Space Grotesk", ui-sans-serif, system-ui, sans-serif`,
                display: `Orbitron, "Space Grotesk", ui-sans-serif, sans-serif`,
-               google: "family=Orbitron:wght@500;700;900&family=Space+Grotesk:wght@300;400;500;600&family=Space+Mono" },
+               google: "family=Orbitron:wght@500;700;900&family=Space+Grotesk:wght@300;400;500;600&family=Space+Mono&family=Barlow+Condensed:wght@600;700" },
   system:    { label: "System",           stack: `ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif`, display: null },
   humanist:  { label: "Humanist",         stack: `Seravek, "Gill Sans Nova", Ubuntu, Calibri, "DejaVu Sans", source-sans-pro, sans-serif`, display: null },
   geometric: { label: "Geometric",        stack: `Avenir, Montserrat, Corbel, "URW Gothic", source-sans-pro, sans-serif`, display: null },

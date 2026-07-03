@@ -212,15 +212,27 @@ export default function StyleguideTab({ initialTheme }: Props) {
         </div>
 
         <div>
-          <PreviewLabel>02 · Buttons — three sizes, easing on hover</PreviewLabel>
-          <div className="flex flex-wrap items-center gap-3">
-            <button type="button" className="lt-cta lt-btn-sm">Small</button>
-            <button type="button" className="lt-cta lt-btn-md">Medium CTA</button>
-            <button type="button" className="lt-cta lt-btn-lg">Large</button>
-            <button type="button" className="rounded border border-follow px-5 py-2 text-sm font-bold text-follow transition-colors hover:bg-follow/10">Follow</button>
-            <button type="button" className="rounded border border-edge bg-surface px-5 py-2 text-sm text-foam transition-colors hover:border-hair">Secondary</button>
-            <button type="button" className="rounded bg-loonred/15 border border-loonred/40 px-5 py-2 text-sm font-bold text-loonred">Danger</button>
-          </div>
+          <PreviewLabel>02 · Button system — raised dark-lodge, all variants × sizes</PreviewLabel>
+          {(["lt-btn-sm", "lt-btn-md", "lt-btn-lg"] as const).map((size) => (
+            <div key={size} className="mb-3 flex flex-wrap items-center gap-3.5">
+              <button type="button" className={`lt-btn lt-btn-neutral ${size}`}>Button</button>
+              <span className="lt-wrap">
+                <span className="lt-glow lt-glow-cyan" />
+                <button type="button" className={`lt-btn lt-btn-listen ${size}`}>Listen</button>
+              </span>
+              <span className="lt-wrap">
+                <span className="lt-glow lt-glow-red" />
+                <button type="button" className={`lt-btn lt-btn-signal ${size}`}>Signal</button>
+              </span>
+              <button type="button" className={`lt-btn lt-btn-launch ${size}`}>{size === "lt-btn-sm" ? "Launch" : "Launch Now"}</button>
+              <span className="lt-wrap">
+                <span className="lt-glow lt-glow-red" />
+                <button type="button" className={`lt-btn lt-btn-campfire ${size}`}>Campfire</button>
+              </span>
+              <button type="button" className={`lt-btn lt-btn-ghost ${size}`}>Ghost</button>
+            </div>
+          ))}
+          <p className="mt-1 text-[10px] text-mist/50">Hover lifts (+bottom shadow grows) · press drops to 1px. Glow variants use the .lt-wrap/.lt-glow sibling pattern.</p>
         </div>
 
         <div>

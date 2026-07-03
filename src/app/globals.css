@@ -6,6 +6,7 @@
   --font-sans: "Space Grotesk", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-display: Orbitron, "Space Grotesk", ui-sans-serif, sans-serif;
   --font-mono: "Space Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-btn: "Barlow Condensed", "Space Grotesk", ui-sans-serif, sans-serif;
 }
 
 html, body {
@@ -15,32 +16,102 @@ html, body {
 * { box-sizing: border-box; }
 
 @layer components {
-  /* ---- Primary CTA: Loonatic raised button (hard-stop ice/cyan, sharp corner) ---- */
+  /* ---- Primary CTA (auth forms): full-width Launch treatment ---- */
   .lt-btn-primary {
-    @apply w-full py-3 text-center text-[15px] font-bold text-ink
+    @apply w-full py-3 text-center text-[15px]
            disabled:opacity-50 disabled:cursor-not-allowed;
+    font-family: var(--font-btn); font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em;
     border-radius: var(--lt-radius-sm);
+    border: 1px solid transparent;
+    border-color: rgb(var(--lt-sky-light)) #003D3F #003D3F rgb(var(--lt-sky));
     background-image: var(--lt-grad-primary);
-    box-shadow: var(--lt-shadow-1);
-    transition: transform var(--lt-dur-fast) var(--lt-ease-out), filter var(--lt-dur-fast) var(--lt-ease-out);
+    color: #021113;
+    box-shadow: 0 5px 0 #02090A;
+    transition: transform var(--lt-dur-fast) var(--lt-ease-out), box-shadow var(--lt-dur-fast) var(--lt-ease-out);
   }
-  .lt-btn-primary:hover:not(:disabled) { filter: brightness(1.06); transform: translateY(-1px); }
-  .lt-btn-primary:active:not(:disabled) { filter: brightness(0.95); transform: translateY(1px); }
+  .lt-btn-primary:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 7px 0 #02090A; }
+  .lt-btn-primary:active:not(:disabled) { transform: translateY(4px); box-shadow: 0 1px 0 #02090A; }
 
-  /* ---- Guide button sizes (Part 2): composable CTA classes ---- */
-  .lt-cta {
-    @apply inline-flex items-center justify-center font-bold text-ink
-           disabled:opacity-50 disabled:cursor-not-allowed;
+  /* ═══ Loonatic button system (guide Part 2 §06) ═══════════════════════════
+     Raised dark-lodge treatment on every variant: hard-stop gradient +
+     asymmetric 4-side borders (light-catch top/left, dark right/bottom) +
+     solid bottom shadow that scales with size (S 3px / M 5px / L 7px),
+     grows on hover (lift) and collapses to 1px on press.
+     Glow variants sit inside <span class="lt-wrap"><span class="lt-glow lt-glow-cyan"/><button/></span>. */
+
+  .lt-wrap { position: relative; display: inline-flex; }
+  .lt-glow { position: absolute; inset: 0; border-radius: 4px; pointer-events: none; z-index: 0; }
+  .lt-glow-cyan { box-shadow: 0 0 8px 1px rgb(var(--lt-teal) / 0.55), 0 0 18px 2px rgb(var(--lt-sky) / 0.18); }
+  .lt-glow-red  { box-shadow: 0 0 8px 1px rgb(var(--lt-loonred) / 0.5), 0 0 16px 2px rgba(142,29,44,0.18); }
+
+  .lt-btn, .lt-cta {
+    @apply inline-flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed;
+    position: relative; z-index: 1;
+    font-family: var(--font-btn);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
     border-radius: var(--lt-radius-sm);
-    background-image: var(--lt-grad-primary);
-    box-shadow: var(--lt-shadow-1);
-    transition: transform var(--lt-dur-fast) var(--lt-ease-out), filter var(--lt-dur-fast) var(--lt-ease-out);
+    border: 1px solid transparent;
+    box-shadow: 0 var(--btn-drop, 5px) 0 var(--btn-shadow, #000);
+    transition: transform var(--lt-dur-fast) var(--lt-ease-out), box-shadow var(--lt-dur-fast) var(--lt-ease-out);
   }
-  .lt-cta:hover:not(:disabled) { filter: brightness(1.06); transform: translateY(-1px); }
-  .lt-cta:active:not(:disabled) { filter: brightness(0.95); transform: translateY(1px); }
-  .lt-btn-sm { font-size: 10px; padding: 8px 18px; text-transform: uppercase; letter-spacing: 0.08em; }
-  .lt-btn-md { font-size: 14px; padding: 14px 32px; }
-  .lt-btn-lg { font-size: 17px; padding: 20px 48px; }
+  .lt-btn:hover:not(:disabled), .lt-cta:hover:not(:disabled) {
+    transform: translateY(var(--btn-lift, -2px));
+    box-shadow: 0 var(--btn-drop-hover, 7px) 0 var(--btn-shadow, #000);
+  }
+  .lt-btn:active:not(:disabled), .lt-cta:active:not(:disabled) {
+    transform: translateY(var(--btn-press, 4px));
+    box-shadow: 0 1px 0 var(--btn-shadow, #000);
+  }
+
+  /* Sizes — font · padding · bottom-shadow scale (guide table) */
+  .lt-btn-sm { font-size: 10px; padding: 8px 18px;  --btn-drop: 3px; --btn-drop-hover: 4px; --btn-lift: -1px; --btn-press: 2px; }
+  .lt-btn-md { font-size: 14px; padding: 14px 32px; --btn-drop: 5px; --btn-drop-hover: 7px; --btn-lift: -2px; --btn-press: 4px; }
+  .lt-btn-lg { font-size: 17px; padding: 20px 48px; --btn-drop: 7px; --btn-drop-hover: 9px; --btn-lift: -2px; --btn-press: 6px; }
+
+  /* Launch — cyan solid primary. Hard-stop Ice->Lake-Teal, aurora light-catch. */
+  .lt-btn-launch, .lt-cta {
+    background-image: var(--lt-grad-primary);
+    border-color: rgb(var(--lt-sky-light)) #003D3F #003D3F rgb(var(--lt-sky));
+    color: #021113;
+    --btn-shadow: #02090A;
+  }
+  /* Neutral — dark lodge gradient, Inter/body face, no uppercase */
+  .lt-btn-neutral {
+    background-image: linear-gradient(180deg, #183236 0%, #183236 49%, #0A1D21 50%, #0A1D21 100%);
+    border-color: rgba(255,255,255,0.65) #000 #000 rgba(255,255,255,0.25);
+    color: rgba(220,220,215,0.95);
+    font-family: var(--font-sans); font-weight: 500; text-transform: none; letter-spacing: 0;
+  }
+  /* Listen — cyan outline on near-black, aurora text (pair with .lt-glow-cyan) */
+  .lt-btn-listen {
+    background: #031516;
+    border-color: rgb(var(--lt-sky)) #003D3F #00282A rgb(var(--lt-teal));
+    color: rgb(var(--lt-sky-light));
+  }
+  /* Signal — loon-red alert (pair with .lt-glow-red) */
+  .lt-btn-signal {
+    background: #120607;
+    border-color: rgb(var(--lt-loonred)) #3A1014 #1A0606 #8E1D2C;
+    color: rgb(var(--lt-feather));
+  }
+  /* Campfire — soft red outline (pair with .lt-glow-red) */
+  .lt-btn-campfire {
+    background: #160707;
+    border-color: rgb(var(--lt-loonred) / 0.9) rgba(58,16,20,0.9) rgba(26,6,6,0.95) rgba(142,29,44,0.6);
+    color: rgb(var(--lt-feather) / 0.95);
+    font-weight: 600;
+  }
+  /* Ghost — transparent, uniform hairline, body face */
+  .lt-btn-ghost {
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.55);
+    color: rgb(var(--lt-foam));
+    font-family: var(--font-sans); font-weight: 500; text-transform: none; letter-spacing: 0;
+    --btn-shadow: transparent;
+  }
+  .lt-btn-ghost:hover:not(:disabled) { outline: 2px solid rgba(255,255,255,0.22); outline-offset: 1px; }
 
   /* ---- Secondary / outline button ---- */
   .lt-btn-outline {
@@ -166,7 +237,7 @@ html.lt-lights-out aside {
 
   /* Gradient recipes (guide Part 1 §04). All except the raised button derive
      from the color tokens, so they re-theme automatically. */
-  --lt-grad-primary: linear-gradient(180deg, #7DF6FF 0%, #7DF6FF 49%, #008B94 50%, #008B94 100%); /* raised button, hard stop */
+  --lt-grad-primary: linear-gradient(180deg, #63E6F2 0%, #63E6F2 49%, #006D72 50%, #006D72 100%); /* Launch: raised button, hard stop */
   --lt-grad-glass: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.015));
   --lt-grad-hero: linear-gradient(135deg, rgb(var(--lt-abyss)), rgb(var(--lt-ink)), rgb(var(--lt-panel)), rgb(var(--lt-surface)));
   --lt-grad-overlay: linear-gradient(90deg, rgb(var(--lt-abyss) / 0.92), rgb(var(--lt-ink) / 0.66), rgb(var(--lt-panel) / 0.18), transparent);
