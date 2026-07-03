@@ -174,10 +174,19 @@ export default function BlockCanvas({
         if (e.target === e.currentTarget) { onDeselect(); setEditingId(null); setInsertAtIdx(null); }
       }}
     >
-      {/* Page card — zoom applied here */}
-      <div style={{ zoom }}>
+      {/* Page card — zoom applied here. Direct clicks = the gutter around the
+          page card — treat like the canvas background and show page settings. */}
+      <div
+        style={{ zoom }}
+        onClick={(e) => {
+          if (e.target === e.currentTarget) { onDeselect(); setEditingId(null); setInsertAtIdx(null); }
+        }}
+      >
       <div
         className={`mx-auto w-full transition-[max-width] duration-300 ring-1 ring-white/[0.07] shadow-[0_40px_100px_rgba(0,0,0,0.8)] bg-ink min-h-[100dvh] ${WIDTH_CLASS[canvasWidth]}`}
+        onClick={(e) => {
+          if (e.target === e.currentTarget) { onDeselect(); setEditingId(null); setInsertAtIdx(null); }
+        }}
       >
         {/* First-block add button (top) */}
         {!preview && (
