@@ -75,7 +75,11 @@ export default function StyleguideTab({ initialTheme }: Props) {
     if (HEX_RE.test(grad[0]) && HEX_RE.test(grad[1])) {
       style["--lt-grad-primary"] = gradPrimaryCss(grad[0], grad[1]);
     }
-    if (font && FONT_PRESETS[font]) style["--font-sans"] = FONT_PRESETS[font].stack;
+    if (font && FONT_PRESETS[font]) {
+      const p = FONT_PRESETS[font];
+      style["--font-sans"] = p.stack;
+      style["--font-display"] = ("display" in p && p.display) ? p.display : p.stack;
+    }
     style["--lt-radius-sm"] = `${radius[0]}px`;
     style["--lt-radius-md"] = `${radius[1]}px`;
     style["--lt-radius-lg"] = `${radius[2]}px`;
@@ -197,10 +201,14 @@ export default function StyleguideTab({ initialTheme }: Props) {
       {/* ══ Live preview (scoped vars — edits apply here instantly) ══ */}
       <div style={previewVars} className="rounded-2xl border border-edge bg-ink p-6 space-y-8 self-start font-sans" id="sg-preview">
         <div>
-          <PreviewLabel>01 · Type ladder</PreviewLabel>
-          <h1 className="text-3xl font-extrabold text-foam">Northwoods at night</h1>
-          <h2 className="text-xl font-bold text-foam mt-1">The lake keeps its own light</h2>
-          <p className="mt-2 text-sm text-mist">Muted body copy uses Mist. <a className="text-link hover:text-sky-light hover:underline" href="#" onClick={(e) => e.preventDefault()}>Inline links are Ice, Aurora on hover.</a></p>
+          <PreviewLabel>01 · Type ladder — Orbitron display · Grotesk body · Mono labels</PreviewLabel>
+          <p className="lt-eyebrow text-teal">Open for migration</p>
+          <h1 className="mt-1 text-4xl font-black text-foam">Trailhead</h1>
+          <p className="lt-text-gradient font-display text-2xl font-bold mt-1">The lake keeps its own light</p>
+          <h3 className="text-lg font-bold text-foam mt-2">Field checklist</h3>
+          <p className="mt-2 max-w-md text-sm font-light leading-relaxed text-foam/80">Northwoods systems for teams that ship. Deep-water structure, cold clarity, durable routes.</p>
+          <p className="mt-1 text-sm text-mist">Muted body copy uses Mist. <a className="text-link hover:text-sky-light hover:underline" href="#" onClick={(e) => e.preventDefault()}>Inline links are Ice, Aurora on hover.</a></p>
+          <p className="mt-2 font-mono text-xl font-bold text-sky">4.2% <span className="text-[10px] font-normal text-mist">trail signal</span></p>
         </div>
 
         <div>
@@ -216,12 +224,32 @@ export default function StyleguideTab({ initialTheme }: Props) {
         </div>
 
         <div>
+          <PreviewLabel>02b · Gradient recipes</PreviewLabel>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {([
+              ["Raised button", "var(--lt-grad-primary)"],
+              ["Glass card", "var(--lt-grad-glass)"],
+              ["Deep lake hero", "var(--lt-grad-hero)"],
+              ["Hero overlay", "var(--lt-grad-overlay)"],
+              ["Lakeglow text", "var(--lt-grad-text)"],
+              ["Teal tint card", "var(--lt-grad-tint)"],
+            ] as [string, string][]).map(([label, bg]) => (
+              <div key={label} className="overflow-hidden rounded-lg border border-edge">
+                <div className="h-12" style={{ backgroundImage: bg }} />
+                <p className="bg-panel px-2 py-1 text-[10px] text-mist">{label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div>
           <PreviewLabel>03 · Semantic — status &amp; feedback</PreviewLabel>
           <div className="flex flex-wrap gap-2">
             <span className="rounded bg-teal/15 border border-teal/40 px-2 py-0.5 text-[11px] font-semibold text-teal">Success · live signal</span>
             <span className="rounded bg-warning/15 border border-warning/40 px-2 py-0.5 text-[11px] font-semibold text-warning">Warning · degraded</span>
             <span className="rounded bg-loonred/15 border border-loonred/40 px-2 py-0.5 text-[11px] font-semibold text-loonred">Danger · destructive</span>
             <span className="rounded bg-sky/15 border border-sky/40 px-2 py-0.5 text-[11px] font-semibold text-sky">Info · callout</span>
+            <span className="rounded bg-feather/15 border border-feather/40 px-2 py-0.5 text-[11px] font-semibold text-feather">Feather · small accent</span>
           </div>
         </div>
 

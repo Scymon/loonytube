@@ -21,7 +21,7 @@ export const TOKENS: TokenDef[] = [
   // Background ladder (darkest -> lifted) — Abyss/Deep/Pinenight/Cabin/Bog
   { key: "abyss",     var: "--lt-abyss",     label: "Abyss",      default: "#01090B", group: "Background ladder", desc: "Darkest — hero vignette" },
   { key: "ink",       var: "--lt-ink",       label: "Ink (Deep)", default: "#031317", group: "Background ladder", desc: "Deep page base" },
-  { key: "panel",     var: "--lt-panel",     label: "Panel (Pinenight)", default: "#0A1D21", group: "Background ladder", desc: "Content panels" },
+  { key: "panel",     var: "--lt-panel",     label: "Panel (Lake)", default: "#052024", group: "Background ladder", desc: "Base surface — night water" },
   { key: "surface",   var: "--lt-surface",   label: "Surface (Cabin)",   default: "#102326", group: "Background ladder", desc: "Cards, inputs" },
   { key: "edge",      var: "--lt-edge",      label: "Edge (Bog)",  default: "#1B3A3D", group: "Background ladder", desc: "Hairline borders" },
   { key: "hair",      var: "--lt-hair",      label: "Hair",       default: "#254A4E", group: "Background ladder", desc: "Lifted hairline (derived from Bog)" },
@@ -40,6 +40,7 @@ export const TOKENS: TokenDef[] = [
   // Semantic — status & feedback
   { key: "loonred",   var: "--lt-loonred",   label: "Danger (Signal)", default: "#D83A4E", group: "Semantic", desc: "Errors, destructive actions" },
   { key: "warning",   var: "--lt-warning",   label: "Warning (Amber)", default: "#D8B25A", group: "Semantic", desc: "Degraded, caution badges" },
+  { key: "feather",   var: "--lt-feather",   label: "Feather Red", default: "#FFB7C2", group: "Semantic", desc: "Small red accents (Divi slot 7)" },
 ];
 
 // Primary CTA — "Raised button, Ice Cyan" recipe from the guide:
@@ -62,13 +63,17 @@ export const EASINGS = {
   smooth:   "cubic-bezier(0.07,0.07,0,1)",
 } as const;
 
+// Guide Part 1: Orbitron = display/headings (500/700/900), Space Grotesk =
+// body/UI (300–600), Space Mono = eyebrows/stats/code. Non-Loonatic presets
+// use their body stack for headings too.
 export const FONT_PRESETS = {
-  loonatic:  { label: "Loonatic (Space Grotesk)", stack: `"Space Grotesk", ui-sans-serif, system-ui, sans-serif`,
-               google: "family=Space+Grotesk:wght@300;400;500;600" },
-  system:    { label: "System",           stack: `ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif` },
-  humanist:  { label: "Humanist",         stack: `Seravek, "Gill Sans Nova", Ubuntu, Calibri, "DejaVu Sans", source-sans-pro, sans-serif` },
-  geometric: { label: "Geometric",        stack: `Avenir, Montserrat, Corbel, "URW Gothic", source-sans-pro, sans-serif` },
-  serif:     { label: "Serif",            stack: `Charter, "Bitstream Charter", "Sitka Text", Cambria, Georgia, serif` },
+  loonatic:  { label: "Loonatic (Grotesk + Orbitron)", stack: `"Space Grotesk", ui-sans-serif, system-ui, sans-serif`,
+               display: `Orbitron, "Space Grotesk", ui-sans-serif, sans-serif`,
+               google: "family=Orbitron:wght@500;700;900&family=Space+Grotesk:wght@300;400;500;600&family=Space+Mono" },
+  system:    { label: "System",           stack: `ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif`, display: null },
+  humanist:  { label: "Humanist",         stack: `Seravek, "Gill Sans Nova", Ubuntu, Calibri, "DejaVu Sans", source-sans-pro, sans-serif`, display: null },
+  geometric: { label: "Geometric",        stack: `Avenir, Montserrat, Corbel, "URW Gothic", source-sans-pro, sans-serif`, display: null },
+  serif:     { label: "Serif",            stack: `Charter, "Bitstream Charter", "Sitka Text", Cambria, Georgia, serif`, display: null },
 } as const;
 export const FONT_DEFAULT: keyof typeof FONT_PRESETS = "loonatic";
 
@@ -127,7 +132,10 @@ export function themeToCss(theme: ThemeOverrides | null | undefined): string {
     });
   }
   if (theme.font && theme.font !== FONT_DEFAULT && FONT_PRESETS[theme.font]) {
-    lines.push(`--font-sans: ${FONT_PRESETS[theme.font].stack};`);
+    const p = FONT_PRESETS[theme.font];
+    lines.push(`--font-sans: ${p.stack};`);
+    // Non-Loonatic presets drop Orbitron: headings follow the body stack
+    lines.push(`--font-display: ${p.display ?? p.stack};`);
   }
   return lines.length ? `:root {\n  ${lines.join("\n  ")}\n}` : "";
 }

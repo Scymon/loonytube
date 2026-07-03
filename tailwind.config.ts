@@ -30,6 +30,7 @@ export default {
         foam:    "rgb(var(--lt-foam) / <alpha-value>)",
         loonred: "rgb(var(--lt-loonred) / <alpha-value>)",
         warning: "rgb(var(--lt-warning) / <alpha-value>)",
+        feather: "rgb(var(--lt-feather) / <alpha-value>)",
       },
       // Loonatic radius scale: 2px sharp signature / 4px subtle / 8px soft.
       // Everything >= lg collapses to the "soft" step per the guide.
@@ -61,6 +62,8 @@ export default {
       },
       fontFamily: {
         sans: ["var(--font-sans)", "ui-sans-serif", "system-ui", "-apple-system", "Segoe UI", "Roboto", "sans-serif"],
+        display: ["var(--font-display)", "ui-sans-serif", "sans-serif"],
+        mono: ["var(--font-mono)", "ui-monospace", "monospace"],
       },
     },
   },

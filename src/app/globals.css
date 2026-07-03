@@ -4,6 +4,8 @@
 
 :root {
   --font-sans: "Space Grotesk", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display: Orbitron, "Space Grotesk", ui-sans-serif, sans-serif;
+  --font-mono: "Space Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 html, body {
@@ -125,7 +127,7 @@ html.lt-lights-out aside {
      The Styleguide admin tab overrides these via a <style> block in the layout. */
   --lt-abyss: 1 9 11;        /* #01090B */
   --lt-ink: 3 19 23;         /* #031317 Deep */
-  --lt-panel: 10 29 33;      /* #0A1D21 Pinenight */
+  --lt-panel: 5 32 36;       /* #052024 Lake — base surface */
   --lt-surface: 16 35 38;    /* #102326 Cabin */
   --lt-edge: 27 58 61;       /* #1B3A3D Bog */
   --lt-hair: 37 74 78;       /* #254A4E derived */
@@ -141,6 +143,7 @@ html.lt-lights-out aside {
   --lt-mist: 94 115 117;     /* #5E7375 Morning Fog */
   --lt-loonred: 216 58 78;   /* #D83A4E Signal */
   --lt-warning: 216 178 90;  /* #D8B25A Amber */
+  --lt-feather: 255 183 194; /* #FFB7C2 Feather Red — small accents */
 
   /* Radius scale — 2px sharp signature / 4px subtle / 8px soft */
   --lt-radius-sm: 2px;
@@ -161,8 +164,14 @@ html.lt-lights-out aside {
   --lt-ease-press: cubic-bezier(0.4,0,0.6,1);
   --lt-ease-smooth: cubic-bezier(0.07,0.07,0,1);
 
-  /* Raised button recipe: hard stop 49%/50% — top half ice, bottom half deep cyan */
-  --lt-grad-primary: linear-gradient(180deg, #7DF6FF 0%, #7DF6FF 49%, #008B94 50%, #008B94 100%);
+  /* Gradient recipes (guide Part 1 §04). All except the raised button derive
+     from the color tokens, so they re-theme automatically. */
+  --lt-grad-primary: linear-gradient(180deg, #7DF6FF 0%, #7DF6FF 49%, #008B94 50%, #008B94 100%); /* raised button, hard stop */
+  --lt-grad-glass: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.015));
+  --lt-grad-hero: linear-gradient(135deg, rgb(var(--lt-abyss)), rgb(var(--lt-ink)), rgb(var(--lt-panel)), rgb(var(--lt-surface)));
+  --lt-grad-overlay: linear-gradient(90deg, rgb(var(--lt-abyss) / 0.92), rgb(var(--lt-ink) / 0.66), rgb(var(--lt-panel) / 0.18), transparent);
+  --lt-grad-text: linear-gradient(100deg, rgb(var(--lt-sky)), rgb(var(--lt-sky-light)), rgb(var(--lt-sky-deep)));
+  --lt-grad-tint: linear-gradient(135deg, rgb(var(--lt-sky) / 0.08), rgb(var(--lt-teal) / 0.04));
   --lt-grad-placeholder: linear-gradient(160deg, #13202c, #0a0f15);
 }
 
@@ -180,4 +189,30 @@ html.lt-lights-out aside {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* ── Loonatic typography (guide Part 1 §02) ─────────────────────────────────
+   Orbitron for display/headings with the guide's tracking; Space Mono via
+   .font-mono. h4–h6 and bold UI text stay on the body face by design. */
+h1, h2, h3 {
+  font-family: var(--font-display);
+}
+h1 { letter-spacing: 0.02em; }
+h2 { letter-spacing: 0.03em; }
+h3 { letter-spacing: 0.04em; }
+
+/* Lakeglow sweep — gradient headline text (guide Part 1 §04) */
+.lt-text-gradient {
+  background-image: var(--lt-grad-text);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Eyebrow label — Space Mono uppercase (guide Part 1 §02) */
+.lt-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
 }
