@@ -103,6 +103,26 @@ html.lt-lights-out aside {
 
 /* ── Shared gradient tokens — single source of truth for inline styles ── */
 :root {
+  /* Loonatic palette defaults as RGB triplets (see src/lib/theme-tokens.ts).
+     The Styleguide admin tab overrides these via a <style> block in the layout. */
+  --lt-abyss: 7 11 17;
+  --lt-ink: 10 14 20;
+  --lt-panel: 17 18 23;
+  --lt-surface: 24 27 34;
+  --lt-edge: 36 40 51;
+  --lt-hair: 45 51 64;
+  --lt-sky: 98 184 230;
+  --lt-sky-light: 125 208 242;
+  --lt-sky-deep: 79 166 228;
+  --lt-teal: 45 212 180;
+  --lt-teal-soft: 85 201 182;
+  --lt-loon: 34 211 238;
+  --lt-link: 63 162 240;
+  --lt-follow: 59 130 246;
+  --lt-foam: 238 245 251;
+  --lt-mist: 138 152 168;
+  --lt-loonred: 239 68 68;
+
   --lt-grad-primary: linear-gradient(180deg, #3ad6bd, #3e9fe6);
   --lt-grad-placeholder: linear-gradient(160deg, #13202c, #0a0f15);
 }

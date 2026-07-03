@@ -99,6 +99,7 @@ pnpm install
    | 31  | `supabase/ribbon_fixed_hidden.sql`     | `site_config.ribbon_fixed_hidden` — admin-hidden fixed ribbon items                                                                                             |
    | 32  | `supabase/cms-drafts.sql`              | `page_drafts` (admin-only WIP blocks) + `page_revisions` (last 20 publishes); migrates & drops the old `pages.draft_blocks` column                              |
    | 33  | `supabase/cms-seo.sql`                 | `pages.description` + `pages.og_image_url` (SEO / link previews)                                                                                                |
+   | 34  | `supabase/theme.sql`                   | `site_config.theme` — brand token overrides edited in the admin Styleguide tab                                                                                  |
 
    > `supabase/messages-v01.sql` is an earlier, superseded version of `messages.sql` (#10) kept for reference — **do not run it**.
 
@@ -275,7 +276,7 @@ src/components/
   admin/         AdminSwitches  InviteManager  RoleManager
   settings/      SignOutButton
 
-supabase/        34 SQL files — 33 ordered migrations + 1 superseded (see Setup table)
+supabase/        35 SQL files — 34 ordered migrations + 1 superseded (see Setup table)
 src/lib/         supabase/server · supabase/client · format · cloudflare · notif · upload-limits
 ```
 

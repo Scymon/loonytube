@@ -15,7 +15,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const { pageId, slug: rawSlug } = await req.json().catch(() => ({}));
+  const { pageId, slug: rawSlug, theme } = await req.json().catch(() => ({}));
+
+  // Styleguide tab saves brand tokens -> bust the theme cache only
+  if (theme === true) {
+    revalidateTag("theme");
+    return NextResponse.json({ ok: true, theme: true });
+  }
 
   let slug: string | null = typeof rawSlug === "string" && rawSlug ? rawSlug : null;
   if (!slug) {

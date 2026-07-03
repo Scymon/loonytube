@@ -7,11 +7,13 @@ import RoleManager, { type UserRow } from "./RoleManager";
 import SiteConfigEditor, { type SiteConfig } from "./SiteConfigEditor";
 import PageManager, { type CmsPage } from "./PageManager";
 import NavLinksEditor, { type NavSlotOverride, type RibbonShortcut, type RibbonFixedHidden, type FooterSection } from "./NavLinksEditor";
+import StyleguideTab from "./StyleguideTab";
+import type { ThemeOverrides } from "@/lib/theme-tokens";
 
 type Settings  = { invite_only: boolean; signups_enabled: boolean; uploads_enabled: boolean; full_width: boolean };
 type WaitlistRow = { email: string; created_at: string };
 
-type Tab = "overview" | "site" | "pages" | "navigation" | "settings" | "invites" | "users";
+type Tab = "overview" | "site" | "pages" | "navigation" | "styleguide" | "settings" | "invites" | "users";
 
 type Props = {
   isSuper:        boolean;
@@ -26,6 +28,7 @@ type Props = {
   ribbonShortcuts:   RibbonShortcut[];
   ribbonFixedHidden: RibbonFixedHidden;
   footerSections:    FooterSection[];
+  theme:             ThemeOverrides | null;
   stats:          { videos: number; users: number; posts: number; comments: number };
 };
 
@@ -34,6 +37,7 @@ const TABS: { id: Tab; label: string; icon: string; superOnly?: boolean }[] = [
   { id: "site",       label: "Site Config", icon: "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z|M15 12a3 3 0 11-6 0 3 3 0 016 0z" },
   { id: "pages",      label: "Pages",      icon: "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" },
   { id: "navigation", label: "Navigation", icon: "M4 6h16M4 12h16M4 18h7" },
+  { id: "styleguide", label: "Styleguide", icon: "M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485", superOnly: true },
   { id: "settings",   label: "Settings",   icon: "M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" },
   { id: "invites",    label: "Invites",    icon: "M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" },
   { id: "users",      label: "Users",      icon: "M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z", superOnly: true },
@@ -58,7 +62,7 @@ function StatCard({ label, value, color = "text-foam" }: { label: string; value:
 
 export default function AdminShell({
   isSuper, settings, invites, waitlist, users, selfId,
-  siteConfig, pages: initialPages, navSlotOverrides, ribbonShortcuts, ribbonFixedHidden, footerSections, stats,
+  siteConfig, pages: initialPages, navSlotOverrides, ribbonShortcuts, ribbonFixedHidden, footerSections, theme, stats,
 }: Props) {
   const [tab, setTab] = useState<Tab>("overview");
   const [pages, setPages] = useState(initialPages);
@@ -202,6 +206,17 @@ export default function AdminShell({
               initialFooterSections={footerSections}
               pages={pages}
             />
+          </div>
+        )}
+
+        {/* Styleguide (superadmin) */}
+        {tab === "styleguide" && isSuper && (
+          <div>
+            <div className="mb-6">
+              <h2 className="text-2xl font-bold text-foam">Styleguide</h2>
+              <p className="text-mist mt-1">Loonatic design tokens — edit them to match your brand. Changes preview live on the right and apply site-wide on save.</p>
+            </div>
+            <StyleguideTab initialTheme={theme} />
           </div>
         )}
 

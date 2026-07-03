@@ -5,21 +5,30 @@ export default {
   theme: {
     extend: {
       colors: {
-        // ---- Loonatic palette (sampled from Figma mockups) ----
-        ink: "#0a0e14",        // deep base (legacy alias, hero deeps)
-        abyss: "#070b11",      // darkest, hero vignette
-        panel: "#111217",      // right-hand content panel
-        surface: "#181b22",    // inputs, cards
-        edge: "#242833",       // hairline borders
-        hair: "#2d3340",       // lifted hairline
-        loon: "#22d3ee",       // legacy cyan (kept for existing components)
-        sky: { DEFAULT: "#62b8e6", light: "#7dd0f2", deep: "#4fa6e4" }, // primary CTA
-        teal: { DEFAULT: "#2dd4b4", soft: "#55c9b6" },                  // accent
-        link: "#3fa2f0",       // bright inline links
-        follow: "#3b82f6",     // "Follow" outline blue
-        mist: "#8a98a8",       // muted text
-        foam: "#eef5fb",       // bright text
-        loonred: "#ef4444",
+        // ---- Loonatic palette — CSS-var triplets so the admin Styleguide tab
+        // can re-brand at runtime; defaults live in globals.css :root.
+        // rgb(var() / <alpha-value>) keeps /opacity utilities working. ----
+        ink:     "rgb(var(--lt-ink) / <alpha-value>)",        // deep base
+        abyss:   "rgb(var(--lt-abyss) / <alpha-value>)",      // darkest, hero vignette
+        panel:   "rgb(var(--lt-panel) / <alpha-value>)",      // content panel
+        surface: "rgb(var(--lt-surface) / <alpha-value>)",    // inputs, cards
+        edge:    "rgb(var(--lt-edge) / <alpha-value>)",       // hairline borders
+        hair:    "rgb(var(--lt-hair) / <alpha-value>)",       // lifted hairline
+        loon:    "rgb(var(--lt-loon) / <alpha-value>)",       // legacy cyan
+        sky: {
+          DEFAULT: "rgb(var(--lt-sky) / <alpha-value>)",
+          light:   "rgb(var(--lt-sky-light) / <alpha-value>)",
+          deep:    "rgb(var(--lt-sky-deep) / <alpha-value>)",
+        },
+        teal: {
+          DEFAULT: "rgb(var(--lt-teal) / <alpha-value>)",
+          soft:    "rgb(var(--lt-teal-soft) / <alpha-value>)",
+        },
+        link:    "rgb(var(--lt-link) / <alpha-value>)",
+        follow:  "rgb(var(--lt-follow) / <alpha-value>)",
+        mist:    "rgb(var(--lt-mist) / <alpha-value>)",
+        foam:    "rgb(var(--lt-foam) / <alpha-value>)",
+        loonred: "rgb(var(--lt-loonred) / <alpha-value>)",
       },
       fontFamily: {
         sans: ["var(--font-sans)", "ui-sans-serif", "system-ui", "-apple-system", "Segoe UI", "Roboto", "sans-serif"],

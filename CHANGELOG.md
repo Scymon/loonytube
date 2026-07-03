@@ -12,6 +12,19 @@ Entries are milestone deliveries, newest first. Each lists the delivery zip(s) a
 
 ---
 
+## [0.19] Brand theming (Styleguide tab) + Builder 2.0 Phase A style system — 2026-07-02 – 2026-07-03
+_Migration required: `supabase/theme.sql`_
+
+### Added
+- **Styleguide tab** (admin console, superadmin-only) — all 17 Loonatic palette tokens, the primary gradient, and the site font are now editable, grouped as in the Loonatic style guide (background ladder / brand accents / text / semantic) with a live component preview (type ladder, buttons, surfaces, background ladder). Saved to `site_config.theme`; the root layout emits validated CSS-variable overrides site-wide (hex allow-list — no free-form CSS reaches the page).
+- **Builder 2.0 Phase A — per-block design properties.** Every page-builder block gains a Style panel (spacing, size, surface, typography, effects) mapped 1:1 to validated CSS via `NodeStyle`/`styleToCss`. Untouched blocks render identical to before. Phases B–D (section/row/column tree, Figma-like UI, presets) are specced in `docs/cms-improvement-plan.md`.
+
+### Changed
+- **Tailwind palette moved to CSS variables** — all Loonatic colors are now `rgb(var(--lt-*) / <alpha-value>)` with defaults in `globals.css`, enabling runtime re-branding while keeping every `/opacity` utility working. Visual output is unchanged for the stock theme.
+- `/api/pages/revalidate` additionally accepts `{ theme: true }` to bust the cached theme.
+
+---
+
 ## [0.18] CMS draft/publish + revisions, SEO surfaces, article editor rebuild, app-wide error/loading states — 2026-07-01 – 2026-07-02
 _Migration required: `supabase/cms-drafts.sql` (revised — creates `page_drafts` + `page_revisions`, migrates & drops `pages.draft_blocks`; see Security), `supabase/cms-seo.sql`_
 

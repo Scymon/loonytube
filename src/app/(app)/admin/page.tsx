@@ -35,7 +35,7 @@ export default async function AdminPage() {
     supabase.from("app_settings").select("invite_only, signups_enabled, uploads_enabled, full_width").eq("id", 1).maybeSingle(),
     supabase.from("invites").select("code, note, redeemed_by, redeemed_at, created_at, expires_at").order("created_at", { ascending: false }).limit(50),
     supabase.from("waitlist").select("email, created_at").order("created_at", { ascending: false }).limit(100),
-    supabase.from("site_config").select("site_name, site_tagline, logo_url, favicon_url, featured_video_id, nav_slot_overrides, ribbon_shortcuts, ribbon_fixed_hidden, footer_sections").eq("id", 1).maybeSingle(),
+    supabase.from("site_config").select("site_name, site_tagline, logo_url, favicon_url, featured_video_id, nav_slot_overrides, ribbon_shortcuts, ribbon_fixed_hidden, footer_sections, theme").eq("id", 1).maybeSingle(),
     supabase.from("pages").select("id, slug, title, body, blocks, published_at, is_published, updated_at").order("updated_at", { ascending: false }),
     supabase.from("page_drafts").select("page_id, blocks"),
     supabase.from("videos").select("*", { count: "exact", head: true }).eq("status", "ready"),
@@ -79,6 +79,7 @@ export default async function AdminPage() {
       ribbonShortcuts={ribbonShortcuts}
       ribbonFixedHidden={ribbonFixedHidden}
       footerSections={footerSections}
+      theme={(siteConfigRaw?.theme as import("@/lib/theme-tokens").ThemeOverrides | null) ?? null}
       stats={{
         videos:   videoCount   ?? 0,
         users:    userCount    ?? 0,
