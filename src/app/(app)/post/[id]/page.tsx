@@ -141,6 +141,11 @@ export default async function PostDetail({ params }: { params: Promise<{ id: str
             initialBookmarks={bookmarks ?? 0}
             initialBookmarked={bookmarked}
             replies={replyCount ?? 0}
+            postTitle={
+              post.body
+                ? post.body.slice(0, 90) + (post.body.length > 90 ? "…" : "")
+                : "Post on LoonyTube"
+            }
           />
         </div>
 

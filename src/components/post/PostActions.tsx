@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { nfmt } from "@/lib/format";
+import ShareModal from "@/components/ShareModal";
 
 export default function PostActions({
   postId,
@@ -13,6 +14,7 @@ export default function PostActions({
   initialBookmarks,
   initialBookmarked,
   replies,
+  postTitle,
 }: {
   postId: string;
   signedIn: boolean;
@@ -21,6 +23,7 @@ export default function PostActions({
   initialBookmarks: number;
   initialBookmarked: boolean;
   replies: number;
+  postTitle?: string;
 }) {
   const supabase = createClient();
   const router = useRouter();
@@ -28,6 +31,7 @@ export default function PostActions({
   const [liked, setLiked] = useState(initialLiked);
   const [bm, setBm] = useState(initialBookmarks);
   const [bmOn, setBmOn] = useState(initialBookmarked);
+  const [shareOpen, setShareOpen] = useState(false);
 
   async function uid() {
     const { data } = await supabase.auth.getUser();
@@ -81,10 +85,18 @@ export default function PostActions({
         <Btn on={bmOn} onClick={bookmark} color="text-teal" title="Bookmark">
           <svg width="20" height="20" viewBox="0 0 24 24" fill={bmOn ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.8"><path d="M6 3h12v18l-6-4-6 4z" /></svg>
         </Btn>
-        <Btn title="Share — coming soon">
+        <Btn onClick={() => setShareOpen(true)} title="Share">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M12 16V4M8 8l4-4 4 4M4 14v4a2 2 0 002 2h12a2 2 0 002-2v-4" /></svg>
         </Btn>
       </div>
+
+      {shareOpen && (
+        <ShareModal
+          url={typeof window !== "undefined" ? window.location.origin + "/post/" + postId : ""}
+          title={postTitle || "Post on LoonyTube"}
+          onClose={() => setShareOpen(false)}
+        />
+      )}
     </>
   );
 }

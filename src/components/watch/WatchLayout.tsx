@@ -28,6 +28,7 @@ export type WatchLayoutProps = {
   channelAvatar: string | null;
   signedInUserId: string | null;
   isFollowing: boolean;
+  visibility: string;
   // sidebar
   channelHandle: string;
   relatedVideos: SidebarVideo[];
@@ -40,7 +41,7 @@ export default function WatchLayout({
   videoId, token, poster,
   title, description, views, createdAt, owner,
   channelUsername, channelName, channelAvatar,
-  signedInUserId, isFollowing,
+  signedInUserId, isFollowing, visibility,
   channelHandle, relatedVideos, suggestedProfiles, trendingTags, signedIn,
 }: WatchLayoutProps) {
   const router = useRouter();
@@ -252,6 +253,7 @@ export default function WatchLayout({
       channelAvatar={channelAvatar}
       signedInUserId={signedInUserId}
       isFollowing={isFollowing}
+      visibility={visibility}
     />
   );
 

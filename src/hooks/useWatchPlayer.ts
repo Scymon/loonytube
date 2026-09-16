@@ -97,7 +97,13 @@ export function useWatchPlayer(uid: string, token?: string | null, onEnded?: () 
       p.addEventListener("loadedmetadata", () => {
         if (p.duration > 0) setDuration(p.duration);
         try {
-          const saved = localStorage.getItem(`loonytube:resume:${uid}`);
+          // A ?t= deep link (from the share sheet) wins over the saved resume
+          // position -- the viewer was sent to a specific moment on purpose.
+          const qs = new URLSearchParams(window.location.search).get("t");
+          const linked = qs ? parseFloat(qs) : NaN;
+          const saved = Number.isFinite(linked) && linked > 0
+            ? String(linked)
+            : localStorage.getItem(`loonytube:resume:${uid}`);
           if (saved) {
             const t = parseFloat(saved);
             if (t > 2) {

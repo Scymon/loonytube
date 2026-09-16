@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { ThumbnailPicker } from "@/components/ThumbnailPicker";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -44,6 +45,7 @@ function VisBadge({ v }: { v: string }) {
 
 export default function ContentTable({ initial }: { initial: Row[] }) {
   const supabase = createClient();
+  const router = useRouter();
   const [rows, setRows] = useState<Row[]>(initial);
   const [edit, setEdit] = useState<Row | null>(null);
   const [busy, setBusy] = useState(false);
@@ -58,25 +60,55 @@ export default function ContentTable({ initial }: { initial: Row[] }) {
   const [showScrubber, setShowScrubber] = useState(false);
   const [scrubPct, setScrubPct] = useState(50);
 
+  // Cloudflare playback token for the video being edited. Private media is
+  // behind requireSignedURLs, so frame URLs need the token in place of the uid;
+  // null for public/unlisted, where the plain uid works.
+  const [mediaToken, setMediaToken] = useState<string | null>(null);
+
+  // The id to put in a Cloudflare media path: token when we have one, else uid.
+  const pathId = (id: string) => (mediaToken && edit?.id === id ? mediaToken : id);
+
   // ── Preload CF thumbnails the moment the scrubber opens ─────────────────
   // Images at 10% intervals will be browser-cached so scrubbing feels instant.
   useEffect(() => {
     if (!showScrubber || !edit || edit.status !== "ready") return;
     const id = edit.id;
+    // Private videos need the signed token before any frame will load.
+    if (edit.visibility === "private" && !mediaToken) return;
     for (let pct = 0; pct <= 100; pct += 10) {
       const img = new window.Image();
-      img.src = cfThumb(id, pctToSecs(pct, edit.duration));
+      img.src = cfThumb(pathId(id), pctToSecs(pct, edit.duration));
     }
-  }, [showScrubber, edit?.id, edit?.status]);
+  }, [showScrubber, edit?.id, edit?.status, edit?.visibility, mediaToken]);
 
-  function openEdit(row: Row) {
+  async function openEdit(row: Row) {
     setErr(null);
     setThumbPane(null);
     setShowScrubber(false);
     setScrubPct(50);
+    setMediaToken(null);
     setEdit(row);
+
+    // A private video's frames are behind signed URLs, so fetch a token before
+    // touching any Cloudflare thumbnail URL for it.
+    let token: string | null = null;
+    if (row.visibility === "private" && row.status === "ready") {
+      try {
+        const res = await fetch(`/api/videos/${row.id}/media-token`);
+        if (res.ok) {
+          token = (await res.json()).token ?? null;
+          setMediaToken(token);
+        } else {
+          setErr("Could not load preview frames for this private video.");
+        }
+      } catch {
+        setErr("Could not load preview frames for this private video.");
+      }
+    }
+
     if (row.status === "ready" && !row.thumbnail) {
-      doSelectAuto(row, 0);
+      // Pass the token explicitly -- setMediaToken has not re-rendered yet.
+      doSelectAuto(row, 0, token);
     }
   }
 
@@ -119,10 +151,11 @@ export default function ContentTable({ initial }: { initial: Row[] }) {
     setThumbBusy(false);
   }
 
-  async function doSelectAuto(row: Row, i: 0 | 1 | 2) {
+  async function doSelectAuto(row: Row, i: 0 | 1 | 2, token?: string | null) {
     setThumbPane(i);
     setShowScrubber(false);
-    const url = await uploadRemoteThumb(row.id, cfThumb(row.id, pctToSecs(PCTS[i], row.duration)));
+    const id = token !== undefined ? (token ?? row.id) : pathId(row.id);
+    const url = await uploadRemoteThumb(row.id, cfThumb(id, pctToSecs(PCTS[i], row.duration)));
     if (url) setEdit((e) => (e ? { ...e, thumbnail: url } : e));
   }
 
@@ -133,7 +166,7 @@ export default function ContentTable({ initial }: { initial: Row[] }) {
 
   async function confirmScrub() {
     if (!edit) return;
-    const url = await uploadRemoteThumb(edit.id, cfThumb(edit.id, pctToSecs(scrubPct, edit.duration)));
+    const url = await uploadRemoteThumb(edit.id, cfThumb(pathId(edit.id), pctToSecs(scrubPct, edit.duration)));
     if (url) {
       setEdit((e) => (e ? { ...e, thumbnail: url } : e));
       setThumbPane(null);
@@ -166,6 +199,9 @@ export default function ContentTable({ initial }: { initial: Row[] }) {
     if (error) { setErr(error.message); return; }
     setRows((rs) => rs.map((r) => (r.id === edit.id ? { ...r, ...patch, visibility: edit.visibility } : r)));
     setEdit(null);
+    // Visibility drives whether thumbnails need a signed URL, so pull fresh
+    // server-signed rows rather than leaving a now-401 thumbnail on screen.
+    if (orig && orig.visibility !== edit.visibility) router.refresh();
   }
 
   async function remove(id: string) {
@@ -333,12 +369,12 @@ export default function ContentTable({ initial }: { initial: Row[] }) {
 
               {(() => {
                 const previewSrc = showScrubber
-                  ? cfThumb(edit.id, pctToSecs(scrubPct, edit.duration))
+                  ? cfThumb(pathId(edit.id), pctToSecs(scrubPct, edit.duration))
                   : thumbPane !== null
-                    ? cfThumb(edit.id, pctToSecs(PCTS[thumbPane], edit.duration))
-                    : (edit.thumbnail ?? (isReady ? cfThumb(edit.id, pctToSecs(50, edit.duration)) : null));
+                    ? cfThumb(pathId(edit.id), pctToSecs(PCTS[thumbPane], edit.duration))
+                    : (edit.thumbnail ?? (isReady ? cfThumb(pathId(edit.id), pctToSecs(50, edit.duration)) : null));
                 const suggestions: [string | null, string | null, string | null] = isReady
-                  ? PCTS.map((p) => cfThumb(edit.id, pctToSecs(p, edit.duration))) as [string, string, string]
+                  ? PCTS.map((p) => cfThumb(pathId(edit.id), pctToSecs(p, edit.duration))) as [string, string, string]
                   : ["", "", ""];
                 return (
                   <ThumbnailPicker

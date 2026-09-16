@@ -37,8 +37,18 @@ create table if not exists public.videos (
   views bigint not null default 0,
   created_at timestamptz default now()
 );
+-- visibility is core to the read policy below, so it is guaranteed here rather
+-- than only in studio.sql (which may run later, or not at all on a fresh DB).
+alter table public.videos add column if not exists visibility text not null default 'public';
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'videos_visibility_chk') then
+    alter table public.videos add constraint videos_visibility_chk
+      check (visibility in ('public','unlisted','private'));
+  end if;
+end $$;
 create index if not exists videos_created_idx on public.videos (created_at desc);
 create index if not exists videos_owner_idx on public.videos (owner);
+create index if not exists videos_visibility_status_idx on public.videos (visibility, status, created_at desc);
 
 -- ---------- LIKES ----------
 create table if not exists public.likes (
@@ -70,14 +80,20 @@ drop policy if exists "profiles update" on public.profiles;
 create policy "profiles read"   on public.profiles for select using (true);
 create policy "profiles update" on public.profiles for update using (auth.uid() = id);
 
--- videos: anyone sees ready videos; owner sees their own at any status
+-- videos: anyone sees ready public/unlisted videos; owner sees their own at any
+-- status or visibility. NOTE: this MUST stay visibility-aware -- an earlier
+-- version used (status = 'ready' or auth.uid() = owner), which made every
+-- private video world-readable whenever this file was re-run. See visibility.sql.
 drop policy if exists "videos read"   on public.videos;
 drop policy if exists "videos insert" on public.videos;
 drop policy if exists "videos update" on public.videos;
 drop policy if exists "videos delete" on public.videos;
-create policy "videos read"   on public.videos for select using (status = 'ready' or auth.uid() = owner);
+create policy "videos read"   on public.videos for select using (
+  (status = 'ready' and coalesce(visibility, 'private') in ('public', 'unlisted'))
+  or auth.uid() = owner
+);
 create policy "videos insert" on public.videos for insert with check (auth.uid() = owner);
-create policy "videos update" on public.videos for update using (auth.uid() = owner);
+create policy "videos update" on public.videos for update using (auth.uid() = owner) with check (auth.uid() = owner);
 create policy "videos delete" on public.videos for delete using (auth.uid() = owner);
 
 -- likes: world-readable, self-managed

@@ -4,6 +4,7 @@ import Link from "next/link";
 import Avatar from "@/components/Avatar";
 import LikeButton from "@/components/LikeButton";
 import FollowUserButton from "@/components/discovery/FollowUserButton";
+import ShareModal from "@/components/ShareModal";
 
 type Props = {
   videoId: string;
@@ -17,6 +18,7 @@ type Props = {
   channelAvatar: string | null;
   signedInUserId: string | null;
   isFollowing: boolean;
+  visibility: string;
 };
 
 function relativeDate(iso: string) {
@@ -38,9 +40,10 @@ function fmtViews(n: number) {
 export default function WatchMeta({
   videoId, title, description, views, createdAt,
   owner, channelUsername, channelName, channelAvatar,
-  signedInUserId, isFollowing,
+  signedInUserId, isFollowing, visibility,
 }: Props) {
   const [expanded, setExpanded] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const isOwn = signedInUserId === owner;
@@ -138,11 +141,7 @@ export default function WatchMeta({
           <button
             type="button"
             title="Share"
-            onClick={() =>
-              navigator.clipboard
-                ?.writeText(window.location.href)
-                .catch(() => {})
-            }
+            onClick={() => setShareOpen(true)}
             className="flex items-center gap-1.5 rounded-full border border-edge px-3 py-1.5 text-sm text-mist transition hover:border-foam/40 hover:text-foam"
           >
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -188,6 +187,18 @@ export default function WatchMeta({
             </button>
           )}
         </div>
+      )}
+
+      {shareOpen && (
+        <ShareModal
+          url={typeof window !== "undefined" ? window.location.origin + "/watch/" + videoId : ""}
+          title={title}
+          // A private video needs a signed token to play, so an embed snippet
+          // would be dead on arrival anywhere it is pasted. Unlisted embeds work.
+          embedId={visibility === "private" ? null : videoId}
+          allowTimestamp
+          onClose={() => setShareOpen(false)}
+        />
       )}
     </div>
   );

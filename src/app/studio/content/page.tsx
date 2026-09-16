@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { cfDisplayThumbnail } from "@/lib/cloudflare";
 import StudioUploadsShell from "@/components/studio/StudioUploadsShell";
 import { type Row } from "@/components/studio/ContentTable";
 
@@ -28,13 +29,28 @@ export default async function StudioContent() {
     for (const l of ls ?? []) lCount.set(l.video_id, (lCount.get(l.video_id) ?? 0) + 1);
   }
 
-  const rows: Row[] = list.map((v) => ({
-    id: v.id, title: v.title, description: v.description, thumbnail: v.thumbnail,
-    status: v.status, visibility: (v as { visibility?: string }).visibility ?? "public",
-    views: Number(v.views ?? 0), comments: cCount.get(v.id) ?? 0, likes: lCount.get(v.id) ?? 0,
-    created_at: v.created_at, scheduled_at: (v as { scheduled_at?: string | null }).scheduled_at ?? null,
-    duration: (v as { duration?: number | null }).duration ?? null,
-  }));
+  // Private videos sit behind Cloudflare signed URLs, so a stored
+  // videodelivery.net thumbnail 401s until its uid is swapped for a token.
+  // Only private rows with a Cloudflare thumbnail cost a round-trip.
+  const rows: Row[] = await Promise.all(
+    list.map(async (v) => {
+      const visibility = (v as { visibility?: string }).visibility ?? "public";
+      return {
+        id: v.id,
+        title: v.title,
+        description: v.description,
+        thumbnail: await cfDisplayThumbnail(v.id, v.thumbnail, visibility),
+        status: v.status,
+        visibility,
+        views: Number(v.views ?? 0),
+        comments: cCount.get(v.id) ?? 0,
+        likes: lCount.get(v.id) ?? 0,
+        created_at: v.created_at,
+        scheduled_at: (v as { scheduled_at?: string | null }).scheduled_at ?? null,
+        duration: (v as { duration?: number | null }).duration ?? null,
+      };
+    }),
+  );
 
   return <StudioUploadsShell initial={rows} />;
 }

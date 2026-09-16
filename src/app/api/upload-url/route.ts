@@ -160,15 +160,16 @@ export async function POST(req: Request) {
     status: "uploading",
     thumbnail: thumbStr,
   };
-  let { error: insertError } = await supabase.from("videos").insert({
+  // NOTE: there used to be a fallback here that retried with `baseRow` alone if
+  // the full insert failed. baseRow carries no `visibility`, so the column fell
+  // back to its 'public' default -- a video the creator marked private was
+  // silently published. Visibility is never dropped to make an insert succeed.
+  const { error: insertError } = await supabase.from("videos").insert({
     ...baseRow,
     category: category ?? null,
     visibility: vis,
     made_for_kids: !!madeForKids,
   });
-  if (insertError) {
-    ({ error: insertError } = await supabase.from("videos").insert(baseRow));
-  }
 
   if (insertError) {
     console.error("Insert row failed", insertError);

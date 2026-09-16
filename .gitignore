@@ -12,6 +12,10 @@ tsconfig.tsbuildinfo
 _tmp_*
 
 # Agent instructions (local only)
+.claude/
 CLAUDE.md
 SKILLS.md
 EDITING-RULES.md
+
+# supabase CLI scratch
+supabase/.temp/

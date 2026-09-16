@@ -8,6 +8,7 @@ import { useWatchPlayer, type PlayerMode }        from "@/hooks/useWatchPlayer";
 import { useAudio }                                  from "@/contexts/AudioContext";
 import { useKeyboardShortcuts }                  from "@/hooks/useKeyboardShortcuts";
 import { parseChapters, chapterAt }              from "@/utils/parseChapters";
+import { reportPlaybackPosition }                from "@/components/ShareModal";
 import {
   IcoPlay, IcoPause, IcoMuted, IcoUnmuted,
   IcoTheatre, IcoExitTheatre, IcoFullscreen, IcoLightsOut,
@@ -117,6 +118,10 @@ export default function WatchPlayer({
   const p = useWatchPlayer(uid, token, () => {
     if (autoplayRef.current && onNextRef.current) setCountdown(5);
   });
+
+  // Publish position so the share sheet can offer a "start at <time>" link
+  // without lifting player state up through the whole watch tree.
+  useEffect(() => { reportPlaybackPosition(p.currentTime); }, [p.currentTime]);
 
   // Bridge video playback position into AudioContext so MiniAudioPlayer
   // scrubber reflects video progress when in mini mode.

@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import Scheduler, { type SchedRow } from "@/components/studio/Scheduler";
+import { cfDisplayThumbnail } from "@/lib/cloudflare";
 
 export const dynamic = "force-dynamic";
 
@@ -9,13 +10,19 @@ export default async function StudioScheduler() {
   const uid = user!.id;
 
   const { data: videos } = await supabase
-    .from("videos").select("id, title, thumbnail, status, scheduled_at")
+    .from("videos").select("id, title, thumbnail, status, scheduled_at, visibility")
     .eq("owner", uid).order("created_at", { ascending: false });
 
-  const rows: SchedRow[] = (videos ?? []).map((v) => ({
-    id: v.id, title: v.title, thumbnail: v.thumbnail, status: v.status,
-    scheduled_at: (v as { scheduled_at?: string | null }).scheduled_at ?? null,
-  }));
+  const rows: SchedRow[] = await Promise.all(
+    (videos ?? []).map(async (v) => ({
+      id: v.id, title: v.title, status: v.status,
+      // Private media needs a signed thumbnail URL.
+      thumbnail: await cfDisplayThumbnail(
+        v.id, v.thumbnail, (v as { visibility?: string }).visibility,
+      ),
+      scheduled_at: (v as { scheduled_at?: string | null }).scheduled_at ?? null,
+    })),
+  );
 
   return (
     <div>

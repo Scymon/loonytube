@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { nfmt, ago } from "@/lib/format";
+import { cfDisplayThumbnail } from "@/lib/cloudflare";
 import VideoStatusPoller from "@/components/studio/VideoStatusPoller";
 
 export const dynamic = "force-dynamic";
@@ -11,9 +12,19 @@ export default async function StudioDashboard() {
   const uid = user!.id;
 
   const { data: videos } = await supabase
-    .from("videos").select("id, title, status, views, created_at, thumbnail")
+    .from("videos").select("id, title, status, views, created_at, thumbnail, visibility")
     .eq("owner", uid).order("created_at", { ascending: false });
-  const list = videos ?? [];
+  // Private thumbnails are behind Cloudflare signed URLs -- sign them or they 401.
+  const list = await Promise.all(
+    (videos ?? []).map(async (v) => ({
+      ...v,
+      thumbnail: await cfDisplayThumbnail(
+        v.id,
+        v.thumbnail,
+        (v as { visibility?: string }).visibility,
+      ),
+    })),
+  );
 
   const totalViews = list.reduce((s, v) => s + Number(v.views ?? 0), 0);
   const ready = list.filter((v) => v.status === "ready").length;

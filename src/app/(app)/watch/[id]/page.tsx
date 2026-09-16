@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { cfStreamToken } from "@/lib/cloudflare";
+import { cfStreamToken, signCfMediaUrl } from "@/lib/cloudflare";
 import StreamPlayer from "@/components/StreamPlayer";
 import ProcessingWatcher from "@/components/ProcessingWatcher";
 import WatchLayout from "@/components/watch/WatchLayout";
@@ -78,6 +78,15 @@ export default async function Watch({ params }: { params: Promise<{ id: string }
   }
 
   const viewerId = viewer?.id ?? null;
+  const isOwner = viewerId !== null && viewerId === video.owner;
+
+  // Defense in depth. RLS should already hide private rows from everyone but the
+  // owner, but this page also mints a Cloudflare playback token below -- so if a
+  // private row ever reaches here for a non-owner (stale policy, service-role
+  // client, bad migration), we stop before handing out a token.
+  if (video.visibility === "private" && !isOwner) {
+    return <p className="py-16 text-center text-mist">Video not found or still private.</p>;
+  }
 
   // Everything below depends only on the video row — second parallel round-trip
   const [
@@ -89,12 +98,21 @@ export default async function Watch({ params }: { params: Promise<{ id: string }
   ] = await Promise.all([
     supabase.from("profiles").select("id, username, full_name, avatar_url").eq("id", video.owner).maybeSingle(),
     video.visibility === "private" ? cfStreamToken(id) : Promise.resolve(null),
-    supabase.from("videos").select("id, title, thumbnail, views, created_at, duration").eq("owner", video.owner).eq("status", "ready").neq("id", id).order("created_at", { ascending: false }).limit(10),
+    // Sidebar is discovery surface -> public only. Unlisted videos are reachable
+    // by direct link but must never be listed here, and private rows are blocked
+    // by RLS anyway.
+    supabase.from("videos").select("id, title, thumbnail, views, created_at, duration").eq("owner", video.owner).eq("status", "ready").eq("visibility", "public").neq("id", id).order("created_at", { ascending: false }).limit(10),
     viewerId
       ? supabase.from("follows").select("followee").eq("follower", viewerId)
       : Promise.resolve({ data: null }),
     supabase.from("profiles").select("id, username, full_name, avatar_url").neq("id", video.owner).limit(20),
   ]);
+  // The poster for a private video is a Cloudflare URL behind signed playback --
+  // reuse the token we already minted rather than serving a 401 image.
+  const posterUrl = video.thumbnail
+    ? signCfMediaUrl(video.thumbnail, id, token)
+    : null;
+
   const relatedVideos: SidebarVideo[] = relatedRaw ?? [];
   const followedIds = (follows ?? []).map((f: { followee: string }) => f.followee);
   const isFollowingChannel = followedIds.includes(video.owner);
@@ -111,7 +129,7 @@ export default async function Watch({ params }: { params: Promise<{ id: string }
     <WatchLayout
       videoId={id}
       token={token}
-      poster={video.thumbnail ?? undefined}
+      poster={posterUrl ?? undefined}
       title={video.title}
       description={video.description ?? null}
       views={video.views ?? 0}
@@ -122,6 +140,7 @@ export default async function Watch({ params }: { params: Promise<{ id: string }
       channelAvatar={channel?.avatar_url ?? null}
       signedInUserId={viewerId}
       isFollowing={isFollowingChannel}
+      visibility={video.visibility ?? "public"}
       channelHandle={channel?.username ?? video.owner}
       relatedVideos={relatedVideos}
       suggestedProfiles={suggestedProfiles}
