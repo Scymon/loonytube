@@ -1,0 +1,20 @@
+# Normalize all text files to LF — in the repo and the working tree.
+# Added 2026-07-05 after CRLF drift truncated/corrupted the working tree
+# twice (see docs/audits/2026-07-04.md and 2026-07-05.md).
+* text=auto eol=lf
+
+# Explicit binaries (text=auto already detects these; listed for clarity)
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.webp binary
+*.ico  binary
+*.svg  text eol=lf
+*.woff  binary
+*.woff2 binary
+*.ttf  binary
+*.mp4  binary
+*.webm binary
+*.mp3  binary
+*.zip  binary
