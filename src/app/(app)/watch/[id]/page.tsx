@@ -4,8 +4,70 @@ import StreamPlayer from "@/components/StreamPlayer";
 import ProcessingWatcher from "@/components/ProcessingWatcher";
 import WatchLayout from "@/components/watch/WatchLayout";
 import type { SidebarProfile, SidebarVideo, TrendingTag } from "@/components/watch/WatchSidebar";
+import type { Metadata } from "next";
+import { SITE_URL } from "@/lib/pages";
 
 export const dynamic = "force-dynamic";
+
+// Link-preview cards (X, Facebook, iMessage, Discord, Slack). Without these a
+// shared watch link renders as a bare URL with no title or thumbnail.
+//
+// Privacy: this runs with the visitor's cookies, so a crawler is anonymous and
+// RLS already hides private rows. The explicit visibility check is belt and
+// braces -- a private video must never leak its title or thumbnail into a card.
+// Unlisted videos DO get a card (that is the point of a shareable link) but are
+// marked noindex so they stay out of search results.
+export async function generateMetadata(
+  { params }: { params: Promise<{ id: string }> },
+): Promise<Metadata> {
+  const { id } = await params;
+  const supabase = await createClient();
+
+  const { data: v } = await supabase
+    .from("videos")
+    .select("title, description, thumbnail, visibility, status")
+    .eq("id", id)
+    .maybeSingle();
+
+  const shareable =
+    v && v.status === "ready" && (v.visibility === "public" || v.visibility === "unlisted");
+
+  if (!shareable) {
+    return { title: "LoonyTube", robots: { index: false, follow: false } };
+  }
+
+  const url = `${SITE_URL}/watch/${id}`;
+  const title = v.title?.trim() || "LoonyTube";
+  const description =
+    v.description?.trim().slice(0, 200) || "Watch. Post. Stream. All in one.";
+
+  // Custom thumbnails are Supabase public URLs; otherwise fall back to the
+  // Cloudflare frame. Both are absolute and unsigned for public/unlisted media.
+  const image =
+    v.thumbnail ||
+    `https://videodelivery.net/${id}/thumbnails/thumbnail.jpg?time=1s&height=720`;
+
+  return {
+    title,
+    description,
+    alternates: { canonical: url },
+    ...(v.visibility === "unlisted" ? { robots: { index: false, follow: true } } : {}),
+    openGraph: {
+      title,
+      description,
+      url,
+      siteName: "LoonyTube",
+      type: "video.other",
+      images: [{ url: image, width: 1280, height: 720, alt: title }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [image],
+    },
+  };
+}
 
 export default async function Watch({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

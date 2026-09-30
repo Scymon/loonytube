@@ -2,8 +2,12 @@ import type { Metadata } from "next";
 import "./globals.css";
 import AudioShell from "@/components/AudioShell";
 import { getSiteTheme } from "@/lib/theme";
+import { SITE_URL } from "@/lib/pages";
 
 export const metadata: Metadata = {
+  // metadataBase lets any page emit relative og:image paths and still produce
+  // the absolute URLs that link-preview crawlers require.
+  metadataBase: new URL(SITE_URL),
   title: "LoonyTube",
   description: "Watch. Post. Stream. All in one.",
 };
